@@ -18,7 +18,7 @@
     // GitHub App → Settings → About (Client ID); Cloudflare → Manage Account → OAuth
     // clients. An empty value makes the builder fall back to asking for a pasted token
     // rather than showing a Connect button that leads to an error page.
-    "BUILDER_GITHUB_CLIENT_ID": "",
+    "BUILDER_GITHUB_CLIENT_ID": "Iv23liIfHNZXYhzumB4y",
     "BUILDER_GITHUB_APP_SLUG": "mindoodb-app-builder",
     "BUILDER_CLOUDFLARE_CLIENT_ID": "",
     "BUILDER_PUBLIC_ORIGIN": "https://app-builder.mindoodb.com"
