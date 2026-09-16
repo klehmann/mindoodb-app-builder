@@ -15,13 +15,34 @@
  * The builder host never sees this document. The app decrypts in the browser and hands
  * a single token to the host for a single job (see `src/host/`).
  */
-import type { MindooDBAppDatabase } from "mindoodb-app-sdk";
+import { createViewLanguage, type MindooDBAppDatabase } from "mindoodb-app-sdk";
 
-/** Fixed document id, so the app can load the credentials without building a view. */
-export const CREDENTIALS_DOCUMENT_ID = "builder_credentials";
+/**
+ * Prefix for the random id MindooDB generates for a credential document.
+ *
+ * The document cannot have a fixed id: MindooDB refuses `recipients` together with a
+ * caller-provided id, because such an id is *convergent* — two replicas creating it
+ * share Automerge ancestry — while sealing needs a per-document key that cannot be
+ * derived that way. So the id is the host's, and the document is found by querying for
+ * its `type` (see {@link findCredentialsDocument}).
+ */
+const CREDENTIALS_ID_PREFIX = "cred";
 
-/** Marks the document for humans reading the database in Haven. */
+/** Marks the document for humans reading the database, and is how the app finds it. */
 export const CREDENTIALS_DOCUMENT_TYPE = "mindoodb.appbuilder.credentials";
+
+/**
+ * Field holding the tokens.
+ *
+ * Nested on purpose. MindooDB's summary buffer auto-includes every *scalar* top-level
+ * field, so top-level tokens would be copied into that local index; a nested object is
+ * only indexed when a summary configuration asks for it by path. Keeping `type` and
+ * `updatedAt` at the top level is what makes the document queryable, and keeping the
+ * tokens one level down keeps them in the encrypted payload only.
+ */
+const SECRETS_FIELD = "secrets";
+
+const v = createViewLanguage<Record<string, unknown>>();
 
 export interface BuilderCredentials {
   /**
@@ -105,11 +126,16 @@ export function isCloudflareTokenStale(
 
 /** Map a stored document body onto the credential shape, ignoring anything else in it. */
 export function credentialsFromDocumentData(
-  data: Record<string, unknown> | undefined,
+  body: Record<string, unknown> | undefined,
 ): BuilderCredentials {
-  if (!data) {
+  if (!body) {
     return { ...EMPTY_CREDENTIALS };
   }
+  // Tokens live under `secrets`; a document written by an earlier build has them at the
+  // top level, so both shapes read back rather than silently logging the user out.
+  const nested = body[SECRETS_FIELD];
+  const data =
+    nested !== null && typeof nested === "object" ? (nested as Record<string, unknown>) : body;
   return {
     githubToken: readString(data, "githubToken"),
     githubOwner: readString(data, "githubOwner"),
@@ -121,60 +147,105 @@ export function credentialsFromDocumentData(
   };
 }
 
+/** Credentials plus the document they came from, so a later save updates that one. */
+export interface LoadedCredentials {
+  credentials: BuilderCredentials;
+  documentId: string | null;
+}
+
 /**
- * Read the sealed credential document, or return empty credentials when it does not
- * exist yet.
+ * Find this user's credential document.
  *
- * A document that exists but cannot be decrypted (someone else's copy in a shared
- * database) is reported as empty rather than as an error: the user can simply store
- * their own, and the document id is per-user in practice because each user's replica
- * holds their own sealed copy.
+ * The lookup is a plain `type` query, and it needs no "which user" clause: MindooDB
+ * only summarizes a sealed document on a replica that can decrypt it, so another user's
+ * credential document is not in this user's summary buffer and cannot match. The newest
+ * match wins, so a duplicate left behind by an interrupted save is ignored rather than
+ * resurrected.
+ */
+export async function findCredentialsDocument(
+  database: MindooDBAppDatabase,
+): Promise<string | null> {
+  const result = await database.documents.query({
+    filter: v.eq(v.field("type"), CREDENTIALS_DOCUMENT_TYPE),
+    sortBy: [{ field: "_lastModified", direction: "descending" }],
+    // The tokens are not summarized, but there is no reason to ship any field at all.
+    fields: ["type"],
+    limit: 1,
+  });
+  return result.rows[0]?.docId ?? null;
+}
+
+/**
+ * Read this user's sealed credential document, or return empty credentials when they
+ * have none yet.
+ *
+ * Failures are reported as empty rather than thrown: a missing document, a summary
+ * still backfilling, or a database without `read` all mean the same thing to the user —
+ * the builder opens unconnected and they connect their accounts.
  */
 export async function loadCredentials(
   database: MindooDBAppDatabase,
-): Promise<BuilderCredentials> {
+): Promise<LoadedCredentials> {
   try {
-    const document = await database.documents.get(CREDENTIALS_DOCUMENT_ID);
-    return credentialsFromDocumentData(document?.data);
+    const documentId = await findCredentialsDocument(database);
+    if (!documentId) {
+      return { credentials: { ...EMPTY_CREDENTIALS }, documentId: null };
+    }
+    const document = await database.documents.get(documentId);
+    return {
+      credentials: credentialsFromDocumentData(document?.data),
+      documentId: document ? documentId : null,
+    };
   } catch {
-    return { ...EMPTY_CREDENTIALS };
+    return { credentials: { ...EMPTY_CREDENTIALS }, documentId: null };
   }
 }
 
 /**
- * Write the credentials back into the sealed document, creating it on first use.
+ * Write the credentials into this user's sealed document, creating it on first use, and
+ * return the document id to reuse for the next save.
  *
- * `create({ id })` is idempotent create-if-missing and does NOT apply `set` to an
- * existing document, so the update call after it is what actually persists a change.
+ * The id is left to MindooDB (`idPrefix`), which is what makes sealing legal here.
  */
 export async function saveCredentials(
   database: MindooDBAppDatabase,
   credentials: BuilderCredentials,
-): Promise<void> {
+  documentId?: string | null,
+): Promise<string> {
   const set: Record<string, unknown> = {
     type: CREDENTIALS_DOCUMENT_TYPE,
-    githubToken: credentials.githubToken.trim(),
-    githubOwner: credentials.githubOwner.trim(),
-    cloudflareToken: credentials.cloudflareToken.trim(),
-    cloudflareRefreshToken: credentials.cloudflareRefreshToken.trim(),
-    cloudflareExpiresAt: credentials.cloudflareExpiresAt,
-    cloudflareAccountId: credentials.cloudflareAccountId.trim(),
-    cursorToken: credentials.cursorToken.trim(),
     updatedAt: new Date().toISOString(),
+    [SECRETS_FIELD]: {
+      githubToken: credentials.githubToken.trim(),
+      githubOwner: credentials.githubOwner.trim(),
+      cloudflareToken: credentials.cloudflareToken.trim(),
+      cloudflareRefreshToken: credentials.cloudflareRefreshToken.trim(),
+      cloudflareExpiresAt: credentials.cloudflareExpiresAt,
+      cloudflareAccountId: credentials.cloudflareAccountId.trim(),
+      cursorToken: credentials.cursorToken.trim(),
+    },
   };
 
-  await database.documents.create({
-    id: CREDENTIALS_DOCUMENT_ID,
+  const existingId = documentId ?? (await findCredentialsDocument(database));
+  if (existingId) {
+    await database.documents.update(existingId, { set });
+    return existingId;
+  }
+
+  const created = await database.documents.create({
+    idPrefix: CREDENTIALS_ID_PREFIX,
     set,
     // Sealed to the launching user alone. Never add recipients here.
     recipients: [],
     recipientOptions: { includeSelf: true },
   });
-
-  await database.documents.update(CREDENTIALS_DOCUMENT_ID, { set });
+  return created.id;
 }
 
 /** Overwrite every token, for a "disconnect all" action. */
-export async function clearCredentials(database: MindooDBAppDatabase): Promise<void> {
-  await saveCredentials(database, { ...EMPTY_CREDENTIALS });
+export async function clearCredentials(
+  database: MindooDBAppDatabase,
+  documentId?: string | null,
+): Promise<string> {
+  return await saveCredentials(database, { ...EMPTY_CREDENTIALS }, documentId);
 }

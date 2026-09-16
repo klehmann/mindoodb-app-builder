@@ -38,6 +38,8 @@ export function useBuilderSession() {
   const launchContext = ref<MindooDBAppLaunchContext | null>(null);
   const database = ref<MindooDBAppDatabase | null>(null);
   const credentials = ref<BuilderCredentials>({ ...EMPTY_CREDENTIALS });
+  /** Id of this user's sealed credential document — random, so it has to be remembered. */
+  const credentialsDocId = ref<string | null>(null);
   const theme = ref<MindooDBAppHostTheme>({ mode: "light", preset: "mindoo" });
   const connecting = ref(false);
   const savingCredentials = ref(false);
@@ -88,7 +90,9 @@ export function useBuilderSession() {
 
       if (databaseInfo.value) {
         database.value = await nextSession.openDatabase(BUILDER_DATABASE_ID);
-        credentials.value = await loadCredentials(database.value);
+        const loaded = await loadCredentials(database.value);
+        credentials.value = loaded.credentials;
+        credentialsDocId.value = loaded.documentId;
       }
     } catch (connectError) {
       error.value = readErrorMessage(
@@ -115,7 +119,11 @@ export function useBuilderSession() {
     savingCredentials.value = true;
     error.value = null;
     try {
-      await saveCredentials(database.value, next);
+      credentialsDocId.value = await saveCredentials(
+        database.value,
+        next,
+        credentialsDocId.value,
+      );
     } catch (saveError) {
       error.value = readErrorMessage(saveError, "The credentials could not be stored.");
     } finally {
@@ -147,6 +155,7 @@ export function useBuilderSession() {
     const current = session.value;
     session.value = null;
     database.value = null;
+    credentialsDocId.value = null;
     if (!current) {
       return;
     }

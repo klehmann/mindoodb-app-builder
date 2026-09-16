@@ -13,6 +13,7 @@
     "https://dash.cloudflare.com",
     "https://*.workers.dev"
   ],
+  "allowPopups": true,
   "defaultLaunchDatabaseId": "appbuilder",
   "databases": [
     {

@@ -8,26 +8,79 @@ import {
   loadCredentials,
   readCredentialsStatus,
   saveCredentials,
-  CREDENTIALS_DOCUMENT_ID,
   CREDENTIALS_DOCUMENT_TYPE,
   EMPTY_CREDENTIALS,
 } from "./credentials";
 
-function fakeDatabase(overrides: {
-  get?: (id: string) => Promise<{ data: Record<string, unknown> } | undefined>;
-} = {}): {
+/**
+ * A database that actually stores what it is given and answers the `type` query from
+ * what it stored, so the tests can follow the credentials from `save` back out of
+ * `load` — the fixed-id shortcut that a stubbed database made look fine is exactly what
+ * the host rejected.
+ *
+ * `query` mirrors the host in the one way that matters here: it filters on the stored
+ * top-level fields, so a token nested under `secrets` is invisible to it just as it is
+ * invisible to the real summary buffer.
+ */
+function fakeDatabase(
+  overrides: {
+    seed?: Record<string, Record<string, unknown>>;
+    get?: (id: string) => Promise<{ id: string; data: Record<string, unknown> } | undefined>;
+  } = {},
+): {
   database: MindooDBAppDatabase;
   create: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
+  query: ReturnType<typeof vi.fn>;
 } {
-  const create = vi.fn(async () => undefined);
-  const update = vi.fn(async () => undefined);
-  const get = vi.fn(overrides.get ?? (async () => undefined));
+  const documents = new Map<string, Record<string, unknown>>(
+    Object.entries(overrides.seed ?? {}),
+  );
+  const order: string[] = [...documents.keys()];
+  let generated = 0;
+
+  function touch(id: string): void {
+    const previous = order.indexOf(id);
+    if (previous >= 0) {
+      order.splice(previous, 1);
+    }
+    order.push(id);
+  }
+
+  const create = vi.fn(
+    async (input: { id?: string; idPrefix?: string; set?: Record<string, unknown> }) => {
+      const id = input.id ?? `${input.idPrefix ?? "doc"}_${(generated += 1)}`;
+      if (!documents.has(id)) {
+        documents.set(id, { ...(input.set ?? {}) });
+      }
+      touch(id);
+      return { id, data: documents.get(id)! };
+    },
+  );
+  const update = vi.fn(async (id: string, patch: { set?: Record<string, unknown> }) => {
+    const data = { ...(documents.get(id) ?? {}), ...(patch.set ?? {}) };
+    documents.set(id, data);
+    touch(id);
+    return { id, data };
+  });
+  const get = vi.fn(
+    overrides.get ??
+      (async (id: string) => (documents.has(id) ? { id, data: documents.get(id)! } : undefined)),
+  );
+  // Newest first, matching the `_lastModified` sort the real query asks for.
+  const query = vi.fn(async () => {
+    const rows = [...order]
+      .reverse()
+      .filter((id) => documents.get(id)?.type === CREDENTIALS_DOCUMENT_TYPE)
+      .map((id) => ({ docId: id, fields: { type: CREDENTIALS_DOCUMENT_TYPE } }));
+    return { rows, total: rows.length, coverage: "full" };
+  });
 
   return {
-    database: { documents: { create, update, get } } as unknown as MindooDBAppDatabase,
+    database: { documents: { create, update, get, query } } as unknown as MindooDBAppDatabase,
     create,
     update,
+    query,
   };
 }
 
@@ -89,12 +142,34 @@ describe("credentialsFromDocumentData", () => {
 });
 
 describe("loadCredentials", () => {
-  it("reads the fixed document id", async () => {
+  it("finds the document by type", async () => {
     const { database } = fakeDatabase({
-      get: async (id) => (id === CREDENTIALS_DOCUMENT_ID ? { data: filled } : undefined),
+      seed: { cred_1: { type: CREDENTIALS_DOCUMENT_TYPE, secrets: filled } },
     });
 
-    await expect(loadCredentials(database)).resolves.toEqual(filled);
+    await expect(loadCredentials(database)).resolves.toEqual({
+      credentials: filled,
+      documentId: "cred_1",
+    });
+  });
+
+  it("still reads a document written with top-level tokens", async () => {
+    // Tokens moved under `secrets` to keep them out of the summary buffer; a document
+    // from before that must not read back as "not connected".
+    const { database } = fakeDatabase({
+      seed: { cred_1: { type: CREDENTIALS_DOCUMENT_TYPE, ...filled } },
+    });
+
+    await expect(loadCredentials(database)).resolves.toMatchObject({ credentials: filled });
+  });
+
+  it("reads nothing when no document matches", async () => {
+    const { database } = fakeDatabase({ seed: { other: { type: "something.else" } } });
+
+    await expect(loadCredentials(database)).resolves.toEqual({
+      credentials: EMPTY_CREDENTIALS,
+      documentId: null,
+    });
   });
 
   it("reports empty rather than failing when the document cannot be read", async () => {
@@ -106,11 +181,27 @@ describe("loadCredentials", () => {
       },
     });
 
-    await expect(loadCredentials(database)).resolves.toEqual(EMPTY_CREDENTIALS);
+    await expect(loadCredentials(database)).resolves.toEqual({
+      credentials: EMPTY_CREDENTIALS,
+      documentId: null,
+    });
   });
 });
 
 describe("saveCredentials", () => {
+  it("never seals a document under a caller-provided id", async () => {
+    // MindooDB rejects `recipients` together with a caller id, because such an id is
+    // convergent and sealing needs a per-document key. Asking for one is not a
+    // degraded save, it throws — so the sealed create must always let the host pick.
+    const { database, create } = fakeDatabase();
+
+    await saveCredentials(database, filled);
+
+    for (const [input] of create.mock.calls as [{ id?: string; recipients?: string[] }][]) {
+      expect(input.recipients === undefined || input.id === undefined).toBe(true);
+    }
+  });
+
   it("seals the document to the current user and nobody else", async () => {
     // The whole security story rests on this call shape: an empty recipient list with
     // includeSelf means the host adds exactly the launching user. Any additional
@@ -119,32 +210,68 @@ describe("saveCredentials", () => {
 
     await saveCredentials(database, filled);
 
-    expect(create).toHaveBeenCalledTimes(1);
     expect(create.mock.calls[0]![0]).toMatchObject({
-      id: CREDENTIALS_DOCUMENT_ID,
+      idPrefix: "cred",
       recipients: [],
       recipientOptions: { includeSelf: true },
     });
   });
 
-  it("updates after creating, because create does not touch an existing document", async () => {
-    const { database, update } = fakeDatabase();
+  it("keeps the tokens out of the summarized top level", async () => {
+    // Top-level scalars are auto-included in MindooDB's summary buffer, so a token
+    // stored there would be copied into a local index and into every query row. Only
+    // `type` and `updatedAt` belong up there.
+    const { database, create } = fakeDatabase();
 
     await saveCredentials(database, filled);
 
-    expect(update).toHaveBeenCalledTimes(1);
-    const [id, change] = update.mock.calls[0]! as [string, { set: Record<string, unknown> }];
-    expect(id).toBe(CREDENTIALS_DOCUMENT_ID);
-    expect(change.set).toMatchObject({ ...filled, type: CREDENTIALS_DOCUMENT_TYPE });
+    const { set } = create.mock.calls[0]![0] as { set: Record<string, unknown> };
+    expect(Object.keys(set).sort()).toEqual(["secrets", "type", "updatedAt"]);
+    expect(set.secrets).toMatchObject({ githubToken: "ghp_token" });
+  });
+
+  it("comes back out of loadCredentials on the next launch", async () => {
+    const { database } = fakeDatabase();
+
+    const documentId = await saveCredentials(database, filled);
+
+    await expect(loadCredentials(database)).resolves.toEqual({ credentials: filled, documentId });
+  });
+
+  it("updates the existing document instead of sealing a second one", async () => {
+    const { database, create } = fakeDatabase();
+
+    const documentId = await saveCredentials(database, filled);
+    create.mockClear();
+    await saveCredentials(database, { ...filled, githubOwner: "hubot" }, documentId);
+
+    expect(create).not.toHaveBeenCalled();
+    await expect(loadCredentials(database)).resolves.toMatchObject({
+      credentials: { githubOwner: "hubot" },
+      documentId,
+    });
+  });
+
+  it("finds the existing document even without the id in hand", async () => {
+    // A reload loses the in-memory id; re-sealing would leave the old tokens behind in
+    // an orphaned document.
+    const { database, create } = fakeDatabase();
+
+    const documentId = await saveCredentials(database, filled);
+    create.mockClear();
+
+    await expect(saveCredentials(database, filled)).resolves.toBe(documentId);
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("trims what it stores", async () => {
-    const { database, update } = fakeDatabase();
+    const { database } = fakeDatabase();
 
     await saveCredentials(database, { ...filled, githubToken: "  ghp_token  " });
 
-    const change = update.mock.calls[0]![1] as { set: Record<string, unknown> };
-    expect(change.set.githubToken).toBe("ghp_token");
+    await expect(loadCredentials(database)).resolves.toMatchObject({
+      credentials: { githubToken: "ghp_token" },
+    });
   });
 });
 
@@ -152,17 +279,14 @@ describe("clearCredentials", () => {
   it("overwrites every token instead of deleting the document", async () => {
     // Overwriting keeps the sealed document — and its recipient list — in place, so the
     // next save cannot accidentally create it with different recipients.
-    const { database, update } = fakeDatabase();
+    const { database } = fakeDatabase();
 
-    await clearCredentials(database);
+    const documentId = await saveCredentials(database, filled);
+    await clearCredentials(database, documentId);
 
-    const change = update.mock.calls[0]![1] as { set: Record<string, unknown> };
-    expect(change.set).toMatchObject({
-      githubToken: "",
-      githubOwner: "",
-      cloudflareToken: "",
-      cloudflareAccountId: "",
-      cursorToken: "",
+    await expect(loadCredentials(database)).resolves.toEqual({
+      credentials: EMPTY_CREDENTIALS,
+      documentId,
     });
   });
 });

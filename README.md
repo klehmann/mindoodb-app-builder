@@ -29,6 +29,12 @@ Pasting your own tokens still works and is behind "Use my own tokens instead" �
 you run a builder that has no applications registered, or you would rather mint a token
 scoped your way.
 
+Both flows need to open a window — Cloudflare's consent screen, and GitHub's device page —
+so `haven-app.json` asks for `allowPopups`. Haven denies popups to apps by default and
+grants capabilities at install time only, so a builder installed before this was added
+keeps the old answer: switch "Allow popups" on in the app's settings in Haven, or remove
+and reinstall it. Removing an app does not delete its data.
+
 ## What happens to your tokens
 
 Three credentials are involved: a GitHub token, a Cloudflare token, and optionally a
@@ -37,7 +43,12 @@ Cursor API key.
 - They are stored in **one recipient-sealed document** in your own App Builder database.
   Sealed means encrypted for you personally, so a builder database shared with your team
   still keeps the tokens readable only by you. They sync to your other devices the way
-  any MindooDB document does.
+  any MindooDB document does. A sealed document cannot use a fixed id, so the builder
+  finds it by querying for its `type`; MindooDB only indexes a sealed document on a
+  replica that can decrypt it, so that query cannot reach anyone else's.
+- The tokens sit in a nested `secrets` field rather than at the top level, which keeps
+  them out of MindooDB's summary buffer — the local query index that would otherwise
+  hold a copy of every top-level value.
 - The **GitHub token never leaves the browser tab.** GitHub's API allows cross-origin
   calls, so the page uses it directly. The two device-flow calls go through the host
   because `github.com/login/*` sends no CORS headers, but they carry no credential *in* —
