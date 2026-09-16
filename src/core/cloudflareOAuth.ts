@@ -125,7 +125,11 @@ export function buildAuthorizeUrl(input: {
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", input.clientId);
   url.searchParams.set("redirect_uri", input.redirectUri);
-  url.searchParams.set("scope", input.scopes.join(" "));
+  // No scopes configured means send no parameter, so the client's own registration
+  // decides. An empty `scope=` would instead read as "grant nothing".
+  if (input.scopes.length > 0) {
+    url.searchParams.set("scope", input.scopes.join(" "));
+  }
   url.searchParams.set("state", input.state);
   url.searchParams.set("code_challenge", input.codeChallenge);
   url.searchParams.set("code_challenge_method", "S256");

@@ -66,6 +66,32 @@ describe("buildAuthorizeUrl", () => {
   });
 });
 
+describe("scopes", () => {
+  it("omits the parameter entirely when no scopes are configured", () => {
+    // `scope=` reads as "grant nothing", while sending no parameter falls back to the
+    // client's registration — the escape hatch when scope names are uncertain.
+    const url = new URL(
+      buildAuthorizeUrl({
+        clientId: "c",
+        redirectUri: "https://app-builder.mindoodb.com/oauth/cloudflare/callback",
+        scopes: [],
+        state: "s",
+        codeChallenge: "c",
+      }),
+    );
+
+    expect(url.searchParams.has("scope")).toBe(false);
+  });
+
+  it("distinguishes an unset scope variable from one set to empty", () => {
+    expect(readOAuthConfig({}).cloudflareScopes.length).toBeGreaterThan(0);
+    expect(readOAuthConfig({ BUILDER_CLOUDFLARE_SCOPES: "" }).cloudflareScopes).toEqual([]);
+    expect(readOAuthConfig({ BUILDER_CLOUDFLARE_SCOPES: "a.read b.write" }).cloudflareScopes).toEqual(
+      ["a.read", "b.write"],
+    );
+  });
+});
+
 describe("relay state", () => {
   it("round-trips the origin that started the flow", () => {
     const encoded = encodeRelayState({ origin: "http://127.0.0.1:4400", nonce: "n1" });

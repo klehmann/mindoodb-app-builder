@@ -35,15 +35,21 @@ export const BUILDER_PUBLIC_ORIGIN = "https://app-builder.mindoodb.com";
 export const CLOUDFLARE_CALLBACK_PATH = "/oauth/cloudflare/callback";
 
 /**
- * Scopes requested from Cloudflare. The names mirror API token permission names and the
- * authoritative list is `GET /oauth/scopes`; a scope not present on the registered
- * client is rejected at the consent screen, so this default is only correct in
- * combination with the registration it was written for.
+ * Scopes requested from Cloudflare: Workers (create the Worker), Workers CI — the
+ * product name for Workers Builds — (wire push-to-deploy), and account read (list the
+ * user's accounts so they never type an account id).
  *
- * `account.read` is what lets the builder list the user's accounts instead of asking
- * them to paste an account id.
+ * A scope string the registered client does not have is rejected at the consent screen,
+ * and the authoritative names come from `GET /oauth/scopes`. Set
+ * `BUILDER_CLOUDFLARE_SCOPES` to an **empty string** to send no `scope` parameter at
+ * all, which asks Cloudflare for whatever the client is registered for — the reliable
+ * escape hatch if these names are ever wrong for a given registration.
  */
-export const CLOUDFLARE_DEFAULT_SCOPES = ["account.read", "workers-platform.write"];
+export const CLOUDFLARE_DEFAULT_SCOPES = [
+  "account.read",
+  "workers.write",
+  "workers_ci.write",
+];
 
 export interface BuilderOAuthConfig {
   githubClientId: string;
@@ -69,12 +75,20 @@ function readEnv(env: EnvLike | undefined, key: string): string {
 }
 
 export function readOAuthConfig(env?: EnvLike): BuilderOAuthConfig {
-  const scopes = readEnv(env, "BUILDER_CLOUDFLARE_SCOPES");
+  // An unset variable and one set to "" mean different things here: unset takes the
+  // defaults, empty means "ask for no scopes explicitly" and let the client's own
+  // registration decide.
+  const configuredScopes = env?.BUILDER_CLOUDFLARE_SCOPES;
+  const scopes =
+    typeof configuredScopes === "string"
+      ? configuredScopes.trim().split(/\s+/).filter(Boolean)
+      : [...CLOUDFLARE_DEFAULT_SCOPES];
+
   return {
     githubClientId: readEnv(env, "BUILDER_GITHUB_CLIENT_ID"),
     githubAppSlug: readEnv(env, "BUILDER_GITHUB_APP_SLUG") || "mindoodb-app-builder",
     cloudflareClientId: readEnv(env, "BUILDER_CLOUDFLARE_CLIENT_ID"),
-    cloudflareScopes: scopes ? scopes.split(/\s+/).filter(Boolean) : [...CLOUDFLARE_DEFAULT_SCOPES],
+    cloudflareScopes: scopes,
     publicOrigin: readEnv(env, "BUILDER_PUBLIC_ORIGIN") || BUILDER_PUBLIC_ORIGIN,
   };
 }

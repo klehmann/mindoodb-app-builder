@@ -20,7 +20,12 @@
     // rather than showing a Connect button that leads to an error page.
     "BUILDER_GITHUB_CLIENT_ID": "Iv23liIfHNZXYhzumB4y",
     "BUILDER_GITHUB_APP_SLUG": "mindoodb-app-builder",
-    "BUILDER_CLOUDFLARE_CLIENT_ID": "",
+    "BUILDER_CLOUDFLARE_CLIENT_ID": "6e399ed2f55dc2d874c334048145370e",
+    // Empty on purpose — it means "send no scope parameter", so the consent screen
+    // shows exactly what this client is registered for (Workers Edit, Workers CI Edit,
+    // Account Settings Read). Naming them here as well could only ever narrow that, or
+    // fail if a name is wrong.
+    "BUILDER_CLOUDFLARE_SCOPES": "",
     "BUILDER_PUBLIC_ORIGIN": "https://app-builder.mindoodb.com"
   },
   "observability": {
