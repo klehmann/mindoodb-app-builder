@@ -131,9 +131,19 @@ so they live in `wrangler.jsonc` under `vars`, and locally in the environment.
 - Redirect URI: `https://<your-host>/oauth/cloudflare/callback`.
 - Allowed CORS origins: `https://<your-host>`. Worth setting — with it the browser
   exchanges the code itself and the access token never reaches the server at all.
-- Scopes: account read plus the Workers permissions the builder uses. Set
-  `BUILDER_CLOUDFLARE_SCOPES` if your registration names them differently; the
-  authoritative list is `GET /oauth/scopes`.
+- Scopes: `account-settings.read` (list your accounts), `workers-scripts.write` (create
+  and deploy the Worker), `workers-ci.write` (Workers CI is the API name of Workers
+  Builds — the git connection behind push-to-deploy), and `offline_access` (without it
+  the token response has no refresh token and the connection dies after an hour). Scope
+  ids are Cloudflare API token permission names, not wrangler's `workers:write` style;
+  the client's own page lists the ids next to the names, and
+  `curl https://api.cloudflare.com/client/v4/oauth/scopes -H "Authorization: Bearer $TOKEN"`
+  is the full list. Cloudflare grants only what the authorize request names, and the
+  request must be a subset of the registration: a request with no scopes shows
+  "0 total permissions" with Authorize disabled. Override with
+  `BUILDER_CLOUDFLARE_SCOPES` (space-separated) when your registration differs.
+- Grant types: `authorization_code` plus `refresh_token`, which is what makes
+  `offline_access` available in the first place.
 - Copy the client id into `BUILDER_CLOUDFLARE_CLIENT_ID` and set `BUILDER_PUBLIC_ORIGIN`
   to the origin holding that redirect URI.
 

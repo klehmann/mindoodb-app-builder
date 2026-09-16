@@ -9,7 +9,7 @@ import {
   refreshAccessToken,
   CloudflareOAuthError,
 } from "./cloudflareOAuth";
-import { isAllowedRelayOrigin, readOAuthConfig } from "./oauthConfig";
+import { CLOUDFLARE_DEFAULT_SCOPES, isAllowedRelayOrigin, readOAuthConfig } from "./oauthConfig";
 
 function stubJson(payload: unknown, status = 200): typeof fetch {
   return vi.fn(
@@ -67,10 +67,11 @@ describe("buildAuthorizeUrl", () => {
 });
 
 describe("scopes", () => {
-  it("omits the parameter entirely when no scopes are configured", () => {
-    // `scope=` reads as "grant nothing", while sending no parameter falls back to the
-    // client's registration — the escape hatch when scope names are uncertain.
-    const url = new URL(
+  it("refuses to build a URL with no scopes", () => {
+    // Cloudflare evaluates only the scopes in the request, so omitting them is not
+    // "whatever the client is registered for": the consent screen offers 0 permissions
+    // and cannot be authorized. Failing here says so instead of sending the user to it.
+    expect(() =>
       buildAuthorizeUrl({
         clientId: "c",
         redirectUri: "https://app-builder.mindoodb.com/oauth/cloudflare/callback",
@@ -78,14 +79,16 @@ describe("scopes", () => {
         state: "s",
         codeChallenge: "c",
       }),
-    );
-
-    expect(url.searchParams.has("scope")).toBe(false);
+    ).toThrow(/scopes/i);
   });
 
-  it("distinguishes an unset scope variable from one set to empty", () => {
-    expect(readOAuthConfig({}).cloudflareScopes.length).toBeGreaterThan(0);
-    expect(readOAuthConfig({ BUILDER_CLOUDFLARE_SCOPES: "" }).cloudflareScopes).toEqual([]);
+  it("falls back to the defaults when the variable is unset or empty", () => {
+    // An empty variable used to mean "send no scope", which is the one setting that
+    // cannot produce a usable consent screen.
+    expect(readOAuthConfig({}).cloudflareScopes).toEqual(CLOUDFLARE_DEFAULT_SCOPES);
+    expect(readOAuthConfig({ BUILDER_CLOUDFLARE_SCOPES: "  " }).cloudflareScopes).toEqual(
+      CLOUDFLARE_DEFAULT_SCOPES,
+    );
     expect(readOAuthConfig({ BUILDER_CLOUDFLARE_SCOPES: "a.read b.write" }).cloudflareScopes).toEqual(
       ["a.read", "b.write"],
     );

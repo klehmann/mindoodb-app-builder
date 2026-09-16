@@ -261,13 +261,23 @@ export function useCloudflareConnect(
     });
     writePending({ verifier, state, redirectUri });
 
-    const url = buildAuthorizeUrl({
-      clientId: hostConfig.cloudflareClientId,
-      redirectUri,
-      scopes: hostConfig.cloudflareScopes,
-      state,
-      codeChallenge: challenge,
-    });
+    let url: string;
+    try {
+      url = buildAuthorizeUrl({
+        clientId: hostConfig.cloudflareClientId,
+        redirectUri,
+        scopes: hostConfig.cloudflareScopes,
+        state,
+        codeChallenge: challenge,
+      });
+    } catch (buildError) {
+      fail(
+        buildError instanceof Error
+          ? buildError.message
+          : "The Cloudflare authorization URL could not be built.",
+      );
+      return;
+    }
 
     status.value = "waiting";
     popup = window.open(url, "cloudflare-oauth", "width=620,height=780,noopener=no");

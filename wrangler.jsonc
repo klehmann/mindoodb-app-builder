@@ -21,10 +21,9 @@
     "BUILDER_GITHUB_CLIENT_ID": "Iv23liIfHNZXYhzumB4y",
     "BUILDER_GITHUB_APP_SLUG": "mindoodb-app-builder",
     "BUILDER_CLOUDFLARE_CLIENT_ID": "6e399ed2f55dc2d874c334048145370e",
-    // Empty on purpose — it means "send no scope parameter", so the consent screen
-    // shows exactly what this client is registered for (Workers Edit, Workers CI Edit,
-    // Account Settings Read). Naming them here as well could only ever narrow that, or
-    // fail if a name is wrong.
+    // Empty = the defaults in src/core/oauthConfig.ts, which match this client's
+    // registration. Set it only for a deployment whose client is registered for
+    // different scopes; it replaces the defaults rather than adding to them.
     "BUILDER_CLOUDFLARE_SCOPES": "",
     "BUILDER_PUBLIC_ORIGIN": "https://app-builder.mindoodb.com"
   },

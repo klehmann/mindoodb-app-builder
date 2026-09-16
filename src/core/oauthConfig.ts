@@ -35,20 +35,31 @@ export const BUILDER_PUBLIC_ORIGIN = "https://app-builder.mindoodb.com";
 export const CLOUDFLARE_CALLBACK_PATH = "/oauth/cloudflare/callback";
 
 /**
- * Scopes requested from Cloudflare: Workers (create the Worker), Workers CI — the
- * product name for Workers Builds — (wire push-to-deploy), and account read (list the
- * user's accounts so they never type an account id).
+ * Scopes requested from Cloudflare: read the user's accounts (so they never type an
+ * account id), and write Workers scripts (create and deploy the Worker).
  *
- * A scope string the registered client does not have is rejected at the consent screen,
- * and the authoritative names come from `GET /oauth/scopes`. Set
- * `BUILDER_CLOUDFLARE_SCOPES` to an **empty string** to send no `scope` parameter at
- * all, which asks Cloudflare for whatever the client is registered for — the reliable
- * escape hatch if these names are ever wrong for a given registration.
+ * The ids are Cloudflare **API token permission** names, dot-suffixed with the access
+ * level — not wrangler's colon-separated scopes (`workers:write`), which only its own
+ * first-party client accepts. `GET /oauth/scopes` returns the authoritative list.
+ *
+ * Every scope has to be requested explicitly: Cloudflare evaluates only the scopes in
+ * the authorize request, so omitting the parameter produces a consent screen offering
+ * "0 total permissions" that cannot be authorized at all. The request must also be a
+ * subset of what the client is registered for — a scope the registration does not have
+ * is rejected there. Hence `BUILDER_CLOUDFLARE_SCOPES` for deployments whose client is
+ * registered differently; it replaces this list rather than adding to it.
  */
 export const CLOUDFLARE_DEFAULT_SCOPES = [
-  "account.read",
-  "workers.write",
-  "workers_ci.write",
+  // Read the user's accounts, so they never type an account id.
+  "account-settings.read",
+  // Create and deploy the Worker.
+  "workers-scripts.write",
+  // Workers CI is the API name of Workers Builds: the git connection and build trigger
+  // behind push-to-deploy.
+  "workers-ci.write",
+  // Protocol scope, and the reason a connection survives the access token's hour: the
+  // token response carries a refresh token only when the request asks for this.
+  "offline_access",
 ];
 
 export interface BuilderOAuthConfig {
@@ -75,14 +86,13 @@ function readEnv(env: EnvLike | undefined, key: string): string {
 }
 
 export function readOAuthConfig(env?: EnvLike): BuilderOAuthConfig {
-  // An unset variable and one set to "" mean different things here: unset takes the
-  // defaults, empty means "ask for no scopes explicitly" and let the client's own
-  // registration decide.
-  const configuredScopes = env?.BUILDER_CLOUDFLARE_SCOPES;
+  // An empty variable falls back to the defaults rather than meaning "no scopes":
+  // an authorize request without scopes cannot be authorized by anyone.
+  const configuredScopes = readEnv(env, "BUILDER_CLOUDFLARE_SCOPES")
+    .split(/\s+/)
+    .filter(Boolean);
   const scopes =
-    typeof configuredScopes === "string"
-      ? configuredScopes.trim().split(/\s+/).filter(Boolean)
-      : [...CLOUDFLARE_DEFAULT_SCOPES];
+    configuredScopes.length > 0 ? configuredScopes : [...CLOUDFLARE_DEFAULT_SCOPES];
 
   return {
     githubClientId: readEnv(env, "BUILDER_GITHUB_CLIENT_ID"),

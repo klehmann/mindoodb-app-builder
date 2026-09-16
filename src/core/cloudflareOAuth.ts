@@ -125,11 +125,16 @@ export function buildAuthorizeUrl(input: {
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", input.clientId);
   url.searchParams.set("redirect_uri", input.redirectUri);
-  // No scopes configured means send no parameter, so the client's own registration
-  // decides. An empty `scope=` would instead read as "grant nothing".
-  if (input.scopes.length > 0) {
-    url.searchParams.set("scope", input.scopes.join(" "));
+  // Cloudflare's consent screen evaluates only the scopes named here, so a missing
+  // parameter is not "whatever the client is registered for" — it is nothing to grant,
+  // and the Authorize button stays disabled.
+  if (input.scopes.length === 0) {
+    // Not an OAuth error — nothing was sent yet. This is a misconfigured builder.
+    throw new Error(
+      "No Cloudflare scopes configured, so the consent screen would have nothing to grant.",
+    );
   }
+  url.searchParams.set("scope", input.scopes.join(" "));
   url.searchParams.set("state", input.state);
   url.searchParams.set("code_challenge", input.codeChallenge);
   url.searchParams.set("code_challenge_method", "S256");
