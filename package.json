@@ -1,0 +1,45 @@
+{
+  "name": "mindoodb-app-builder",
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.1.1",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "description": "Bootstrap MindooDB Haven applications: create the GitHub repository, deploy it to Cloudflare Workers, hand it to a Cursor cloud agent, and register it in Haven",
+  "license": "Apache-2.0",
+  "author": "Mindoo GmbH",
+  "type": "module",
+  "bin": {
+    "mindoodb-app-builder": "./bin/mindoodb-app-builder.mjs"
+  },
+  "files": ["bin", "dist", "dist-host", "README.md", "LICENSE"],
+  "scripts": {
+    "dev": "vite --port 4401",
+    "dev:local": "LOCAL_MINDOODB=1 vite --port 4401",
+    "dev:host": "tsx src/host/main.ts",
+    "build": "pnpm run build:app && pnpm run build:host",
+    "build:app": "vue-tsc --noEmit && vite build",
+    "build:app:local": "LOCAL_MINDOODB=1 vite build",
+    "build:host": "vite build --config vite.config.host.ts",
+    "start": "node bin/mindoodb-app-builder.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "mindoodb-app-sdk": "^0.0.47",
+    "vue": "^3.5.31"
+  },
+  "devDependencies": {
+    "@automerge/automerge": "^3.2.1",
+    "@types/node": "25.5.0",
+    "@vitejs/plugin-vue": "^6.0.5",
+    "@vue/test-utils": "^2.4.6",
+    "jsdom": "^29.0.1",
+    "tsx": "^4.20.3",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.3",
+    "vite-plugin-wasm": "^3.6.0",
+    "vitest": "^4.1.2",
+    "vue-tsc": "^3.2.6"
+  }
+}

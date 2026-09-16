@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "jsx": "preserve",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    // The Vite configs import from `src/` with an explicit extension, which is what
+    // Vite itself wants; nothing here is emitted, so allowing it costs nothing.
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      // Same convention as the other first-party apps in this workspace: type against
+      // the sibling SDK source, so a type added to the SDK is visible here in the same
+      // change rather than after a publish.
+      "mindoodb-app-sdk": ["../mindoodb-app-sdk/src/index.ts"],
+      "mindoodb-app-sdk/testing": ["../mindoodb-app-sdk/src/testing/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts", "vite.config.host.ts"]
+}

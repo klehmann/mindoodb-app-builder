@@ -1,0 +1,21 @@
+{
+  "format": "mindoodb.haven.app",
+  "formatVersion": 1,
+  "appId": "mindoodb-app-builder",
+  "label": "App Builder",
+  "description": "Create a new MindooDB app: a GitHub repository, a live Cloudflare deployment, a Cursor cloud agent to build it, and the finished app registered in Haven.",
+  "version": "0.1.0",
+  "runtime": "iframe",
+  "hosting": "external",
+  "permissions": ["proposeapps"],
+  "networkAllowlist": ["https://api.github.com", "https://*.workers.dev"],
+  "defaultLaunchDatabaseId": "appbuilder",
+  "databases": [
+    {
+      "logicalDatabaseId": "appbuilder",
+      "databaseId": "appbuilder",
+      "label": "App Builder",
+      "permissions": ["write"]
+    }
+  ]
+}

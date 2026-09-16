@@ -1,0 +1,16 @@
+node_modules/
+dist/
+dist-host/
+.wrangler/
+.DS_Store
+coverage/
+*.local
+settings.json
+
+# A lockfile produced by LOCAL_MINDOODB=1 points at sibling tarballs with file:
+# paths, which resolve on nobody else's machine. Commit one once the SDK version in
+# package.json is published and a plain `pnpm install` can produce it.
+pnpm-lock.yaml
+
+# pnpm pack output from sibling first-party checkouts.
+*.tgz
