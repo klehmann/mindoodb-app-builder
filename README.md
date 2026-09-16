@@ -118,8 +118,17 @@ so they live in `wrangler.jsonc` under `vars`, and locally in the environment.
 **GitHub App** (github.com → Settings → Developer settings → GitHub Apps → New):
 
 - Enable **Device flow**. It is off by default, and the builder cannot start without it.
-- Repository permissions: Administration write (create repositories), Contents write
-  (the identity commit), Metadata read.
+- Repository permissions: Administration write, Contents write, Metadata read.
+  Generating the repository from the template needs Administration **and** Contents
+  together — GitHub counts creating a repository as administration — and a token without
+  Administration fails with "Resource not accessible by integration", which names no
+  permission at all.
+- Changing permissions later is two steps: the app's settings, then accepting the
+  request on the installation. Until it is accepted the installation keeps the old set,
+  so the same 403 returns as if nothing had changed. Reconnect GitHub in the builder
+  afterwards.
+- Install it on **All repositories** unless you have a reason not to: the repository it
+  is about to create cannot be in a "selected repositories" list that predates it.
 - Turn **off** expiring user tokens, or the connection dies after eight hours: a public
   client cannot refresh without a secret.
 - Copy the Client ID into `BUILDER_GITHUB_CLIENT_ID`, and the app's URL slug into

@@ -126,6 +126,19 @@ describe("generateRepositoryFromTemplate", () => {
     ).rejects.toThrow(/name already exists on this account/);
   });
 
+  it("names the missing permission when GitHub answers with its opaque 403", async () => {
+    mockFetch(() => json({ message: "Resource not accessible by integration" }, 403));
+
+    const error = await generateRepositoryFromTemplate({ token: "tok", name: "x" }).catch(
+      (caught: unknown) => caught,
+    );
+    expect((error as GitHubError).status).toBe(403);
+    expect((error as GitHubError).message).toMatch(/Administration: Read and write/);
+    // The installation has to accept a permission added after it was installed, and
+    // omitting that turns one fix into two rounds of confusion.
+    expect((error as GitHubError).message).toMatch(/accept the update/);
+  });
+
   it("reports the HTTP status on the error for callers that branch on it", async () => {
     mockFetch(() => json({ message: "Bad credentials" }, 401));
 

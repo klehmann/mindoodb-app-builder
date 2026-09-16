@@ -279,22 +279,53 @@ export async function generateRepositoryFromTemplate(
   const templateOwner = input.templateOwner ?? STARTER_TEMPLATE_OWNER;
   const templateRepo = input.templateRepo ?? STARTER_TEMPLATE_REPO;
 
-  const raw = await githubRequest<RawRepository>({
-    token: input.token,
-    method: "POST",
-    path: `/repos/${encodeURIComponent(templateOwner)}/${encodeURIComponent(templateRepo)}/generate`,
-    body: {
-      name: input.name,
-      ...(input.owner ? { owner: input.owner } : {}),
-      ...(input.description ? { description: input.description } : {}),
-      private: input.private ?? false,
-    },
-  });
+  let raw: RawRepository | null;
+  try {
+    raw = await githubRequest<RawRepository>({
+      token: input.token,
+      method: "POST",
+      path: `/repos/${encodeURIComponent(templateOwner)}/${encodeURIComponent(templateRepo)}/generate`,
+      body: {
+        name: input.name,
+        ...(input.owner ? { owner: input.owner } : {}),
+        ...(input.description ? { description: input.description } : {}),
+        private: input.private ?? false,
+      },
+    });
+  } catch (error) {
+    throw explainTemplateGenerateError(error);
+  }
 
   if (!raw) {
     throw new GitHubError("GitHub did not return the generated repository.", 500);
   }
   return toRepository(raw);
+}
+
+/**
+ * Turn GitHub's "Resource not accessible by integration" into something the user can act
+ * on. That message is GitHub's answer to *any* missing GitHub App permission and names
+ * neither the permission nor where to grant it.
+ *
+ * Generating from a template creates a repository, so it needs Administration write on
+ * top of the Contents access the identity commit already needs — Administration is the
+ * one people leave out, because nothing about "copy a template" sounds administrative.
+ * Granting it is not enough on its own: a permission added after the app was installed
+ * stays dormant until the installation accepts the request, and until then the token
+ * still carries the old set and this same 403 comes back.
+ */
+function explainTemplateGenerateError(error: unknown): unknown {
+  if (!(error instanceof GitHubError) || error.status !== 403) {
+    return error;
+  }
+  return new GitHubError(
+    `${error.message} — the GitHub App is missing "Administration: Read and write" ` +
+      "(creating the repository), alongside Contents and Metadata. Add it in the app's " +
+      "permissions, then accept the update on the installation: a permission change does " +
+      "not reach an existing installation until it is approved. Reconnect GitHub here " +
+      "afterwards.",
+    error.status,
+  );
 }
 
 /**
