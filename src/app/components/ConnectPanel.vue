@@ -8,14 +8,14 @@
  * them personally — and, for the one call a browser cannot make, in a single request to
  * the builder host, which stores nothing.
  *
- * GitHub and Cloudflare are connected rather than pasted when this builder is registered
- * for them: a device code for GitHub, a consent screen for Cloudflare. Both grants are
- * narrower than the equivalent hand-made token and both are revocable in one place. The
- * paste fields stay for a builder that has no registration of its own, and for anyone
- * who would rather mint their own token — but they are folded away, because they are no
- * longer the way in.
+ * Each account owns its own section, and each section is self-contained: it offers the
+ * connect flow when this builder is registered for one, and its own token fields when it
+ * is not. That matters because "not registered" is a real state — a fresh deployment has
+ * no GitHub App and no OAuth client until someone creates them — and a section that
+ * renders as a lone heading in that state tells the user nothing.
  *
- * Cursor has no such flow. Its API keys are dashboard-only, so that one is still typed.
+ * Cursor is last and always typed: its API keys are dashboard-only, with no consent flow
+ * to offer.
  */
 import { computed, reactive, ref, watch } from "vue";
 
@@ -30,7 +30,14 @@ const props = defineProps<{
   status: CredentialsStatus;
   canStore: boolean;
   saving: boolean;
+  /** Null while it is still being read, or if the host could not be reached. */
   config: BuilderHostConfig | null;
+  /**
+   * Whether the config request has finished. Separate from `config` being null, which
+   * is also what an unreachable host looks like: until this is true the panel says
+   * nothing about the connect flows rather than guessing that there are none.
+   */
+  configLoaded: boolean;
   github: UseGitHubConnectReturn;
   cloudflare: UseCloudflareConnectReturn;
   /** Accounts the connected Cloudflare token can act on. Empty until connected. */
@@ -40,7 +47,6 @@ const props = defineProps<{
 const emit = defineEmits<{ save: [BuilderCredentials] }>();
 
 const draft = reactive<BuilderCredentials>({ ...props.credentials });
-const showManual = ref(false);
 
 watch(
   () => props.credentials,
@@ -50,9 +56,19 @@ watch(
 
 const canConnectGitHub = computed(() => props.config?.oauth.github === true);
 const canConnectCloudflare = computed(() => props.config?.oauth.cloudflare === true);
-/** With neither registration there is nothing to fold away, so show the fields outright. */
-const manualOnly = computed(() => !canConnectGitHub.value && !canConnectCloudflare.value);
-const manualVisible = computed(() => manualOnly.value || showManual.value);
+
+/**
+ * Whether to show the token fields. Forced open when there is no connect flow to offer,
+ * because then they are the only way in rather than an alternative to one.
+ */
+const githubManual = ref(false);
+const cloudflareManual = ref(false);
+const githubFieldsVisible = computed(
+  () => (props.configLoaded && !canConnectGitHub.value) || githubManual.value,
+);
+const cloudflareFieldsVisible = computed(
+  () => (props.configLoaded && !canConnectCloudflare.value) || cloudflareManual.value,
+);
 
 const cursorKeysUrl = "https://cursor.com/dashboard?tab=api-keys";
 
@@ -117,8 +133,50 @@ function save(): void {
           >
             Cancel
           </button>
+          <button type="button" class="ghost" @click="githubManual = !githubManual">
+            {{ githubManual ? "Hide token" : "Use my own token" }}
+          </button>
         </div>
       </template>
+      <p v-else-if="configLoaded" class="hint">
+        This builder has no GitHub application registered, so there is nothing to connect
+        to — paste a token instead.
+      </p>
+      <p v-else class="hint">Checking what this builder can connect to…</p>
+
+      <template v-if="githubFieldsVisible">
+        <div class="field">
+          <label for="github-token">GitHub token</label>
+          <input
+            id="github-token"
+            v-model="draft.githubToken"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="github_pat_…"
+          />
+          <p class="hint">
+            Needs permission to create repositories: classic <code>repo</code>, or
+            fine-grained with Contents and Administration write. Used only by this page —
+            GitHub allows browser calls, so it never reaches the builder host.
+          </p>
+        </div>
+      </template>
+
+      <!-- Always shown: filled in automatically after connecting, but an organization is
+           a choice only the user can make. -->
+      <div class="field">
+        <label for="github-owner">GitHub owner</label>
+        <input
+          id="github-owner"
+          v-model="draft.githubOwner"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="your-user-or-org"
+        />
+        <p class="hint">Leave blank to create repositories under the token's own account.</p>
+      </div>
     </div>
 
     <!-- Cloudflare -->
@@ -155,10 +213,36 @@ function save(): void {
           >
             Cancel
           </button>
+          <button type="button" class="ghost" @click="cloudflareManual = !cloudflareManual">
+            {{ cloudflareManual ? "Hide token" : "Use my own token" }}
+          </button>
+        </div>
+      </template>
+      <p v-else-if="configLoaded" class="hint">
+        This builder has no Cloudflare OAuth client registered, so there is nothing to
+        connect to — paste a token instead.
+      </p>
+      <p v-else class="hint">Checking what this builder can connect to…</p>
+
+      <template v-if="cloudflareFieldsVisible">
+        <div class="field">
+          <label for="cf-token">Cloudflare token</label>
+          <input
+            id="cf-token"
+            v-model="draft.cloudflareToken"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <p class="hint">
+            Must be a <strong>user</strong> token, not an account token — the Workers Builds
+            API rejects account tokens. Needs Workers Scripts&nbsp;Edit and Workers Builds
+            Configuration&nbsp;Edit.
+          </p>
         </div>
       </template>
 
-      <!-- The account is a choice, not something to look up, once a token can list them. -->
+      <!-- A list once a token can produce one, a field until then. -->
       <div v-if="cloudflareAccounts.length > 1" class="field">
         <label for="cf-account-select">Account</label>
         <select id="cf-account-select" v-model="draft.cloudflareAccountId">
@@ -170,83 +254,7 @@ function save(): void {
       <p v-else-if="cloudflareAccounts.length === 1" class="hint">
         Account: {{ cloudflareAccounts[0].name }}
       </p>
-    </div>
-
-    <!-- Cursor: no connect flow exists, so this one is typed. -->
-    <div class="field">
-      <label for="cursor-token">
-        Cursor API key
-        <span v-if="status.cursor" class="badge">connected</span>
-        <span v-else class="badge badge--soft">optional</span>
-      </label>
-      <input
-        id="cursor-token"
-        v-model="draft.cursorToken"
-        type="password"
-        autocomplete="off"
-        spellcheck="false"
-        placeholder="crsr_…"
-      />
-      <p class="hint">
-        Create one in
-        <a :href="cursorKeysUrl" target="_blank" rel="noreferrer noopener">Cursor's dashboard</a>.
-        Used to start a cloud agent on the new repository. Cursor's API cannot be called
-        from a browser and has no consent flow, so this one key is sent to the builder
-        host for that single call. It is never given to the agent itself.
-      </p>
-    </div>
-
-    <button v-if="!manualOnly" type="button" class="ghost" @click="showManual = !showManual">
-      {{ manualVisible ? "Hide tokens" : "Use my own tokens instead" }}
-    </button>
-
-    <template v-if="manualVisible">
-      <div class="field">
-        <label for="github-token">GitHub token</label>
-        <input
-          id="github-token"
-          v-model="draft.githubToken"
-          type="password"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="github_pat_…"
-        />
-        <p class="hint">
-          Needs permission to create repositories. Used only by this page — GitHub allows
-          browser calls, so it never reaches the builder host.
-        </p>
-      </div>
-
-      <div class="field">
-        <label for="github-owner">GitHub owner</label>
-        <input
-          id="github-owner"
-          v-model="draft.githubOwner"
-          type="text"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="your-user-or-org"
-        />
-        <p class="hint">Leave blank to create repositories under the token's own account.</p>
-      </div>
-
-      <div class="field">
-        <label for="cf-token">Cloudflare token</label>
-        <input
-          id="cf-token"
-          v-model="draft.cloudflareToken"
-          type="password"
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <p class="hint">
-          Must be a <strong>user</strong> token, not an account token — the Workers Builds
-          API rejects account tokens. Needs Workers Scripts&nbsp;Edit and Workers Builds
-          Configuration&nbsp;Edit.
-        </p>
-      </div>
-
-      <div class="field">
+      <div v-else class="field">
         <label for="cf-account">Cloudflare account ID</label>
         <input
           id="cf-account"
@@ -255,8 +263,36 @@ function save(): void {
           autocomplete="off"
           spellcheck="false"
         />
+        <p class="hint">Workers &amp; Pages overview, right-hand column.</p>
       </div>
-    </template>
+    </div>
+
+    <!-- Cursor: no connect flow exists, so this one is typed. -->
+    <div class="account">
+      <div class="account-head">
+        <h3>Cursor</h3>
+        <span v-if="status.cursor" class="badge">connected</span>
+        <span v-else class="badge badge--soft">optional</span>
+      </div>
+      <div class="field">
+        <label for="cursor-token">API key</label>
+        <input
+          id="cursor-token"
+          v-model="draft.cursorToken"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="crsr_…"
+        />
+        <p class="hint">
+          Create one in
+          <a :href="cursorKeysUrl" target="_blank" rel="noreferrer noopener">Cursor's dashboard</a>.
+          Used to start a cloud agent on the new repository. Cursor's API cannot be called
+          from a browser and has no consent flow, so this one key is sent to the builder
+          host for that single call. It is never given to the agent itself.
+        </p>
+      </div>
+    </div>
 
     <button type="button" :disabled="saving" @click="save">
       {{ saving ? "Saving…" : "Save accounts" }}
@@ -287,6 +323,7 @@ function save(): void {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 /* The one thing the user has to read off the screen and type somewhere else. */

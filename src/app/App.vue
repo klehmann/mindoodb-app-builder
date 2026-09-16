@@ -16,6 +16,8 @@ const session = useBuilderSession();
 const hostConfig = ref<BuilderHostConfig | null>(null);
 const flow = useBuilderFlow(session, hostConfig);
 const hostAlive = ref(true);
+/** Distinguishes "still asking" from "asked, and there is nothing to connect to". */
+const hostConfigLoaded = ref(false);
 
 /**
  * A completed connect flow saves immediately rather than waiting for "Save accounts".
@@ -56,6 +58,7 @@ onMounted(async () => {
   await session.connect();
   hostAlive.value = await checkHostAlive();
   hostConfig.value = await readHostConfig();
+  hostConfigLoaded.value = true;
 });
 </script>
 
@@ -85,6 +88,7 @@ onMounted(async () => {
       :can-store="session.canStoreCredentials.value"
       :saving="session.savingCredentials.value"
       :config="hostConfig"
+      :config-loaded="hostConfigLoaded"
       :github="github"
       :cloudflare="cloudflare"
       :cloudflare-accounts="cloudflare.accounts.value"
