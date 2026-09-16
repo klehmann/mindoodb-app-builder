@@ -168,6 +168,54 @@ export async function getRepository(
 }
 
 /**
+ * Make sure the app that issued this token can actually write to a repository it just
+ * created.
+ *
+ * This only matters for a GitHub App user token, and it is the one sharp edge of the
+ * device flow. Creating a repository under the user's account needs a *user* token and
+ * works regardless of installation — but every subsequent call is scoped to the app's
+ * installation, so a user who installed the builder on "only selected repositories" can
+ * watch the repository appear and then get a 403 on the identity commit. Adding the new
+ * repository to the installation closes that gap.
+ *
+ * Best effort on purpose. A classic personal access token has no installations at all
+ * and needs none, `repository_selection: "all"` already covers the repository, and
+ * neither case is a problem to report. Only a genuine refusal is worth surfacing, and
+ * the caller will hit it again on the next write with a clearer message.
+ *
+ * Endpoints:
+ *   GET /user/installations
+ *   PUT /user/installations/{installation_id}/repositories/{repository_id}
+ */
+export async function ensureRepositoryInInstallation(options: {
+  token: string;
+  /** The app whose installation should cover the repository, as its URL slug. */
+  appSlug: string;
+  repositoryId: number;
+}): Promise<"added" | "already-covered" | "not-applicable"> {
+  const { token, appSlug, repositoryId } = options;
+
+  const installations = await githubRequest<{
+    installations?: Array<{ id?: number; app_slug?: string; repository_selection?: string }>;
+  }>({ token, path: "/user/installations", emptyOn: [401, 403, 404] });
+
+  const installation = installations?.installations?.find((entry) => entry.app_slug === appSlug);
+  if (!installation || typeof installation.id !== "number") {
+    return "not-applicable";
+  }
+  if (installation.repository_selection === "all") {
+    return "already-covered";
+  }
+
+  await githubRequest({
+    token,
+    method: "PUT",
+    path: `/user/installations/${installation.id}/repositories/${repositoryId}`,
+  });
+  return "added";
+}
+
+/**
  * Read one file's text from a branch. `null` when the path does not exist, so callers
  * can treat an optional template file as optional.
  *

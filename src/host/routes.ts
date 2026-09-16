@@ -11,8 +11,25 @@
 import {
   connectPushToDeploy,
   ensureWorker,
+  listAccounts,
   CloudflareApiError,
 } from "../core/cloudflare";
+import {
+  cloudflareRedirectUri,
+  readOAuthAvailability,
+  readOAuthConfig,
+  type BuilderOAuthConfig,
+} from "../core/oauthConfig";
+import {
+  exchangeAuthorizationCode,
+  refreshAccessToken,
+  CloudflareOAuthError,
+} from "../core/cloudflareOAuth";
+import {
+  pollDeviceAuthorization,
+  startDeviceAuthorization,
+  GitHubDeviceFlowError,
+} from "../core/githubDeviceFlow";
 import {
   getAgent,
   getRun,
@@ -27,6 +44,12 @@ export interface ApiRequest {
   pathname: string;
   body: unknown;
   fetchImpl?: typeof fetch;
+  /**
+   * The OAuth registration this builder runs as. Passed in rather than read from the
+   * environment here, because the same routes serve a Node host (`process.env`) and a
+   * Worker (its own `env` binding).
+   */
+  config?: BuilderOAuthConfig;
 }
 
 export interface ApiResponse {
@@ -75,6 +98,12 @@ function toErrorResponse(error: unknown): ApiResponse {
       payload: { error: error.message, code: error.code },
     };
   }
+  if (error instanceof CloudflareOAuthError || error instanceof GitHubDeviceFlowError) {
+    return {
+      status: error.status >= 400 && error.status < 600 ? error.status : 502,
+      payload: { error: error.message, code: error.code },
+    };
+  }
   return {
     status: 502,
     payload: { error: error instanceof Error ? error.message : "The upstream call failed." },
@@ -83,9 +112,27 @@ function toErrorResponse(error: unknown): ApiResponse {
 
 export async function handleApiRequest(request: ApiRequest): Promise<ApiResponse> {
   const { method, pathname, body, fetchImpl } = request;
+  const config = request.config ?? readOAuthConfig();
 
   if (pathname === "/api/health") {
     return { status: 200, payload: { ok: true } };
+  }
+
+  /**
+   * What this builder is registered as. Only public values: the client ids are public by
+   * definition for a client that cannot keep a secret, and the UI needs them to know
+   * whether to offer "Connect" or fall back to asking for a pasted token.
+   */
+  if (pathname === "/api/config") {
+    return {
+      status: 200,
+      payload: {
+        oauth: readOAuthAvailability(config),
+        cloudflareClientId: config.cloudflareClientId,
+        cloudflareScopes: config.cloudflareScopes,
+        githubAppSlug: config.githubAppSlug,
+      },
+    };
   }
 
   if (method !== "POST") {
@@ -97,6 +144,105 @@ export async function handleApiRequest(request: ApiRequest): Promise<ApiResponse
   const accountId = readBodyString(body, "accountId");
 
   switch (pathname) {
+    // `github.com/login/*` is not `api.github.com` and sends no CORS headers, so the two
+    // device-flow calls have to happen here even though every other GitHub call in the
+    // builder happens in the page. Neither carries a credential *in*: the first sends
+    // only a public client id, and the second only the device code it was given.
+    case "/api/github/device/start": {
+      try {
+        const authorization = await startDeviceAuthorization({
+          clientId: config.githubClientId,
+          fetchImpl,
+        });
+        return { status: 200, payload: authorization };
+      } catch (error) {
+        return toErrorResponse(error);
+      }
+    }
+
+    case "/api/github/device/poll": {
+      const deviceCode = readBodyString(body, "deviceCode");
+      if (!deviceCode) {
+        return badRequest("A device code is required.");
+      }
+      try {
+        const result = await pollDeviceAuthorization({
+          clientId: config.githubClientId,
+          deviceCode,
+          fetchImpl,
+        });
+        return { status: 200, payload: result };
+      } catch (error) {
+        return toErrorResponse(error);
+      }
+    }
+
+    /**
+     * Fallback for the PKCE code exchange.
+     *
+     * The browser does this itself when the OAuth client registration lists the
+     * builder's origin in `allowed_cors_origins`, which is better — the access token
+     * then never exists outside the tab. This route is for the case where it does not,
+     * and it is a pass-through: the code and the verifier arrive together, are spent on
+     * one call, and the tokens go straight back.
+     */
+    case "/api/cloudflare/oauth/token": {
+      const code = readBodyString(body, "code");
+      const codeVerifier = readBodyString(body, "codeVerifier");
+      const redirectUri = readBodyString(body, "redirectUri") || cloudflareRedirectUri(config);
+      if (!config.cloudflareClientId) {
+        return badRequest("This builder has no Cloudflare OAuth client configured.");
+      }
+      if (!code || !codeVerifier) {
+        return badRequest("An authorization code and its verifier are required.");
+      }
+      try {
+        const tokens = await exchangeAuthorizationCode({
+          clientId: config.cloudflareClientId,
+          redirectUri,
+          code,
+          codeVerifier,
+          fetchImpl,
+        });
+        return { status: 200, payload: tokens };
+      } catch (error) {
+        return toErrorResponse(error);
+      }
+    }
+
+    case "/api/cloudflare/oauth/refresh": {
+      const refreshToken = readBodyString(body, "refreshToken");
+      if (!config.cloudflareClientId) {
+        return badRequest("This builder has no Cloudflare OAuth client configured.");
+      }
+      if (!refreshToken) {
+        return badRequest("A refresh token is required.");
+      }
+      try {
+        const tokens = await refreshAccessToken({
+          clientId: config.cloudflareClientId,
+          refreshToken,
+          fetchImpl,
+        });
+        return { status: 200, payload: tokens };
+      } catch (error) {
+        return toErrorResponse(error);
+      }
+    }
+
+    /** So the user picks an account by name instead of hunting for its id. */
+    case "/api/cloudflare/accounts": {
+      if (!cloudflareToken) {
+        return badRequest("A Cloudflare token is required.");
+      }
+      try {
+        const accounts = await listAccounts({ token: cloudflareToken, fetchImpl });
+        return { status: 200, payload: { accounts } };
+      } catch (error) {
+        return toErrorResponse(error);
+      }
+    }
+
     // Cloudflare's API sends no CORS headers, so these two cannot happen in the page at
     // all. The token is used for the one call and then forgotten.
     case "/api/cloudflare/worker": {

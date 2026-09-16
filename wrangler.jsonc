@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "mindoodb-app-builder",
+  "main": "./src/worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Explicit, rather than relying on `Sec-Fetch-Mode` guessing: the OAuth callback and
+    // `haven-app.json` are Worker-served on purpose — the first is a generated page, the
+    // second needs a cross-origin header Haven depends on.
+    "run_worker_first": ["/api/*", "/oauth/*", "/haven-app.json"]
+  },
+  "vars": {
+    // Public by definition. Both flows are for clients that cannot keep a secret, so
+    // these are identifiers, not credentials. Fill them in from the registrations:
+    // GitHub App → Settings → About (Client ID); Cloudflare → Manage Account → OAuth
+    // clients. An empty value makes the builder fall back to asking for a pasted token
+    // rather than showing a Connect button that leads to an error page.
+    "BUILDER_GITHUB_CLIENT_ID": "",
+    "BUILDER_GITHUB_APP_SLUG": "mindoodb-app-builder",
+    "BUILDER_CLOUDFLARE_CLIENT_ID": "",
+    "BUILDER_PUBLIC_ORIGIN": "https://app-builder.mindoodb.com"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

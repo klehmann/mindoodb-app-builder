@@ -11,13 +11,14 @@
  * - **Haven over the bridge.** Installing the finished app is `proposeApp(url)`, and
  *   Haven fetches and validates that origin itself.
  */
-import { computed, ref } from "vue";
+import { computed, ref, type Ref } from "vue";
 
 import {
   slugifyAppName,
   isValidSlug,
   type AppIdentity,
 } from "@/core/appIdentity";
+import { isCloudflareTokenStale } from "@/core/credentials";
 import {
   createApp as runCreateApp,
   createInitialSteps,
@@ -28,6 +29,7 @@ import {
 } from "@/core/createAppFlow";
 import {
   commitFiles,
+  ensureRepositoryInInstallation,
   generateRepositoryFromTemplate,
   getFileText,
   getRepository,
@@ -38,6 +40,8 @@ import {
   connectCloudflarePushToDeploy,
   ensureCloudflareWorker,
   launchCursorAgent,
+  refreshCloudflareTokenViaHost,
+  type BuilderHostConfig,
 } from "@/app/hostApi";
 import type { useBuilderSession } from "@/app/useBuilderSession";
 
@@ -64,7 +68,10 @@ export function createEmptyForm(): NewAppForm {
 
 type BuilderSession = ReturnType<typeof useBuilderSession>;
 
-export function useBuilderFlow(session: BuilderSession) {
+export function useBuilderFlow(
+  session: BuilderSession,
+  hostConfig?: Ref<BuilderHostConfig | null>,
+) {
   const form = ref<NewAppForm>(createEmptyForm());
   const steps = ref<FlowStep[]>(createInitialSteps());
   const running = ref(false);
@@ -130,6 +137,20 @@ export function useBuilderFlow(session: BuilderSession) {
             description: input.description,
             private: input.private,
           }),
+        // A GitHub App installed on selected repositories does not cover one created a
+        // second ago, and the identity commit would be refused. Only relevant when this
+        // builder has an app at all; a pasted token has no installation.
+        ...(hostConfig?.value?.githubAppSlug
+          ? {
+              ensureInstallationAccess: async (repository: GitHubRepository) => {
+                await ensureRepositoryInInstallation({
+                  token: githubToken,
+                  appSlug: hostConfig.value?.githubAppSlug ?? "",
+                  repositoryId: repository.id,
+                });
+              },
+            }
+          : {}),
         readTemplateSources: async (repository: GitHubRepository) => {
           const read = async (path: string) => {
             const text = await getFileText({
@@ -231,10 +252,37 @@ export function useBuilderFlow(session: BuilderSession) {
     };
   }
 
+  /**
+   * Renew an OAuth access token that is about to expire.
+   *
+   * Done before the run rather than in the middle of one: a build takes minutes and
+   * discovering the token died between creating the repository and connecting the build
+   * would leave half an app behind. A pasted API token has no expiry and is left alone.
+   */
+  async function refreshCloudflareIfStale(): Promise<void> {
+    const credentials = session.credentials.value;
+    if (!credentials.cloudflareRefreshToken || !isCloudflareTokenStale(credentials)) {
+      return;
+    }
+    try {
+      const tokens = await refreshCloudflareTokenViaHost(credentials.cloudflareRefreshToken);
+      await session.storeCredentials({
+        ...session.credentials.value,
+        cloudflareToken: tokens.accessToken,
+        cloudflareRefreshToken: tokens.refreshToken,
+        cloudflareExpiresAt: tokens.expiresAt ?? 0,
+      });
+    } catch {
+      // Left to fail on the first real call, which reports Cloudflare's own wording and
+      // tells the user to connect again.
+    }
+  }
+
   async function start(): Promise<void> {
     if (!canStart.value) {
       return;
     }
+    await refreshCloudflareIfStale();
     running.value = true;
     steps.value = createInitialSteps();
     result.value = null;

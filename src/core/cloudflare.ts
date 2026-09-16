@@ -164,6 +164,35 @@ export async function listWorkerScripts(input: {
     .map((entry) => ({ name: entry.id, tag: entry.tag }));
 }
 
+export interface CloudflareAccount {
+  id: string;
+  name: string;
+}
+
+/**
+ * The accounts this token can act on.
+ *
+ * Exists so the user never has to find and paste an account id: after connecting, the
+ * builder asks who they are and offers a list. A token scoped to a single account
+ * returns one entry, which the UI can select without asking anything.
+ */
+export async function listAccounts(input: {
+  token: string;
+  fetchImpl?: typeof fetch;
+}): Promise<CloudflareAccount[]> {
+  const result = await callCloudflare<Array<{ id?: string; name?: string }>>({
+    token: input.token,
+    path: "/accounts",
+    fetchImpl: input.fetchImpl,
+  });
+
+  return (result ?? [])
+    .filter((entry): entry is { id: string; name?: string } =>
+      Boolean(entry && typeof entry.id === "string"),
+    )
+    .map((entry) => ({ id: entry.id, name: entry.name ?? entry.id }));
+}
+
 export async function getAccountSubdomain(input: {
   token: string;
   accountId: string;

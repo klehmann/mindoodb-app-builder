@@ -85,6 +85,12 @@ export interface CreateAppDependencies {
       description: string;
       private: boolean;
     }) => Promise<GitHubRepository>;
+    /**
+     * Only wired when the GitHub token came from the device flow. See
+     * `ensureRepositoryInInstallation` — an app installed on selected repositories does
+     * not cover the one it just created.
+     */
+    ensureInstallationAccess?: (repository: GitHubRepository) => Promise<void>;
     readTemplateSources: (repository: GitHubRepository) => Promise<TemplateSources>;
     commitFiles: (input: {
       repository: GitHubRepository;
@@ -215,6 +221,22 @@ export async function createApp(
     update("create-repo", "done", repository.fullName);
   } catch (error) {
     return abort("create-repo", readErrorMessage(error, "The repository could not be created."));
+  }
+
+  // A GitHub App token can create a repository that its own installation does not cover,
+  // and the identity commit in step 5 would then be refused. Best effort: if this fails
+  // and it mattered, the commit says so with GitHub's own wording.
+  if (deps.github.ensureInstallationAccess) {
+    try {
+      await deps.github.ensureInstallationAccess(repository);
+    } catch (error) {
+      warnings.push(
+        readErrorMessage(
+          error,
+          "The new repository could not be added to the builder's GitHub installation.",
+        ),
+      );
+    }
   }
 
   // 3. Worker. Created before any build exists, purely so the URL and the script tag do.

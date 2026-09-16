@@ -25,18 +25,28 @@ export const CREDENTIALS_DOCUMENT_TYPE = "mindoodb.appbuilder.credentials";
 
 export interface BuilderCredentials {
   /**
-   * GitHub personal access token. Needs `repo` scope (classic) or Contents +
-   * Administration write (fine-grained) to create a repository from a template.
+   * GitHub token. Either a user access token from the device flow (`ghu_…`, the normal
+   * case) or a personal access token the user pasted, which needs `repo` scope
+   * (classic) or Contents + Administration write (fine-grained). Both are used the same
+   * way, so nothing downstream has to know which one it got.
    */
   githubToken: string;
   /** GitHub login the repositories are created under. Blank means the token's own user. */
   githubOwner: string;
   /**
-   * Cloudflare API token. Must be **user-scoped**: the Workers Builds API rejects
-   * account-scoped tokens. Needs `Workers Builds Configuration: Edit` and
-   * `Workers Scripts: Read` (plus `Workers Scripts: Edit` to create the Worker).
+   * Cloudflare token. Either an OAuth access token from the connect flow or a pasted
+   * API token, which must be **user-scoped** — the Workers Builds API rejects
+   * account-scoped tokens — with `Workers Builds Configuration: Edit` and
+   * `Workers Scripts: Edit`.
    */
   cloudflareToken: string;
+  /**
+   * Refresh token, set only by the OAuth flow. Its presence is also how the UI knows a
+   * Cloudflare connection can be renewed rather than re-entered.
+   */
+  cloudflareRefreshToken: string;
+  /** Epoch milliseconds, or 0 when the token does not expire (a pasted API token). */
+  cloudflareExpiresAt: number;
   cloudflareAccountId: string;
   /** Cursor API key (`crsr_…`) used to launch cloud agents. */
   cursorToken: string;
@@ -46,6 +56,8 @@ export const EMPTY_CREDENTIALS: BuilderCredentials = {
   githubToken: "",
   githubOwner: "",
   cloudflareToken: "",
+  cloudflareRefreshToken: "",
+  cloudflareExpiresAt: 0,
   cloudflareAccountId: "",
   cursorToken: "",
 };
@@ -71,6 +83,26 @@ function readString(data: Record<string, unknown>, key: string): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function readNumber(data: Record<string, unknown>, key: string): number {
+  const value = data[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * True when an OAuth access token is expired or close enough that the next call would
+ * race the expiry. The margin is generous on purpose: refreshing early costs one request
+ * and a failed deploy costs the user a restart.
+ */
+export function isCloudflareTokenStale(
+  credentials: BuilderCredentials,
+  now = Date.now(),
+): boolean {
+  if (credentials.cloudflareExpiresAt === 0) {
+    return false;
+  }
+  return credentials.cloudflareExpiresAt - now < 60_000;
+}
+
 /** Map a stored document body onto the credential shape, ignoring anything else in it. */
 export function credentialsFromDocumentData(
   data: Record<string, unknown> | undefined,
@@ -82,6 +114,8 @@ export function credentialsFromDocumentData(
     githubToken: readString(data, "githubToken"),
     githubOwner: readString(data, "githubOwner"),
     cloudflareToken: readString(data, "cloudflareToken"),
+    cloudflareRefreshToken: readString(data, "cloudflareRefreshToken"),
+    cloudflareExpiresAt: readNumber(data, "cloudflareExpiresAt"),
     cloudflareAccountId: readString(data, "cloudflareAccountId"),
     cursorToken: readString(data, "cursorToken"),
   };
@@ -122,6 +156,8 @@ export async function saveCredentials(
     githubToken: credentials.githubToken.trim(),
     githubOwner: credentials.githubOwner.trim(),
     cloudflareToken: credentials.cloudflareToken.trim(),
+    cloudflareRefreshToken: credentials.cloudflareRefreshToken.trim(),
+    cloudflareExpiresAt: credentials.cloudflareExpiresAt,
     cloudflareAccountId: credentials.cloudflareAccountId.trim(),
     cursorToken: credentials.cursorToken.trim(),
     updatedAt: new Date().toISOString(),

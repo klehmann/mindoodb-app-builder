@@ -21,6 +21,8 @@
     "build:app": "vue-tsc --noEmit && vite build",
     "build:app:local": "LOCAL_MINDOODB=1 vite build",
     "build:host": "vite build --config vite.config.host.ts",
+    "deploy": "pnpm run build:app && wrangler deploy",
+    "dev:worker": "wrangler dev",
     "start": "node bin/mindoodb-app-builder.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -40,6 +42,7 @@
     "vite": "^8.0.3",
     "vite-plugin-wasm": "^3.6.0",
     "vitest": "^4.1.2",
-    "vue-tsc": "^3.2.6"
+    "vue-tsc": "^3.2.6",
+    "wrangler": "^4.132.0"
   }
 }

@@ -9,8 +9,18 @@
  * session and no token store, so a request that does not bring a token cannot do
  * anything, and a host restart never invalidates anything.
  */
-import type { ConnectPushToDeployResult, EnsureWorkerResult } from "@/core/cloudflare";
+import type {
+  CloudflareAccount,
+  ConnectPushToDeployResult,
+  EnsureWorkerResult,
+} from "@/core/cloudflare";
+import type { CloudflareOAuthTokens } from "@/core/cloudflareOAuth";
 import type { CursorAgent, CursorRun } from "@/core/cursorAgents";
+import type {
+  GitHubDeviceAuthorization,
+  GitHubDevicePollResult,
+} from "@/core/githubDeviceFlow";
+import type { BuilderOAuthAvailability } from "@/core/oauthConfig";
 
 export class HostApiError extends Error {
   constructor(
@@ -61,6 +71,69 @@ export async function checkHostAlive(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export interface BuilderHostConfig {
+  oauth: BuilderOAuthAvailability;
+  cloudflareClientId: string;
+  cloudflareScopes: string[];
+  /** Which app's installation should cover a newly created repository. */
+  githubAppSlug: string;
+}
+
+/**
+ * Which connect flows this builder is registered for.
+ *
+ * Read once at startup. A builder with no registered applications answers with empty
+ * client ids, and the UI then asks for pasted tokens instead of offering a button that
+ * would lead to an error page.
+ */
+export async function readHostConfig(): Promise<BuilderHostConfig | null> {
+  try {
+    const response = await fetch("/api/config");
+    if (!response.ok) {
+      return null;
+    }
+    return (await response.json()) as BuilderHostConfig;
+  } catch {
+    return null;
+  }
+}
+
+/** Step 1 of the GitHub device flow. Sends nothing but the host's own client id. */
+export function startGitHubDeviceFlow(): Promise<GitHubDeviceAuthorization> {
+  return post("/api/github/device/start", {});
+}
+
+/** Step 3, polled at the interval GitHub asked for. */
+export function pollGitHubDeviceFlow(deviceCode: string): Promise<GitHubDevicePollResult> {
+  return post("/api/github/device/poll", { deviceCode });
+}
+
+/**
+ * Exchange a Cloudflare authorization code through the host.
+ *
+ * Only used when the browser could not do it itself — see `connectCloudflare` in
+ * `useCloudflareConnect.ts`, which tries the direct call first precisely so the access
+ * token can stay inside the tab.
+ */
+export function exchangeCloudflareCodeViaHost(input: {
+  code: string;
+  codeVerifier: string;
+  redirectUri: string;
+}): Promise<CloudflareOAuthTokens> {
+  return post("/api/cloudflare/oauth/token", { ...input });
+}
+
+export function refreshCloudflareTokenViaHost(refreshToken: string): Promise<CloudflareOAuthTokens> {
+  return post("/api/cloudflare/oauth/refresh", { refreshToken });
+}
+
+/** So the user picks an account instead of pasting its id. */
+export function listCloudflareAccounts(
+  cloudflareToken: string,
+): Promise<{ accounts: CloudflareAccount[] }> {
+  return post("/api/cloudflare/accounts", { cloudflareToken });
 }
 
 export function verifyCursorKey(cursorToken: string): Promise<{ email?: string }> {

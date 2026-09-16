@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { readOAuthConfig } from "@/core/oauthConfig";
 import { handleApiRequest } from "@/host/routes";
+
+/** A builder registered for both connect flows, as the deployed copy is. */
+const registered = readOAuthConfig({
+  BUILDER_GITHUB_CLIENT_ID: "Iv23.builder",
+  BUILDER_CLOUDFLARE_CLIENT_ID: "cf-client-uuid",
+  BUILDER_PUBLIC_ORIGIN: "https://app-builder.mindoodb.com",
+});
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
@@ -33,6 +41,146 @@ describe("handleApiRequest", () => {
       body: {},
     });
     expect(result.status).toBe(405);
+  });
+
+  describe("/api/config", () => {
+    it("tells the page which connect flows are available", async () => {
+      const result = await handleApiRequest({
+        method: "GET",
+        pathname: "/api/config",
+        body: {},
+        config: registered,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.payload).toMatchObject({
+        oauth: {
+          github: true,
+          cloudflare: true,
+          cloudflareRedirectUri: "https://app-builder.mindoodb.com/oauth/cloudflare/callback",
+        },
+        cloudflareClientId: "cf-client-uuid",
+      });
+    });
+
+    it("reports no flows for an unregistered builder, so the UI asks for tokens", async () => {
+      const result = await handleApiRequest({
+        method: "GET",
+        pathname: "/api/config",
+        body: {},
+        config: readOAuthConfig({}),
+      });
+
+      expect(result.payload).toMatchObject({ oauth: { github: false, cloudflare: false } });
+    });
+
+    it("carries no secret: a client id is all there is to carry", async () => {
+      // Worth pinning down, because this endpoint is readable by anything that can
+      // reach the host. If a secret ever appears in the config it must not appear here.
+      const result = await handleApiRequest({
+        method: "GET",
+        pathname: "/api/config",
+        body: {},
+        config: registered,
+      });
+
+      expect(JSON.stringify(result.payload)).not.toMatch(/secret|token/i);
+    });
+  });
+
+  describe("GitHub device flow", () => {
+    it("starts the flow with the host's own client id, not one from the request", async () => {
+      // The client id is the host's identity. Taking it from the body would let a page
+      // point the flow at someone else's application.
+      const fetchImpl = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+        json({ device_code: "d1", user_code: "WDJB-MJHT", interval: 5, expires_in: 900 }),
+      );
+
+      const result = await handleApiRequest({
+        method: "POST",
+        pathname: "/api/github/device/start",
+        body: { clientId: "Iv23.attacker" },
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        config: registered,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.payload).toMatchObject({ userCode: "WDJB-MJHT", deviceCode: "d1" });
+      const [, init] = fetchImpl.mock.calls[0]!;
+      expect(JSON.parse(String((init as RequestInit).body))).toEqual({
+        client_id: "Iv23.builder",
+      });
+    });
+
+    it("passes a pending poll back as a normal answer", async () => {
+      const fetchImpl = vi.fn(async () => json({ error: "authorization_pending" }));
+
+      const result = await handleApiRequest({
+        method: "POST",
+        pathname: "/api/github/device/poll",
+        body: { deviceCode: "d1" },
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        config: registered,
+      });
+
+      expect(result).toEqual({ status: 200, payload: { status: "pending" } });
+    });
+
+    it("needs a device code to poll", async () => {
+      const result = await handleApiRequest({
+        method: "POST",
+        pathname: "/api/github/device/poll",
+        body: {},
+        config: registered,
+      });
+      expect(result.status).toBe(400);
+    });
+  });
+
+  describe("/api/cloudflare/oauth/token", () => {
+    it("exchanges the code with the verifier the page kept", async () => {
+      const fetchImpl = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+        json({ access_token: "cf-access", refresh_token: "cf-refresh", expires_in: 3600 }),
+      );
+
+      const result = await handleApiRequest({
+        method: "POST",
+        pathname: "/api/cloudflare/oauth/token",
+        body: { code: "code-1", codeVerifier: "verifier-1" },
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        config: registered,
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.payload).toMatchObject({ accessToken: "cf-access" });
+
+      const [url, init] = fetchImpl.mock.calls[0]!;
+      expect(url).toBe("https://dash.cloudflare.com/oauth2/token");
+      const sent = Object.fromEntries(new URLSearchParams(String((init as RequestInit).body)));
+      // Falls back to the registered redirect URI when the page did not name one.
+      expect(sent.redirect_uri).toBe("https://app-builder.mindoodb.com/oauth/cloudflare/callback");
+      expect(sent.code_verifier).toBe("verifier-1");
+    });
+
+    it("refuses an exchange with no verifier, which would not be PKCE at all", async () => {
+      const result = await handleApiRequest({
+        method: "POST",
+        pathname: "/api/cloudflare/oauth/token",
+        body: { code: "code-1" },
+        config: registered,
+      });
+      expect(result.status).toBe(400);
+    });
+
+    it("says so when the builder has no OAuth client registered", async () => {
+      const result = await handleApiRequest({
+        method: "POST",
+        pathname: "/api/cloudflare/oauth/token",
+        body: { code: "code-1", codeVerifier: "v" },
+        config: readOAuthConfig({}),
+      });
+      expect(result.status).toBe(400);
+    });
   });
 
   it("reports an unknown endpoint", async () => {

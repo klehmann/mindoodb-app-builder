@@ -8,7 +8,11 @@
   "runtime": "iframe",
   "hosting": "external",
   "permissions": ["proposeapps"],
-  "networkAllowlist": ["https://api.github.com", "https://*.workers.dev"],
+  "networkAllowlist": [
+    "https://api.github.com",
+    "https://dash.cloudflare.com",
+    "https://*.workers.dev"
+  ],
   "defaultLaunchDatabaseId": "appbuilder",
   "databases": [
     {

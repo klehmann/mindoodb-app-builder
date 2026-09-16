@@ -5,17 +5,57 @@ import AgentPanel from "@/app/components/AgentPanel.vue";
 import ConnectPanel from "@/app/components/ConnectPanel.vue";
 import NewAppPanel from "@/app/components/NewAppPanel.vue";
 import ProgressPanel from "@/app/components/ProgressPanel.vue";
-import { checkHostAlive } from "@/app/hostApi";
+import { checkHostAlive, readHostConfig, type BuilderHostConfig } from "@/app/hostApi";
 import { useBuilderFlow } from "@/app/useBuilderFlow";
 import { useBuilderSession } from "@/app/useBuilderSession";
+import { useCloudflareConnect } from "@/app/useCloudflareConnect";
+import { useGitHubConnect } from "@/app/useGitHubConnect";
+import { getAuthenticatedUser } from "@/core/github";
 
 const session = useBuilderSession();
-const flow = useBuilderFlow(session);
+const hostConfig = ref<BuilderHostConfig | null>(null);
+const flow = useBuilderFlow(session, hostConfig);
 const hostAlive = ref(true);
+
+/**
+ * A completed connect flow saves immediately rather than waiting for "Save accounts".
+ * The user has just approved something in another window; asking them to confirm it
+ * again here would only create a way to lose it.
+ */
+const github = useGitHubConnect(async (token) => {
+  // Ask GitHub who the token belongs to instead of making the user type it. An owner
+  // they already set is left alone — it may be an organization rather than themselves.
+  let owner = session.credentials.value.githubOwner;
+  if (!owner) {
+    try {
+      owner = (await getAuthenticatedUser(token)).login;
+    } catch {
+      // Not worth failing the connect over; the field is still there to fill in.
+    }
+  }
+  await session.storeCredentials({
+    ...session.credentials.value,
+    githubToken: token,
+    githubOwner: owner,
+  });
+});
+
+const cloudflare = useCloudflareConnect(hostConfig, async ({ tokens, accounts }) => {
+  await session.storeCredentials({
+    ...session.credentials.value,
+    cloudflareToken: tokens.accessToken,
+    cloudflareRefreshToken: tokens.refreshToken,
+    cloudflareExpiresAt: tokens.expiresAt ?? 0,
+    // One account is not a choice, so it is not presented as one.
+    cloudflareAccountId:
+      accounts.length === 1 ? accounts[0].id : session.credentials.value.cloudflareAccountId,
+  });
+});
 
 onMounted(async () => {
   await session.connect();
   hostAlive.value = await checkHostAlive();
+  hostConfig.value = await readHostConfig();
 });
 </script>
 
@@ -44,6 +84,10 @@ onMounted(async () => {
       :status="session.credentialsStatus.value"
       :can-store="session.canStoreCredentials.value"
       :saving="session.savingCredentials.value"
+      :config="hostConfig"
+      :github="github"
+      :cloudflare="cloudflare"
+      :cloudflare-accounts="cloudflare.accounts.value"
       @save="session.storeCredentials"
     />
 

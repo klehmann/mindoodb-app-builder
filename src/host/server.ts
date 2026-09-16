@@ -28,7 +28,9 @@ import { readFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import path from "node:path";
 
+import { readOAuthConfig, type BuilderOAuthConfig, CLOUDFLARE_CALLBACK_PATH } from "../core/oauthConfig";
 import { builderAllowedOrigins, BUILDER_DEFAULT_PORT } from "../core/ports";
+import { renderCloudflareCallbackPage } from "./oauthCallback";
 import { handleApiRequest } from "./routes";
 
 export interface BuilderHostOptions {
@@ -41,6 +43,8 @@ export interface BuilderHostOptions {
   allowedOrigin?: string;
   /** Injected in tests. */
   fetchImpl?: typeof fetch;
+  /** Defaults to the process environment. */
+  config?: BuilderOAuthConfig;
 }
 
 export interface BuilderHostHandle {
@@ -140,6 +144,7 @@ export async function startBuilderHost(
   const host = options.host ?? "127.0.0.1";
   const allowedOrigins = builderAllowedOrigins(options.allowedOrigin);
   const staticDir = options.staticDir;
+  const config = options.config ?? readOAuthConfig(process.env);
 
   const server = createServer((request, response) => {
     void handle(request, response).catch((error: unknown) => {
@@ -158,6 +163,23 @@ export async function startBuilderHost(
 
     if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
       await handleApi(request, response, url);
+      return;
+    }
+
+    // Where Cloudflare sends the user back. Served whether or not a static bundle is
+    // present, because it is part of the OAuth registration rather than part of the SPA.
+    if (url.pathname === CLOUDFLARE_CALLBACK_PATH) {
+      const html = renderCloudflareCallbackPage(config);
+      response.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        // The page's only job is to postMessage a code back to an allowlisted origin.
+        // Nothing else needs to load, so nothing else may.
+        "Content-Security-Policy":
+          "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+        "Referrer-Policy": "no-referrer",
+      });
+      response.end(html);
       return;
     }
 
@@ -229,6 +251,7 @@ export async function startBuilderHost(
       pathname: url.pathname,
       body,
       fetchImpl: options.fetchImpl,
+      config,
     });
     sendJson(response, result.status, result.payload);
   }

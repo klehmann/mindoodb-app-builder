@@ -35,6 +35,8 @@ const filled = {
   githubToken: "ghp_token",
   githubOwner: "octocat",
   cloudflareToken: "cf_token",
+  cloudflareRefreshToken: "cf_refresh",
+  cloudflareExpiresAt: 0,
   cloudflareAccountId: "acct-1",
   cursorToken: "crsr_key",
 };
