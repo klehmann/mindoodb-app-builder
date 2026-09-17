@@ -164,6 +164,56 @@ export async function listWorkerScripts(input: {
     .map((entry) => ({ name: entry.id, tag: entry.tag }));
 }
 
+/**
+ * Whether this account has ever built from a Git repository.
+ *
+ * `"unconfirmed"` is not a failure. It means no evidence either way, which is the
+ * honest answer for a fresh account and for one whose connected Worker is outside the
+ * handful this looks at.
+ */
+export type GitIntegrationState = "connected" | "unconfirmed";
+
+/**
+ * Detect whether the Cloudflare GitHub App has been installed on the account.
+ *
+ * Installing it is the one step of the whole build with no API — Cloudflare's own docs
+ * call it a dashboard prerequisite — so the best this can do is look for its footprint
+ * rather than its record. There is no endpoint that lists Git connections: `PUT
+ * /builds/repos/connections` and `DELETE .../{uuid}` are all that exist, and
+ * `GET /builds/builds` needs `version_ids`, so it cannot answer "has anything ever
+ * built here". An existing build trigger is the one artifact that proves a connection,
+ * because a trigger cannot be created without one.
+ *
+ * Bounded on purpose: an account can hold hundreds of Workers, and this runs while the
+ * user waits after connecting. Looking at a few is enough to recognise an account that
+ * is already set up, and guessing wrong costs a line of text that says "not confirmed",
+ * never a blocked build.
+ */
+export async function probeGitIntegration(input: {
+  token: string;
+  accountId: string;
+  /** How many Workers to look at before giving up on finding evidence. */
+  maxWorkers?: number;
+  fetchImpl?: typeof fetch;
+}): Promise<GitIntegrationState> {
+  const { token, accountId, maxWorkers = 5, fetchImpl } = input;
+
+  const workers = await listWorkerScripts({ token, accountId, fetchImpl });
+
+  for (const worker of workers.slice(0, maxWorkers)) {
+    const triggers = await callCloudflare<Array<{ trigger_uuid?: string }>>({
+      token,
+      path: `/accounts/${encodeURIComponent(accountId)}/builds/workers/${encodeURIComponent(worker.tag)}/triggers`,
+      fetchImpl,
+    });
+    if ((triggers ?? []).some((entry) => Boolean(entry?.trigger_uuid))) {
+      return "connected";
+    }
+  }
+
+  return "unconfirmed";
+}
+
 export interface CloudflareAccount {
   id: string;
   name: string;

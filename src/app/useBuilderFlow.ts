@@ -29,7 +29,6 @@ import {
 } from "@/core/createAppFlow";
 import {
   commitFiles,
-  ensureRepositoryInInstallation,
   generateRepositoryFromTemplate,
   getFileText,
   getRepository,
@@ -62,7 +61,10 @@ export function createEmptyForm(): NewAppForm {
     slugFollowsLabel: true,
     description: "",
     task: "",
-    private: false,
+    // Private by default. An unfinished app's plan is in TASK.md from the first commit,
+    // and the cost of publishing it by accident is not symmetric with the cost of
+    // clicking a checkbox.
+    private: true,
   };
 }
 
@@ -137,20 +139,6 @@ export function useBuilderFlow(
             description: input.description,
             private: input.private,
           }),
-        // A GitHub App installed on selected repositories does not cover one created a
-        // second ago, and the identity commit would be refused. Only relevant when this
-        // builder has an app at all; a pasted token has no installation.
-        ...(hostConfig?.value?.githubAppSlug
-          ? {
-              ensureInstallationAccess: async (repository: GitHubRepository) => {
-                await ensureRepositoryInInstallation({
-                  token: githubToken,
-                  appSlug: hostConfig.value?.githubAppSlug ?? "",
-                  repositoryId: repository.id,
-                });
-              },
-            }
-          : {}),
         readTemplateSources: async (repository: GitHubRepository) => {
           const read = async (path: string) => {
             const text = await getFileText({

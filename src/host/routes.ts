@@ -12,6 +12,7 @@ import {
   connectPushToDeploy,
   ensureWorker,
   listAccounts,
+  probeGitIntegration,
   CloudflareApiError,
 } from "../core/cloudflare";
 import {
@@ -238,6 +239,26 @@ export async function handleApiRequest(request: ApiRequest): Promise<ApiResponse
       try {
         const accounts = await listAccounts({ token: cloudflareToken, fetchImpl });
         return { status: 200, payload: { accounts } };
+      } catch (error) {
+        return toErrorResponse(error);
+      }
+    }
+
+    /**
+     * Is the Cloudflare GitHub App installed? Asked before a build rather than
+     * discovered by one failing, since fixing it means leaving for the dashboard.
+     */
+    case "/api/cloudflare/git-integration": {
+      if (!cloudflareToken || !accountId) {
+        return badRequest("A Cloudflare token and account ID are required.");
+      }
+      try {
+        const state = await probeGitIntegration({
+          token: cloudflareToken,
+          accountId,
+          fetchImpl,
+        });
+        return { status: 200, payload: { state } };
       } catch (error) {
         return toErrorResponse(error);
       }

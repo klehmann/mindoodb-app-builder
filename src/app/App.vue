@@ -5,14 +5,17 @@ import AgentPanel from "@/app/components/AgentPanel.vue";
 import ConnectPanel from "@/app/components/ConnectPanel.vue";
 import NewAppPanel from "@/app/components/NewAppPanel.vue";
 import ProgressPanel from "@/app/components/ProgressPanel.vue";
+import SetupChecklist from "@/app/components/SetupChecklist.vue";
 import { checkHostAlive, readHostConfig, type BuilderHostConfig } from "@/app/hostApi";
 import { useBuilderFlow } from "@/app/useBuilderFlow";
 import { useBuilderSession } from "@/app/useBuilderSession";
 import { useCloudflareConnect } from "@/app/useCloudflareConnect";
 import { useGitHubConnect } from "@/app/useGitHubConnect";
+import { useSetupReadiness } from "@/app/useSetupReadiness";
 import { getAuthenticatedUser } from "@/core/github";
 
 const session = useBuilderSession();
+const readiness = useSetupReadiness(session.credentials);
 const hostConfig = ref<BuilderHostConfig | null>(null);
 const flow = useBuilderFlow(session, hostConfig);
 const hostAlive = ref(true);
@@ -24,23 +27,29 @@ const hostConfigLoaded = ref(false);
  * The user has just approved something in another window; asking them to confirm it
  * again here would only create a way to lose it.
  */
-const github = useGitHubConnect(async (token) => {
-  // Ask GitHub who the token belongs to instead of making the user type it. An owner
-  // they already set is left alone — it may be an organization rather than themselves.
-  let owner = session.credentials.value.githubOwner;
-  if (!owner) {
-    try {
-      owner = (await getAuthenticatedUser(token)).login;
-    } catch {
-      // Not worth failing the connect over; the field is still there to fill in.
+const github = useGitHubConnect(
+  async (token) => {
+    // Ask GitHub who the token belongs to instead of making the user type it. An owner
+    // they already set is left alone — it may be an organization, not themselves.
+    let owner = session.credentials.value.githubOwner;
+    if (!owner) {
+      try {
+        owner = (await getAuthenticatedUser(token)).login;
+      } catch {
+        // Not worth failing the connect over; the field is still there to fill in.
+      }
     }
-  }
-  await session.storeCredentials({
-    ...session.credentials.value,
-    githubToken: token,
-    githubOwner: owner,
-  });
-});
+    await session.storeCredentials({
+      ...session.credentials.value,
+      githubToken: token,
+      githubOwner: owner,
+    });
+  },
+  {
+    appSlug: () => hostConfig.value?.githubAppSlug ?? "",
+    token: () => session.credentials.value.githubToken,
+  },
+);
 
 const cloudflare = useCloudflareConnect(hostConfig, async ({ tokens, accounts }) => {
   await session.storeCredentials({
@@ -93,6 +102,18 @@ onMounted(async () => {
       :cloudflare="cloudflare"
       :cloudflare-accounts="cloudflare.accounts.value"
       @save="session.storeCredentials"
+    />
+
+    <!-- Between connecting and building, because that is where the gap it closes is. -->
+    <SetupChecklist
+      :github-installation="github.installation.value"
+      :github-install-url="github.installUrl.value"
+      :cloudflare-git="readiness.cloudflareGit.value"
+      :cloudflare-checking="readiness.checking.value"
+      :cloudflare-dashboard-url="readiness.cloudflareDashboardUrl.value"
+      :cursor-ready="session.credentialsStatus.value.cursor"
+      @recheck-git-hub="github.checkInstallation()"
+      @recheck-cloudflare="readiness.checkCloudflare()"
     />
 
     <NewAppPanel

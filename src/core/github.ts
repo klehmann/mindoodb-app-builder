@@ -167,53 +167,65 @@ export async function getRepository(
   return raw ? toRepository(raw) : null;
 }
 
-/**
- * Make sure the app that issued this token can actually write to a repository it just
- * created.
- *
- * This only matters for a GitHub App user token, and it is the one sharp edge of the
- * device flow. Creating a repository under the user's account needs a *user* token and
- * works regardless of installation — but every subsequent call is scoped to the app's
- * installation, so a user who installed the builder on "only selected repositories" can
- * watch the repository appear and then get a 403 on the identity commit. Adding the new
- * repository to the installation closes that gap.
- *
- * Best effort on purpose. A classic personal access token has no installations at all
- * and needs none, `repository_selection: "all"` already covers the repository, and
- * neither case is a problem to report. Only a genuine refusal is worth surfacing, and
- * the caller will hit it again on the next write with a clearer message.
- *
- * Endpoints:
- *   GET /user/installations
- *   PUT /user/installations/{installation_id}/repositories/{repository_id}
- */
-export async function ensureRepositoryInInstallation(options: {
-  token: string;
-  /** The app whose installation should cover the repository, as its URL slug. */
-  appSlug: string;
-  repositoryId: number;
-}): Promise<"added" | "already-covered" | "not-applicable"> {
-  const { token, appSlug, repositoryId } = options;
+/** Where the user installs the app. Installing is not the same as authorizing it. */
+export function githubAppInstallUrl(appSlug: string): string {
+  return `https://github.com/apps/${encodeURIComponent(appSlug)}/installations/new`;
+}
 
-  const installations = await githubRequest<{
+export interface GitHubAppInstallation {
+  id: number;
+  /** `"all"` or `"selected"`. */
+  repositorySelection: string;
+}
+
+/**
+ * Find this app's installation on an account the token's user can reach.
+ *
+ * Worth understanding, because it is the difference between a working builder and an
+ * opaque 403: authorizing a GitHub App and installing it are two separate acts. The
+ * device flow only authorizes — it proves who the user is and that they consented — and
+ * a `ghu_` token draws its *repository* permissions from an installation. A user who
+ * authorized but never installed holds a token with no repository access at all, and
+ * every call here answers "Resource not accessible by integration" no matter which
+ * permissions the app declares.
+ *
+ * `null` therefore means two very different things depending on the token, which is why
+ * callers must not treat it as an error on its own: a classic personal access token has
+ * no installations and needs none.
+ */
+export async function findAppInstallation(options: {
+  token: string;
+  /** The app, as its URL slug. */
+  appSlug: string;
+}): Promise<GitHubAppInstallation | null> {
+  const { token, appSlug } = options;
+
+  const payload = await githubRequest<{
     installations?: Array<{ id?: number; app_slug?: string; repository_selection?: string }>;
   }>({ token, path: "/user/installations", emptyOn: [401, 403, 404] });
 
-  const installation = installations?.installations?.find((entry) => entry.app_slug === appSlug);
+  const installation = payload?.installations?.find((entry) => entry.app_slug === appSlug);
   if (!installation || typeof installation.id !== "number") {
-    return "not-applicable";
+    return null;
   }
-  if (installation.repository_selection === "all") {
-    return "already-covered";
-  }
-
-  await githubRequest({
-    token,
-    method: "PUT",
-    path: `/user/installations/${installation.id}/repositories/${repositoryId}`,
-  });
-  return "added";
+  return {
+    id: installation.id,
+    repositorySelection: installation.repository_selection ?? "selected",
+  };
 }
+
+/*
+ * There used to be an `ensureRepositoryInInstallation` here, adding a freshly created
+ * repository to the app's installation so the identity commit could not be refused.
+ * It was removed because it could never do anything:
+ *
+ *   - GitHub already grants an installation access to the repositories the app itself
+ *     creates, even under "only select repositories", so there is no gap to close.
+ *   - `PUT /user/installations/{id}/repositories/{id}` is not available to GitHub App
+ *     tokens at all ("only works for PATs (classic) with the `repo` scope"), so with the
+ *     token the device flow issues the call could only ever 403 — turning a healthy
+ *     build into one carrying a warning about a problem that does not exist.
+ */
 
 /**
  * Read one file's text from a branch. `null` when the path does not exist, so callers
@@ -304,26 +316,27 @@ export async function generateRepositoryFromTemplate(
 
 /**
  * Turn GitHub's "Resource not accessible by integration" into something the user can act
- * on. That message is GitHub's answer to *any* missing GitHub App permission and names
- * neither the permission nor where to grant it.
+ * on. That message is GitHub's answer to *any* insufficient GitHub App grant and names
+ * neither what is missing nor where to fix it, so it is repeated here with the two
+ * causes in the order they actually occur.
  *
- * Generating from a template creates a repository, so it needs Administration write on
- * top of the Contents access the identity commit already needs — Administration is the
- * one people leave out, because nothing about "copy a template" sounds administrative.
- * Granting it is not enough on its own: a permission added after the app was installed
- * stays dormant until the installation accepts the request, and until then the token
- * still carries the old set and this same 403 comes back.
+ * The installation comes first because authorizing is the step the device flow performs
+ * and installing is the step it cannot: a token from an app that was never installed has
+ * no repository permissions whatsoever. Only once installed does the second cause apply
+ * — creating a repository counts as administration, so Administration write is needed on
+ * top of the Contents access the identity commit uses, and a permission added after the
+ * installation stays dormant until that installation accepts the request.
  */
 function explainTemplateGenerateError(error: unknown): unknown {
   if (!(error instanceof GitHubError) || error.status !== 403) {
     return error;
   }
   return new GitHubError(
-    `${error.message} — the GitHub App is missing "Administration: Read and write" ` +
-      "(creating the repository), alongside Contents and Metadata. Add it in the app's " +
-      "permissions, then accept the update on the installation: a permission change does " +
-      "not reach an existing installation until it is approved. Reconnect GitHub here " +
-      "afterwards.",
+    `${error.message} — the GitHub App is authorized but its grant does not cover ` +
+      "creating a repository. Either it is not installed on the account (authorizing and " +
+      'installing are separate), or it lacks "Administration: Read and write" alongside ' +
+      "Contents and Metadata. A permission added after installing also has to be accepted " +
+      "on the installation. Reconnect GitHub here afterwards.",
     error.status,
   );
 }

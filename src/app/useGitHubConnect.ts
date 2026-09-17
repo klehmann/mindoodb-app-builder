@@ -12,8 +12,17 @@
 import { computed, onBeforeUnmount, ref, type ComputedRef, type Ref } from "vue";
 
 import { pollGitHubDeviceFlow, startGitHubDeviceFlow } from "@/app/hostApi";
+import { findAppInstallation, githubAppInstallUrl } from "@/core/github";
 
 export type GitHubConnectStatus = "idle" | "starting" | "waiting" | "connected" | "failed";
+
+/**
+ * Whether the app that issued the token is installed anywhere.
+ *
+ * `"unknown"` covers both "not asked yet" and "asking failed", because a lookup that
+ * did not answer must not accuse the user of a missing installation.
+ */
+export type GitHubInstallationState = "unknown" | "installed" | "missing";
 
 export interface UseGitHubConnectReturn {
   status: Ref<GitHubConnectStatus>;
@@ -24,15 +33,60 @@ export interface UseGitHubConnectReturn {
   busy: ComputedRef<boolean>;
   start: () => Promise<void>;
   cancel: () => void;
+  installation: Ref<GitHubInstallationState>;
+  /** Where to install, empty when this builder has no app of its own. */
+  installUrl: ComputedRef<string>;
+  /** Re-run the lookup after the user says they have installed it. */
+  checkInstallation: () => Promise<void>;
 }
 
 export function useGitHubConnect(
   onToken: (token: string) => Promise<void> | void,
+  /**
+   * The app slug and the stored token, read lazily: both arrive after this composable is
+   * created — the slug with the host config, the token with the flow that has yet to run.
+   */
+  context: {
+    appSlug: () => string;
+    token: () => string;
+  } = { appSlug: () => "", token: () => "" },
 ): UseGitHubConnectReturn {
   const status = ref<GitHubConnectStatus>("idle");
   const userCode = ref("");
   const verificationUri = ref("https://github.com/login/device");
   const error = ref<string | null>(null);
+  const installation = ref<GitHubInstallationState>("unknown");
+
+  const installUrl = computed(() => {
+    const slug = context.appSlug();
+    return slug ? githubAppInstallUrl(slug) : "";
+  });
+
+  /**
+   * Ask GitHub whether the app is installed, using the token we were just handed.
+   *
+   * Reported, not thrown: a connect that worked must not be turned into a failure by a
+   * follow-up question about it, and a pasted personal access token legitimately has no
+   * installation to find.
+   */
+  async function checkInstallationWith(token: string): Promise<void> {
+    const appSlug = context.appSlug();
+    if (!appSlug || !token) {
+      installation.value = "unknown";
+      return;
+    }
+    try {
+      installation.value = (await findAppInstallation({ token, appSlug }))
+        ? "installed"
+        : "missing";
+    } catch {
+      installation.value = "unknown";
+    }
+  }
+
+  async function checkInstallation(): Promise<void> {
+    await checkInstallationWith(context.token());
+  }
 
   let timer: ReturnType<typeof setTimeout> | null = null;
   /** Bumped on cancel and on restart, so a poll in flight cannot revive a dead flow. */
@@ -112,6 +166,10 @@ export function useGitHubConnect(
           userCode.value = "";
           status.value = "connected";
           await onToken(result.accessToken);
+          // Straight after authorizing is the moment to find a missing installation:
+          // the alternative is a 403 several steps into a build, once a repository name
+          // has already been taken.
+          await checkInstallationWith(result.accessToken);
           return;
         case "slow_down":
           interval = Math.max(result.interval, 1) * 1000;
@@ -134,5 +192,16 @@ export function useGitHubConnect(
 
   onBeforeUnmount(clearTimer);
 
-  return { status, userCode, verificationUri, error, busy, start, cancel };
+  return {
+    status,
+    userCode,
+    verificationUri,
+    error,
+    busy,
+    start,
+    cancel,
+    installation,
+    installUrl,
+    checkInstallation,
+  };
 }

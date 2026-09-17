@@ -89,6 +89,16 @@ const emit = defineEmits<{
       <input v-model="form.private" type="checkbox" />
       Make the repository private
     </label>
+    <!--
+      Private is the default, but it is not free: the two services that read the
+      repository afterwards are separate GitHub installations, and neither can see a
+      private repository that its own installation does not list.
+    -->
+    <p v-if="form.private" class="hint">
+      Deploys and the coding agent need their own access to a private repository. If
+      Cloudflare's and Cursor's GitHub apps are installed on "All repositories" this is
+      automatic; otherwise add this repository to them once it exists.
+    </p>
 
     <p v-if="formError" class="warn">{{ formError }}</p>
 

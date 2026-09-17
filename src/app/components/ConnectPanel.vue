@@ -115,6 +115,30 @@ function save(): void {
           repositories you choose. Revoke it any time in GitHub's application settings.
         </p>
         <p v-if="github.error.value" class="warn">{{ github.error.value }}</p>
+        <!--
+          Authorizing is not installing, and only an installation carries repository
+          permissions. Caught here rather than as a 403 halfway through a build.
+        -->
+        <template v-if="github.installation.value === 'missing'">
+          <p class="warn">
+            Authorized, but the app is not installed on your account yet — without an
+            installation the token cannot create anything. "Only select repositories" is
+            enough: GitHub grants access to the repositories the app itself creates.
+          </p>
+          <div class="row">
+            <a
+              class="button"
+              :href="github.installUrl.value"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              Install the GitHub App
+            </a>
+            <button type="button" class="ghost" @click="github.checkInstallation()">
+              I have installed it
+            </button>
+          </div>
+        </template>
         <div class="row">
           <button type="button" :disabled="github.busy.value" @click="github.start()">
             {{
@@ -324,6 +348,19 @@ function save(): void {
   gap: 0.5rem;
   align-items: center;
   flex-wrap: wrap;
+}
+
+/*
+ * A link that looks like the primary button next to it. It stays a real link so the new
+ * tab opens without script — the iframe allows popups, but a plain anchor needs nothing.
+ */
+.button {
+  font: inherit;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.35rem;
+  background: var(--app-accent);
+  color: #ffffff;
+  text-decoration: none;
 }
 
 /* The one thing the user has to read off the screen and type somewhere else. */

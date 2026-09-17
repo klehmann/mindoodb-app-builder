@@ -96,10 +96,34 @@ Use `dev:local` instead of `dev` to resolve `mindoodb-app-sdk` from the sibling 
 | Cloudflare | Connect Cloudflare, or paste a token | A pasted token must be a **user** token — the Builds API rejects account tokens — with Workers Scripts Edit and Workers Builds Configuration Edit |
 | Cursor API key | cursor.com → dashboard | Optional, and typed: Cursor has no consent flow. Without it the repository is created and deployed, just not worked on |
 
-One manual step has no API: the **Cloudflare GitHub App** must be installed on your
-account once (dashboard → any Worker → Settings → Builds → Connect). The builder says so
-if it is missing. This is Cloudflare's own integration and is unrelated to connecting
-your GitHub account above.
+### One-time setup
+
+Three grants cannot be made through an API, because they are consent and every provider
+insists on collecting it in its own interface. The builder shows them as a checklist
+between connecting and building, and each is needed once per account rather than once
+per app:
+
+1. **Install the builder's GitHub App.** Authorizing it and installing it are separate;
+   only the installation carries repository permissions.
+2. **Connect Cloudflare to GitHub** — dashboard → any Worker → Settings → Builds →
+   Connect. Cloudflare documents this as a prerequisite for its Builds API, so it is the
+   single step of a deploy with no programmatic route. Everything after it is API.
+3. **Paste a Cursor API key**, if you want an agent to work on the app. Cursor has no
+   consent flow at all.
+
+The Cloudflare item is detected rather than recorded: no endpoint lists Git connections
+(`PUT /builds/repos/connections` and its `DELETE` are the whole surface), so the builder
+looks for an existing build trigger, which cannot exist without a connection. An account
+that has built from a repository before therefore reads as connected, and one that has
+not reads as "not confirmed" — which is why that item is worded as a question rather than
+an accusation, and why nothing blocks a build on it.
+
+New repositories are **private by default**, so an unfinished app's brief in `TASK.md`
+is not public while you work on it. That has a price worth knowing about: Cloudflare and
+Cursor read the repository through their own GitHub installations, and a private
+repository is invisible to an installation that does not list it. Installing both on
+"All repositories" makes this automatic; otherwise add each new repository to them, or
+untick the box and start public.
 
 ## Deploying your own
 
@@ -127,8 +151,16 @@ so they live in `wrangler.jsonc` under `vars`, and locally in the environment.
   request on the installation. Until it is accepted the installation keeps the old set,
   so the same 403 returns as if nothing had changed. Reconnect GitHub in the builder
   afterwards.
-- Install it on **All repositories** unless you have a reason not to: the repository it
-  is about to create cannot be in a "selected repositories" list that predates it.
+- **Install it as well as authorizing it.** These are separate acts, and the device flow
+  only authorizes: a user token from an app that is not installed has no repository
+  permissions at all, and every call fails with "Resource not accessible by
+  integration". The builder checks right after connecting and offers the install link.
+- **Only select repositories** is the right choice, and selecting none is fine — GitHub
+  grants an installation access to the repositories the app itself creates. That keeps
+  the token able to create repositories and write to its own, with no reach into
+  anything you already have. This is also why the builder uses a GitHub App rather than
+  an OAuth app: creating private repositories over OAuth needs the `repo` scope, which
+  is read/write access to every private repository you own.
 - Turn **off** expiring user tokens, or the connection dies after eight hours: a public
   client cannot refresh without a secret.
 - Copy the Client ID into `BUILDER_GITHUB_CLIENT_ID`, and the app's URL slug into

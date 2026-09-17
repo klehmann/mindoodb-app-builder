@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   commitFiles,
+  findAppInstallation,
   generateRepositoryFromTemplate,
   getAuthenticatedUser,
   getFileText,
@@ -126,17 +127,18 @@ describe("generateRepositoryFromTemplate", () => {
     ).rejects.toThrow(/name already exists on this account/);
   });
 
-  it("names the missing permission when GitHub answers with its opaque 403", async () => {
+  it("explains GitHub's opaque 403, installation first", async () => {
     mockFetch(() => json({ message: "Resource not accessible by integration" }, 403));
 
     const error = await generateRepositoryFromTemplate({ token: "tok", name: "x" }).catch(
       (caught: unknown) => caught,
     );
     expect((error as GitHubError).status).toBe(403);
+    // Both causes, in the order they occur: an app that was authorized but never
+    // installed holds a token with no repository permissions at all, so naming the
+    // permission alone would send the user to the wrong settings page.
+    expect((error as GitHubError).message).toMatch(/not installed on the account/);
     expect((error as GitHubError).message).toMatch(/Administration: Read and write/);
-    // The installation has to accept a permission added after it was installed, and
-    // omitting that turns one fix into two rounds of confusion.
-    expect((error as GitHubError).message).toMatch(/accept the update/);
   });
 
   it("reports the HTTP status on the error for callers that branch on it", async () => {
@@ -147,6 +149,41 @@ describe("generateRepositoryFromTemplate", () => {
     );
     expect(error).toBeInstanceOf(GitHubError);
     expect((error as GitHubError).status).toBe(401);
+  });
+});
+
+describe("findAppInstallation", () => {
+  it("finds this app's installation among the user's", async () => {
+    mockFetch(() =>
+      json({
+        installations: [
+          { id: 1, app_slug: "some-other-app", repository_selection: "all" },
+          { id: 42, app_slug: "mindoodb-app-builder", repository_selection: "selected" },
+        ],
+      }),
+    );
+
+    await expect(
+      findAppInstallation({ token: "tok", appSlug: "mindoodb-app-builder" }),
+    ).resolves.toEqual({ id: 42, repositorySelection: "selected" });
+  });
+
+  it("returns null when the app was authorized but never installed", async () => {
+    mockFetch(() => json({ installations: [] }));
+
+    await expect(
+      findAppInstallation({ token: "tok", appSlug: "mindoodb-app-builder" }),
+    ).resolves.toBeNull();
+  });
+
+  it("returns null for a token that has no installations to list", async () => {
+    // A pasted personal access token: the lookup is refused, and that is not a problem
+    // to report — it has no installation and needs none.
+    mockFetch(() => json({ message: "Bad credentials" }, 403));
+
+    await expect(
+      findAppInstallation({ token: "pat", appSlug: "mindoodb-app-builder" }),
+    ).resolves.toBeNull();
   });
 });
 

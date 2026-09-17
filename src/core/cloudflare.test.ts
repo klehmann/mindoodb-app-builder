@@ -5,6 +5,7 @@ import {
   ensureWorker,
   getAccountSubdomain,
   listWorkerScripts,
+  probeGitIntegration,
   CloudflareApiError,
 } from "./cloudflare";
 
@@ -48,6 +49,77 @@ function stubFetch(routes: Record<string, StubRoute>): {
 }
 
 const ACCOUNT = "acct-1";
+
+describe("probeGitIntegration", () => {
+  it("treats an existing build trigger as proof of the GitHub connection", async () => {
+    // A trigger cannot exist without a repository connection, and a connection cannot
+    // exist without Cloudflare's GitHub App. That chain is the whole probe: there is no
+    // endpoint that lists connections.
+    const { fetchImpl } = stubFetch({
+      [`GET /accounts/${ACCOUNT}/workers/scripts`]: { body: [{ id: "team-notes", tag: "tag-1" }] },
+      [`GET /accounts/${ACCOUNT}/builds/workers/tag-1/triggers`]: {
+        body: [{ trigger_uuid: "trig-1" }],
+      },
+    });
+
+    await expect(probeGitIntegration({ token: "cf", accountId: ACCOUNT, fetchImpl })).resolves.toBe(
+      "connected",
+    );
+  });
+
+  it("reports unconfirmed rather than missing when no Worker shows evidence", async () => {
+    const { fetchImpl } = stubFetch({
+      [`GET /accounts/${ACCOUNT}/workers/scripts`]: { body: [{ id: "team-notes", tag: "tag-1" }] },
+      [`GET /accounts/${ACCOUNT}/builds/workers/tag-1/triggers`]: { body: [] },
+    });
+
+    await expect(probeGitIntegration({ token: "cf", accountId: ACCOUNT, fetchImpl })).resolves.toBe(
+      "unconfirmed",
+    );
+  });
+
+  it("stops after the cap instead of walking a large account", async () => {
+    // This runs while the user waits, and an account can hold hundreds of Workers.
+    const { fetchImpl, calls } = stubFetch({
+      [`GET /accounts/${ACCOUNT}/workers/scripts`]: {
+        body: Array.from({ length: 30 }, (_unused, index) => ({
+          id: `w-${index}`,
+          tag: `tag-${index}`,
+        })),
+      },
+      ...Object.fromEntries(
+        Array.from({ length: 30 }, (_unused, index) => [
+          `GET /accounts/${ACCOUNT}/builds/workers/tag-${index}/triggers`,
+          { body: [] },
+        ]),
+      ),
+    });
+
+    await probeGitIntegration({ token: "cf", accountId: ACCOUNT, maxWorkers: 3, fetchImpl });
+
+    const triggerCalls = calls.filter((call) => call.path.includes("/triggers"));
+    expect(triggerCalls).toHaveLength(3);
+  });
+
+  it("finds the evidence even when the first Workers have no builds", async () => {
+    const { fetchImpl } = stubFetch({
+      [`GET /accounts/${ACCOUNT}/workers/scripts`]: {
+        body: [
+          { id: "plain", tag: "tag-a" },
+          { id: "built", tag: "tag-b" },
+        ],
+      },
+      [`GET /accounts/${ACCOUNT}/builds/workers/tag-a/triggers`]: { body: [] },
+      [`GET /accounts/${ACCOUNT}/builds/workers/tag-b/triggers`]: {
+        body: [{ trigger_uuid: "trig-2" }],
+      },
+    });
+
+    await expect(probeGitIntegration({ token: "cf", accountId: ACCOUNT, fetchImpl })).resolves.toBe(
+      "connected",
+    );
+  });
+});
 
 describe("listWorkerScripts", () => {
   it("reads the tag that the Builds API needs, not just the name", async () => {

@@ -13,6 +13,7 @@ import type {
   CloudflareAccount,
   ConnectPushToDeployResult,
   EnsureWorkerResult,
+  GitIntegrationState,
 } from "@/core/cloudflare";
 import type { CloudflareOAuthTokens } from "@/core/cloudflareOAuth";
 import type { CursorAgent, CursorRun } from "@/core/cursorAgents";
@@ -134,6 +135,17 @@ export function listCloudflareAccounts(
   cloudflareToken: string,
 ): Promise<{ accounts: CloudflareAccount[] }> {
   return post("/api/cloudflare/accounts", { cloudflareToken });
+}
+
+/**
+ * Has the Cloudflare GitHub App been installed on this account? The answer is evidence,
+ * not a record — see `probeGitIntegration` — so "unconfirmed" means unknown, not no.
+ */
+export function probeCloudflareGitIntegration(input: {
+  cloudflareToken: string;
+  accountId: string;
+}): Promise<{ state: GitIntegrationState }> {
+  return post("/api/cloudflare/git-integration", { ...input });
 }
 
 export function verifyCursorKey(cursorToken: string): Promise<{ email?: string }> {

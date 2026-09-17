@@ -9,7 +9,9 @@ import type { UseCloudflareConnectReturn } from "@/app/useCloudflareConnect";
 import type { UseGitHubConnectReturn } from "@/app/useGitHubConnect";
 import { EMPTY_CREDENTIALS, readCredentialsStatus } from "@/core/credentials";
 
-function githubConnect(): UseGitHubConnectReturn {
+function githubConnect(
+  overrides: Partial<UseGitHubConnectReturn> = {},
+): UseGitHubConnectReturn {
   const status = ref<"idle">("idle");
   return {
     status,
@@ -19,6 +21,10 @@ function githubConnect(): UseGitHubConnectReturn {
     busy: computed(() => false),
     start: async () => {},
     cancel: () => {},
+    installation: ref("unknown"),
+    installUrl: computed(() => "https://github.com/apps/mindoodb-app-builder/installations/new"),
+    checkInstallation: async () => {},
+    ...overrides,
   };
 }
 
@@ -47,14 +53,18 @@ function config(overrides: Partial<BuilderHostConfig> = {}): BuilderHostConfig {
   };
 }
 
-function render(props: { config: BuilderHostConfig | null; configLoaded: boolean }) {
+function render(props: {
+  config: BuilderHostConfig | null;
+  configLoaded: boolean;
+  github?: UseGitHubConnectReturn;
+}) {
   return mount(ConnectPanel, {
     props: {
       credentials: { ...EMPTY_CREDENTIALS },
       status: readCredentialsStatus(EMPTY_CREDENTIALS),
       canStore: true,
       saving: false,
-      github: githubConnect(),
+      github: props.github ?? githubConnect(),
       cloudflare: cloudflareConnect(),
       cloudflareAccounts: [],
       ...props,
@@ -107,6 +117,31 @@ describe("ConnectPanel", () => {
 
     expect(panel.find("#github-token").exists()).toBe(true);
     expect(panel.find("#cf-token").exists()).toBe(true);
+  });
+
+  it("offers the install link when the app was authorized but never installed", () => {
+    // The failure this pins cost an evening: a GitHub App user token with no
+    // installation has no repository permissions, and GitHub reports that as
+    // "Resource not accessible by integration" once a build is already underway.
+    const panel = render({
+      config: config(),
+      configLoaded: true,
+      github: githubConnect({ installation: ref("missing") }),
+    });
+
+    const install = panel.find("a.button");
+    expect(install.attributes("href")).toBe(
+      "https://github.com/apps/mindoodb-app-builder/installations/new",
+    );
+    expect(panel.text()).toContain("not installed on your account");
+  });
+
+  it("stays quiet about the installation while it is unknown", () => {
+    // "Not asked yet" and "the lookup failed" share this state, and neither is grounds
+    // for telling the user something is wrong.
+    const panel = render({ config: config(), configLoaded: true });
+
+    expect(panel.find("a.button").exists()).toBe(false);
   });
 
   it("keeps the owner field visible when GitHub can be connected", () => {
