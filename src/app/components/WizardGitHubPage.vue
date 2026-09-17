@@ -53,15 +53,28 @@ const showInstallTask = computed(() => props.installUrl !== "");
 const createTaskIndex = computed(() => (showInstallTask.value ? 3 : 2));
 
 /** Known-missing is the one case where this is not optional. */
-const installMissing = computed(() => props.github.installation.value === "missing");
+const installMissing = computed(
+  () => props.github.installation.value === "missing",
+);
+
+/**
+ * This app only creates a repository and commits the starter. GitHub then adds those
+ * new repositories to the installation, so "none selected" is enough — "All
+ * repositories" would be a wider grant than we use.
+ */
+const INSTALL_SCOPE =
+  "When GitHub asks which repositories to allow, you can pick none. This app only " +
+  "creates a new project and makes the first commit, and GitHub lets it reach the " +
+  "ones it creates — it does not need anything you already have.";
+
 const installHint = computed(() =>
   installMissing.value
     ? "Needed now: you connected with the button above, and that connection cannot" +
-      " touch your repositories until the app is installed. Choosing “All repositories”" +
-      " means you never have to repeat this for your next app."
+      " create a project until the app is installed. " +
+      INSTALL_SCOPE
     : "Only needed if you used Connect GitHub above — a token you pasted yourself" +
-      " already carries its own permissions. Choosing “All repositories” means you never" +
-      " have to repeat this for your next app.",
+      " already carries its own permissions. " +
+      INSTALL_SCOPE,
 );
 </script>
 
@@ -102,10 +115,20 @@ const installHint = computed(() =>
       :skippable="!installMissing"
     >
       <div class="row">
-        <a class="button" :href="installUrl" target="_blank" rel="noreferrer noopener">
+        <a
+          class="button"
+          :href="installUrl"
+          target="_blank"
+          rel="noreferrer noopener"
+        >
           Install on GitHub
         </a>
-        <a class="button button--ghost" :href="GITHUB_INSTALLATIONS_URL" target="_blank" rel="noreferrer noopener">
+        <a
+          class="button button--ghost"
+          :href="GITHUB_INSTALLATIONS_URL"
+          target="_blank"
+          rel="noreferrer noopener"
+        >
           Review what I granted
         </a>
       </div>
@@ -117,7 +140,11 @@ const installHint = computed(() =>
       hint="We copy a working starter app into a new GitHub project named after your app. Nothing is published yet — that happens on the next page."
     >
       <p v-if="githubError" class="warn">{{ githubError }}</p>
-      <button type="button" :disabled="!canCreateRepo" @click="emit('initialize')">
+      <button
+        type="button"
+        :disabled="!canCreateRepo"
+        @click="emit('initialize')"
+      >
         {{ running ? "Creating your project…" : "Create my project" }}
       </button>
       <!-- The name is only set in monospace when it is a real one, never the placeholder. -->
