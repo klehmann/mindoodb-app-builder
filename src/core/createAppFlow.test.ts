@@ -54,6 +54,7 @@ function makeDeps(overrides: Partial<CreateAppDependencies> = {}): CreateAppDepe
     cloudflare: {
       ensureWorker: vi.fn(async () => worker),
       connectPushToDeploy: vi.fn(async () => ({ detail: "Pushes to main deploy." })),
+      startBuild: vi.fn(async () => ({ detail: "Cloudflare is building main." })),
       checkRepoReadable: vi.fn(async () => ({
         state: "readable" as const,
         detail: "Cloudflare can read the repository.",
@@ -103,13 +104,14 @@ describe("createInitialSteps", () => {
     expect(steps.map((step) => step.id)).toEqual([
       "check-name",
       "create-repo",
+      "commit-identity",
       "check-repo-access",
       "create-worker",
       "connect-builds",
-      "commit-identity",
+      "start-build",
       "wait-origin",
-      "launch-agent",
       "propose",
+      "launch-agent",
     ]);
     expect(steps.every((step) => step.status === "pending")).toBe(true);
   });
@@ -132,6 +134,7 @@ describe("createApp", () => {
       "done",
       "done",
       "done",
+      "done",
     ]);
     expect(result.repository?.fullName).toBe("octocat/team-notes");
     expect(result.worker?.url).toBe("https://team-notes.acme.workers.dev");
@@ -140,7 +143,7 @@ describe("createApp", () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it("wires push-to-deploy before the first commit, so that commit is the first deploy", async () => {
+  it("commits the identity on GitHub before Cloudflare starts the first build", async () => {
     const order: string[] = [];
     const deps = makeDeps({
       cloudflare: {
@@ -150,6 +153,10 @@ describe("createApp", () => {
         }),
         connectPushToDeploy: vi.fn(async () => {
           order.push("connectPushToDeploy");
+          return { detail: "ok" };
+        }),
+        startBuild: vi.fn(async () => {
+          order.push("startBuild");
           return { detail: "ok" };
         }),
       },
@@ -171,9 +178,10 @@ describe("createApp", () => {
 
     expect(order).toEqual([
       "generateFromTemplate",
+      "commitFiles",
       "ensureWorker",
       "connectPushToDeploy",
-      "commitFiles",
+      "startBuild",
     ]);
   });
 
@@ -241,13 +249,14 @@ describe("createApp", () => {
     expect(seen.map(([id]) => id)).toEqual([
       "check-name",
       "create-repo",
+      "commit-identity",
       "check-repo-access",
       "create-worker",
       "connect-builds",
-      "commit-identity",
+      "start-build",
       "wait-origin",
-      "launch-agent",
       "propose",
+      "launch-agent",
     ]);
   });
 
@@ -318,6 +327,7 @@ describe("createApp", () => {
       // Waiting for a build that was never triggered is the one thing worth skipping,
       // and Haven cannot read a definition from a URL that is not serving yet.
       expect(waitForOrigin).not.toHaveBeenCalled();
+      expect(statusOf(result.steps, "start-build")).toBe("skipped");
       expect(statusOf(result.steps, "wait-origin")).toBe("skipped");
       expect(statusOf(result.steps, "propose")).toBe("skipped");
 
@@ -380,7 +390,8 @@ describe("createApp", () => {
       expect(result.error).toBe("Invalid Cloudflare API token");
       expect(result.repository?.fullName).toBe("octocat/team-notes");
       expect(statusOf(result.steps, "create-worker")).toBe("failed");
-      expect(statusOf(result.steps, "commit-identity")).toBe("skipped");
+      expect(statusOf(result.steps, "commit-identity")).toBe("done");
+      expect(statusOf(result.steps, "launch-agent")).toBe("done");
     });
 
     it("stops when push-to-deploy cannot be configured, because nothing would deploy", async () => {
@@ -403,7 +414,8 @@ describe("createApp", () => {
       const result = await createApp({ identity, owner: "octocat" }, deps);
 
       expect(result.error).toContain("GitHub App");
-      expect(commitFiles).not.toHaveBeenCalled();
+      expect(commitFiles).toHaveBeenCalled();
+      expect(statusOf(result.steps, "commit-identity")).toBe("done");
     });
 
     it("reports the probe's own reason when the app never comes live", async () => {
@@ -423,6 +435,7 @@ describe("createApp", () => {
       expect(result.error).toContain("Settings, Builds");
       expect(statusOf(result.steps, "wait-origin")).toBe("failed");
       expect(statusOf(result.steps, "propose")).toBe("skipped");
+      expect(statusOf(result.steps, "launch-agent")).toBe("done");
     });
   });
 
@@ -430,8 +443,8 @@ describe("createApp", () => {
     it("skips the agent when no Cursor key is connected, and still installs", async () => {
       const result = await createApp({ identity, owner: "octocat" }, makeDeps({ cursor: undefined }));
 
-      expect(statusOf(result.steps, "launch-agent")).toBe("skipped");
       expect(statusOf(result.steps, "propose")).toBe("done");
+      expect(statusOf(result.steps, "launch-agent")).toBe("skipped");
       expect(result.error).toBeNull();
     });
 
@@ -447,8 +460,8 @@ describe("createApp", () => {
       const result = await createApp({ identity, owner: "octocat" }, deps);
 
       expect(result.error).toBeNull();
-      expect(statusOf(result.steps, "launch-agent")).toBe("failed");
       expect(statusOf(result.steps, "propose")).toBe("done");
+      expect(statusOf(result.steps, "launch-agent")).toBe("failed");
       expect(result.warnings).toContain("Cursor rate limit reached");
     });
 
@@ -477,7 +490,7 @@ describe("createApp", () => {
       expect(result.warnings.join(" ")).toContain("team-notes.acme.workers.dev");
     });
 
-    it("surfaces install warnings, such as a database that could not be created", async () => {
+    it("surfaces install warnings that the user can still act on", async () => {
       const deps = makeDeps({
         haven: {
           proposeApp: vi.fn(async () => ({
@@ -494,6 +507,28 @@ describe("createApp", () => {
 
       expect(result.installedAppInstanceId).toBe("instance-1");
       expect(result.warnings).toContain("The database main could not be created.");
+    });
+
+    it("drops Haven's implicit-create warning", async () => {
+      // The server has never seen the id because nothing has been written yet.
+      // The registration already maps it; repeating that here looks like the
+      // builder failed to create a database it was never meant to create.
+      const deps = makeDeps({
+        haven: {
+          proposeApp: vi.fn(async () => ({
+            ok: true as const,
+            appId: "team-notes",
+            appInstanceId: "instance-1",
+            label: "Team Notes",
+            warnings: ['Could not create the database "main": Not found'],
+          })),
+        },
+      });
+
+      const result = await createApp({ identity, owner: "octocat" }, deps);
+
+      expect(result.installedAppInstanceId).toBe("instance-1");
+      expect(result.warnings).toEqual([]);
     });
   });
 });

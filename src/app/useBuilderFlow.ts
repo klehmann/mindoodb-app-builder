@@ -20,15 +20,25 @@ import {
 } from "@/core/appIdentity";
 import { isCloudflareTokenStale } from "@/core/credentials";
 import {
-  createApp as runCreateApp,
+  CLOUDFLARE_PHASE_STEP_IDS,
+  CURSOR_PHASE_STEP_IDS,
+  GITHUB_PHASE_STEP_IDS,
+  createCloudflarePhaseSteps,
+  createCursorPhaseSteps,
   createDeployNowSteps,
+  createGitHubPhaseSteps,
+  createGitHubProject as runCreateGitHubProject,
   createInitialSteps,
+  createRegisterHavenSteps,
   deployNow as runDeployNow,
+  deployToCloudflare as runDeployToCloudflare,
+  launchCursorWork as runLaunchCursorWork,
+  registerInHaven as runRegisterInHaven,
   type AgentHandle,
-  type CreateAppDependencies,
   type CreateAppResult,
   type DeployNowDependencies,
   type FlowStep,
+  type FlowStepId,
 } from "@/core/createAppFlow";
 import {
   commitFiles,
@@ -84,6 +94,9 @@ export function useBuilderFlow(
   const running = ref(false);
   const result = ref<CreateAppResult | null>(null);
   const agent = ref<AgentHandle | null>(null);
+  /** Survives later phase step lists that no longer include `wait-origin`. */
+  const originReady = ref(false);
+  const wiredForBuild = ref(false);
 
   const identity = computed<AppIdentity>(() => ({
     label: form.value.label.trim(),
@@ -102,17 +115,63 @@ export function useBuilderFlow(
     if (!isValidSlug(identity.value.slug)) {
       return "The repository name may only contain lowercase letters, digits, and dashes.";
     }
-    const status = session.credentialsStatus.value;
-    if (!status.github) {
-      return "Connect GitHub first.";
+    return null;
+  });
+
+  const identityValid = computed(() => formError.value === null);
+
+  const githubError = computed(() => {
+    if (formError.value) {
+      return formError.value;
     }
-    if (!status.cloudflare) {
-      return "Connect Cloudflare first.";
+    if (!session.credentialsStatus.value.github) {
+      return "Connect GitHub first.";
     }
     return null;
   });
 
-  const canStart = computed(() => formError.value === null && !running.value);
+  const cloudflareError = computed(() => {
+    if (!session.credentialsStatus.value.github) {
+      return "Connect GitHub first.";
+    }
+    if (!session.credentialsStatus.value.cloudflare) {
+      return "Connect Cloudflare first.";
+    }
+    if (!result.value?.repository) {
+      return "Create the GitHub repository first, or skip back if it already exists.";
+    }
+    return null;
+  });
+
+  const cursorError = computed(() => {
+    if (!result.value?.repository) {
+      return "Create the GitHub repository first.";
+    }
+    if (!session.credentialsStatus.value.cursor) {
+      return "Paste a Cursor API key to start an agent.";
+    }
+    return null;
+  });
+
+  const canCreateRepo = computed(() => githubError.value === null && !running.value);
+  const canDeploy = computed(() => cloudflareError.value === null && !running.value);
+  const canRegisterHaven = computed(
+    () => Boolean(result.value?.worker) && originReady.value && !running.value,
+  );
+  const canLaunchCursor = computed(() => cursorError.value === null && !running.value);
+
+  function stepsIn(ids: readonly FlowStepId[]): FlowStep[] {
+    return steps.value.filter((step) => ids.includes(step.id));
+  }
+
+  const githubSteps = computed(() => stepsIn(GITHUB_PHASE_STEP_IDS));
+  /*
+   * The rescue run's ids (`deployNow`) are a subset of the phase's, so the phase list
+   * alone covers both. It used to append `check-repo-access` and `start-build`, which
+   * read as though the phase were missing them.
+   */
+  const cloudflareSteps = computed(() => stepsIn(CLOUDFLARE_PHASE_STEP_IDS));
+  const cursorSteps = computed(() => stepsIn(CURSOR_PHASE_STEP_IDS));
 
   /** Keep the slug in step with the name until the user takes it over. */
   function onLabelInput(label: string): void {
@@ -290,24 +349,111 @@ export function useBuilderFlow(
     }
   }
 
-  async function start(): Promise<void> {
-    if (!canStart.value) {
+  function mergeOutcome(next: CreateAppResult): void {
+    if (next.steps.some((step) => step.id === "wait-origin" && step.status === "done")) {
+      originReady.value = true;
+    }
+    if (next.steps.some((step) => step.id === "connect-builds" && step.status === "done")) {
+      wiredForBuild.value = true;
+    }
+    const previous = result.value;
+    result.value = {
+      ...next,
+      repository: next.repository ?? previous?.repository ?? null,
+      worker: next.worker ?? previous?.worker ?? null,
+      agent: next.agent ?? previous?.agent ?? null,
+      installedAppInstanceId:
+        next.installedAppInstanceId ?? previous?.installedAppInstanceId ?? null,
+      warnings: [...(previous?.warnings ?? []), ...next.warnings],
+    };
+    agent.value = result.value.agent;
+    steps.value = next.steps.map((step) => ({ ...step }));
+  }
+
+  async function createGitHubProject(): Promise<void> {
+    if (!canCreateRepo.value) {
+      return;
+    }
+    running.value = true;
+    steps.value = createGitHubPhaseSteps();
+
+    try {
+      mergeOutcome(
+        await runCreateGitHubProject(
+          {
+            identity: identity.value,
+            owner: session.credentials.value.githubOwner,
+            private: form.value.private,
+          },
+          buildDependencies(),
+        ),
+      );
+    } finally {
+      running.value = false;
+    }
+  }
+
+  async function deployCloudflare(): Promise<void> {
+    const repository = result.value?.repository;
+    if (!canDeploy.value || !repository) {
       return;
     }
     await refreshCloudflareIfStale();
     running.value = true;
-    steps.value = createInitialSteps();
-    result.value = null;
-    agent.value = null;
+    steps.value = createCloudflarePhaseSteps();
 
     try {
-      const outcome = await runCreateApp(
-        { identity: identity.value, owner: session.credentials.value.githubOwner },
-        buildDependencies(),
+      mergeOutcome(
+        await runDeployToCloudflare(
+          {
+            identity: identity.value,
+            repository,
+            worker: result.value?.worker,
+            skipPropose: true,
+          },
+          buildDependencies(),
+        ),
       );
-      result.value = outcome;
-      agent.value = outcome.agent;
-      steps.value = outcome.steps.map((step) => ({ ...step }));
+    } finally {
+      running.value = false;
+    }
+  }
+
+  async function registerHaven(): Promise<void> {
+    const worker = result.value?.worker;
+    if (!canRegisterHaven.value || !worker) {
+      return;
+    }
+    running.value = true;
+    steps.value = createRegisterHavenSteps();
+
+    try {
+      mergeOutcome(
+        await runRegisterInHaven(
+          { worker, repository: result.value?.repository },
+          buildDependencies(),
+        ),
+      );
+    } finally {
+      running.value = false;
+    }
+  }
+
+  async function launchCursor(): Promise<void> {
+    const repository = result.value?.repository;
+    if (!canLaunchCursor.value || !repository) {
+      return;
+    }
+    running.value = true;
+    steps.value = createCursorPhaseSteps();
+
+    try {
+      mergeOutcome(
+        await runLaunchCursorWork(
+          { repository, agent: result.value?.agent },
+          buildDependencies(),
+        ),
+      );
     } finally {
       running.value = false;
     }
@@ -322,12 +468,10 @@ export function useBuilderFlow(
    */
   const canBuildNow = computed(() => {
     const outcome = result.value;
-    if (!outcome || !outcome.repository || !outcome.worker) {
+    if (!outcome || !outcome.repository || !outcome.worker || originReady.value) {
       return false;
     }
-    const statusOf = (id: string): string | undefined =>
-      outcome.steps.find((step) => step.id === id)?.status;
-    return statusOf("connect-builds") === "done" && statusOf("wait-origin") !== "done";
+    return wiredForBuild.value;
   });
 
   /**
@@ -371,23 +515,39 @@ export function useBuilderFlow(
     steps.value = createInitialSteps();
     result.value = null;
     agent.value = null;
+    originReady.value = false;
+    wiredForBuild.value = false;
   }
 
   return {
     agent,
     buildNow,
     canBuildNow,
-    canStart,
+    canCreateRepo,
+    canDeploy,
+    canLaunchCursor,
+    canRegisterHaven,
+    cloudflareError,
+    cloudflareSteps,
+    createGitHubProject,
+    cursorError,
+    cursorSteps,
+    githubSteps,
+    deployCloudflare,
     form,
     formError,
+    githubError,
     identity,
+    identityValid,
+    launchCursor,
     onLabelInput,
     onSlugInput,
+    originReady,
     plannedRepositoryName,
+    registerHaven,
     reset,
     result,
     running,
-    start,
     steps,
   };
 }

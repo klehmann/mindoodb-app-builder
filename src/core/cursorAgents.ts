@@ -170,6 +170,30 @@ export function isTerminalRunStatus(status: CursorRunStatus): boolean {
 }
 
 /**
+ * Cursor Cloud Agents clone through Cursor's own GitHub App, not this builder's
+ * token — that token is never sent (`envVars` is deliberately omitted). A private
+ * repository the builder just created is therefore invisible until that other
+ * installation can see it, which is what "cannot access the repository" means.
+ */
+export function explainCursorLaunchError(message: string, status: number): string {
+  const looksLikeAccess =
+    status === 403
+    || status === 404
+    || /access the repo/i.test(message)
+    || /cannot access/i.test(message)
+    || /not (have )?access/i.test(message)
+    || /repository.*(not found|private|permission)/i.test(message);
+  if (!looksLikeAccess) {
+    return message;
+  }
+  return (
+    `${message} Cursor Cloud Agents use Cursor's GitHub App, not this builder's token. ` +
+    "Install it at https://github.com/apps/cursor/installations/new and give it " +
+    '"All repositories" — or add this one after it exists — then start the agent again.'
+  );
+}
+
+/**
  * The first prompt: read the repo's own rules, then do what the user asked.
  *
  * Kept this short on purpose. `AGENTS.md` in the generated repo is the real brief — it
@@ -206,23 +230,35 @@ export interface LaunchAgentResult {
 }
 
 export async function launchAgent(input: LaunchAgentInput): Promise<LaunchAgentResult> {
-  const payload = await cursorRequest<{ agent?: RawAgent; run?: RawRun }>({
-    apiKey: input.apiKey,
-    method: "POST",
-    path: "/v1/agents",
-    fetchImpl: input.fetchImpl,
-    body: {
-      prompt: { text: input.prompt?.trim() || buildLaunchPrompt() },
-      repos: [
-        {
-          url: input.repositoryUrl,
-          ...(input.branch ? { startingRef: input.branch } : {}),
-        },
-      ],
-      ...(input.mode ? { mode: input.mode } : {}),
-      ...(input.autoCreatePR === undefined ? {} : { autoCreatePR: input.autoCreatePR }),
-    },
-  });
+  let payload: { agent?: RawAgent; run?: RawRun };
+  try {
+    payload = await cursorRequest<{ agent?: RawAgent; run?: RawRun }>({
+      apiKey: input.apiKey,
+      method: "POST",
+      path: "/v1/agents",
+      fetchImpl: input.fetchImpl,
+      body: {
+        prompt: { text: input.prompt?.trim() || buildLaunchPrompt() },
+        repos: [
+          {
+            url: input.repositoryUrl,
+            ...(input.branch ? { startingRef: input.branch } : {}),
+          },
+        ],
+        ...(input.mode ? { mode: input.mode } : {}),
+        ...(input.autoCreatePR === undefined ? {} : { autoCreatePR: input.autoCreatePR }),
+      },
+    });
+  } catch (error) {
+    if (error instanceof CursorApiError) {
+      throw new CursorApiError(
+        explainCursorLaunchError(error.message, error.status),
+        error.status,
+        error.code,
+      );
+    }
+    throw error;
+  }
 
   return { agent: toAgent(payload.agent), run: toRun(payload.run) };
 }

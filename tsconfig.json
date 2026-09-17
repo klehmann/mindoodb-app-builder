@@ -6,7 +6,8 @@
     "strict": true,
     "jsx": "preserve",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["node"],
+    // `vite/client` is what types the asset imports (`*.jpg`, `*.svg`) and `import.meta.env`.
+    "types": ["node", "vite/client"],
     "skipLibCheck": true,
     "resolveJsonModule": true,
     // The Vite configs import from `src/` with an explicit extension, which is what

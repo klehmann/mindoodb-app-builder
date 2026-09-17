@@ -25,6 +25,8 @@ import type { UseGitHubConnectReturn } from "@/app/useGitHubConnect";
 import type { CloudflareAccount } from "@/core/cloudflare";
 import type { BuilderCredentials, CredentialsStatus } from "@/core/credentials";
 
+export type ConnectAccountId = "github" | "cloudflare" | "cursor";
+
 const props = defineProps<{
   credentials: BuilderCredentials;
   status: CredentialsStatus;
@@ -42,7 +44,23 @@ const props = defineProps<{
   cloudflare: UseCloudflareConnectReturn;
   /** Accounts the connected Cloudflare token can act on. Empty until connected. */
   cloudflareAccounts: CloudflareAccount[];
+  /** Which account sections to show. Defaults to all three. */
+  accounts?: ConnectAccountId[];
+  /** Hide the panel heading when a wizard page already has one. */
+  showHeader?: boolean;
 }>();
+
+const visibleAccounts = computed(() => props.accounts ?? ["github", "cloudflare", "cursor"]);
+const showGitHub = computed(() => visibleAccounts.value.includes("github"));
+const showCloudflare = computed(() => visibleAccounts.value.includes("cloudflare"));
+const showCursor = computed(() => visibleAccounts.value.includes("cursor"));
+const showPanelHeader = computed(() => props.showHeader !== false);
+/**
+ * Embedded in a wizard task, this is not a card of its own: the task already says which
+ * service this is, so a nested box with a repeated heading reads as two chores.
+ */
+const embedded = computed(() => props.showHeader === false);
+const showAccountNames = computed(() => visibleAccounts.value.length > 1);
 
 const emit = defineEmits<{ save: [BuilderCredentials] }>();
 
@@ -70,7 +88,39 @@ const cloudflareFieldsVisible = computed(
   () => (props.configLoaded && !canConnectCloudflare.value) || cloudflareManual.value,
 );
 
+/*
+ * Deep links to where each token is actually created. Pasting a token is the fallback
+ * path, so it is the one where a user is most likely to be stuck — "needs scope X" is no
+ * help to someone who has never opened GitHub's developer settings.
+ *
+ * GitHub's new-token form reads `scopes` and `description` from the query string, so the
+ * one permission we need arrives already ticked. Cloudflare has no such prefill, hence
+ * the written-out permission names for that one.
+ */
+const githubTokenUrl =
+  "https://github.com/settings/tokens/new?scopes=repo&description=MindooDB%20App%20Builder";
+const cloudflareTokenUrl = "https://dash.cloudflare.com/profile/api-tokens";
 const cursorKeysUrl = "https://cursor.com/dashboard?tab=api-keys";
+
+/**
+ * Name the token's account as soon as it is pasted, rather than after Save.
+ *
+ * This is the earliest point anything can confirm the token works — every other GitHub
+ * call happens after the user has committed to creating a project — so the login
+ * appearing in the owner field doubles as "this token is good".
+ *
+ * Only ever fills a blank owner: an organization the user typed is their decision, not
+ * something a lookup should overwrite.
+ */
+async function identifyGitHubToken(): Promise<void> {
+  if (!draft.githubToken.trim() || draft.githubOwner.trim()) {
+    return;
+  }
+  const login = await props.github.identifyToken(draft.githubToken);
+  if (login) {
+    draft.githubOwner = login;
+  }
+}
 
 function save(): void {
   emit("save", { ...draft });
@@ -78,24 +128,24 @@ function save(): void {
 </script>
 
 <template>
-  <section class="panel">
-    <header>
+  <section class="panel" :class="{ 'panel--bare': embedded }">
+    <header v-if="showPanelHeader">
       <h2>Accounts</h2>
       <p class="muted">
         Stored in one document in your App Builder database, encrypted for you personally.
         Nobody else can read it, not even someone you share that database with.
       </p>
       <p v-if="!canStore" class="warn">
-        The <code>appbuilder</code> database is not available, so the connections are kept
-        for this session only. Install the builder from Haven's App Store or its "From
-        URL" path to have them remembered.
+        These connections will only last until you close this page. To have them
+        remembered, install the App Builder from Haven's App Store — or add it by URL —
+        instead of opening it directly.
       </p>
     </header>
 
     <!-- GitHub -->
-    <div class="account">
-      <div class="account-head">
-        <h3>GitHub</h3>
+    <div v-if="showGitHub" class="account">
+      <div v-if="showAccountNames || status.github" class="account-head">
+        <h3 v-if="showAccountNames">GitHub</h3>
         <span v-if="status.github" class="badge">connected</span>
       </div>
 
@@ -143,11 +193,12 @@ function save(): void {
           </button>
         </div>
       </template>
-      <p v-else-if="configLoaded" class="hint">
-        This builder has no GitHub application registered, so there is nothing to connect
-        to — paste a token instead.
-      </p>
-      <p v-else class="hint">Checking what this builder can connect to…</p>
+      <!--
+        Nothing is said about *why* there is no connect button here. Whether this
+        deployment has a GitHub application registered is our problem, not the user's,
+        and the token field below already says what to do instead.
+      -->
+      <p v-else-if="!configLoaded" class="hint">Checking how you can connect…</p>
 
       <template v-if="githubFieldsVisible">
         <div class="field">
@@ -159,17 +210,26 @@ function save(): void {
             autocomplete="off"
             spellcheck="false"
             placeholder="github_pat_…"
+            @blur="identifyGitHubToken"
           />
+          <p v-if="github.identifying.value" class="hint">Checking the token with GitHub…</p>
+          <p v-else-if="github.identifyError.value" class="warn">
+            {{ github.identifyError.value }}
+          </p>
           <p class="hint">
-            Needs permission to create repositories: classic <code>repo</code>, or
-            fine-grained with Contents and Administration write. Used only by this page —
-            GitHub allows browser calls, so it never reaches the builder host.
+            <a :href="githubTokenUrl" target="_blank" rel="noreferrer noopener"
+              >Create a token on GitHub</a
+            >
+            — the link opens GitHub's form with the one permission we need,
+            <code>repo</code>, already ticked. Check that it is, choose how long the token
+            should last, press <strong>Generate token</strong>, then copy the value into
+            the field above. GitHub shows it only once.
           </p>
         </div>
       </template>
 
-      <!-- Always shown: filled in automatically after connecting, but an organization is
-           a choice only the user can make. -->
+      <!-- Always shown: filled in automatically on save, but an organization is a choice
+           only the user can make. -->
       <div class="field">
         <label for="github-owner">GitHub owner</label>
         <input
@@ -180,14 +240,17 @@ function save(): void {
           spellcheck="false"
           placeholder="your-user-or-org"
         />
-        <p class="hint">Leave blank to create repositories under the token's own account.</p>
+        <p class="hint">
+          Read from your token, so there is nothing to look up. Change it only to put the
+          app under an organization you belong to instead.
+        </p>
       </div>
     </div>
 
     <!-- Cloudflare -->
-    <div class="account">
-      <div class="account-head">
-        <h3>Cloudflare</h3>
+    <div v-if="showCloudflare" class="account">
+      <div v-if="showAccountNames || status.cloudflare" class="account-head">
+        <h3 v-if="showAccountNames">Cloudflare</h3>
         <span v-if="status.cloudflare" class="badge">connected</span>
       </div>
 
@@ -223,11 +286,7 @@ function save(): void {
           </button>
         </div>
       </template>
-      <p v-else-if="configLoaded" class="hint">
-        This builder has no Cloudflare OAuth client registered, so there is nothing to
-        connect to — paste a token instead.
-      </p>
-      <p v-else class="hint">Checking what this builder can connect to…</p>
+      <p v-else-if="!configLoaded" class="hint">Checking how you can connect…</p>
 
       <template v-if="cloudflareFieldsVisible">
         <div class="field">
@@ -240,9 +299,17 @@ function save(): void {
             spellcheck="false"
           />
           <p class="hint">
-            Must be a <strong>user</strong> token, not an account token — the Workers Builds
-            API rejects account tokens. Needs Workers Scripts&nbsp;Edit and Workers Builds
-            Configuration&nbsp;Edit.
+            <a :href="cloudflareTokenUrl" target="_blank" rel="noreferrer noopener"
+              >Create a token on Cloudflare</a
+            >
+            — press <strong>Create Token</strong>, scroll down to
+            <strong>Create Custom Token</strong>, and add these two permissions:
+            Workers&nbsp;Scripts&nbsp;→&nbsp;Edit and Workers&nbsp;Builds
+            Configuration&nbsp;→&nbsp;Edit. Then copy the token into the field above.
+          </p>
+          <p class="hint">
+            Use the <strong>My Profile</strong> page linked above rather than a token made
+            under an account — publishing rejects account-owned tokens.
           </p>
         </div>
       </template>
@@ -273,9 +340,9 @@ function save(): void {
     </div>
 
     <!-- Cursor: no connect flow exists, so this one is typed. -->
-    <div class="account">
+    <div v-if="showCursor" class="account">
       <div class="account-head">
-        <h3>Cursor</h3>
+        <h3 v-if="showAccountNames">Cursor</h3>
         <span v-if="status.cursor" class="badge">connected</span>
         <span v-else class="badge badge--soft">optional</span>
       </div>
@@ -300,12 +367,20 @@ function save(): void {
     </div>
 
     <button type="button" :disabled="saving" @click="save">
-      {{ saving ? "Saving…" : "Save accounts" }}
+      {{ saving ? "Saving…" : showAccountNames ? "Save accounts" : "Save" }}
     </button>
   </section>
 </template>
 
 <style scoped>
+.panel--bare {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  gap: 0.6rem;
+}
+
 .account {
   display: flex;
   flex-direction: column;

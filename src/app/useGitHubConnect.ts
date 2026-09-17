@@ -12,7 +12,12 @@
 import { computed, onBeforeUnmount, ref, type ComputedRef, type Ref } from "vue";
 
 import { pollGitHubDeviceFlow, startGitHubDeviceFlow } from "@/app/hostApi";
-import { findAppInstallation, githubAppInstallUrl } from "@/core/github";
+import {
+  findAppInstallation,
+  getAuthenticatedUser,
+  githubAppInstallUrl,
+  GitHubError,
+} from "@/core/github";
 
 export type GitHubConnectStatus = "idle" | "starting" | "waiting" | "connected" | "failed";
 
@@ -38,6 +43,13 @@ export interface UseGitHubConnectReturn {
   installUrl: ComputedRef<string>;
   /** Re-run the lookup after the user says they have installed it. */
   checkInstallation: () => Promise<void>;
+  /**
+   * Who a pasted token belongs to. Returns the login, or `""` with {@link identifyError}
+   * set — never throws, because this runs on blur and must not interrupt typing.
+   */
+  identifyToken: (token: string) => Promise<string>;
+  identifying: Ref<boolean>;
+  identifyError: Ref<string | null>;
 }
 
 export function useGitHubConnect(
@@ -86,6 +98,42 @@ export function useGitHubConnect(
 
   async function checkInstallation(): Promise<void> {
     await checkInstallationWith(context.token());
+  }
+
+  const identifying = ref(false);
+  const identifyError = ref<string | null>(null);
+
+  /**
+   * Ask `GET /user` who a pasted token belongs to.
+   *
+   * Two jobs in one call. It saves the user typing their own login, and it is the first
+   * moment anything can tell them the token is usable at all — every other GitHub call
+   * happens after they have already committed to creating a project.
+   *
+   * 401 is worth its own wording: it is nearly always a truncated paste or an expired
+   * token, and "Bad credentials" does not say either.
+   */
+  async function identifyToken(token: string): Promise<string> {
+    const trimmed = token.trim();
+    identifyError.value = null;
+    if (!trimmed) {
+      return "";
+    }
+
+    identifying.value = true;
+    try {
+      return (await getAuthenticatedUser(trimmed)).login;
+    } catch (error) {
+      identifyError.value =
+        error instanceof GitHubError && error.status === 401
+          ? "GitHub did not accept this token. Check that the whole value was copied, and that it has not expired."
+          : error instanceof Error
+            ? error.message
+            : "The token could not be checked with GitHub.";
+      return "";
+    } finally {
+      identifying.value = false;
+    }
   }
 
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -203,5 +251,8 @@ export function useGitHubConnect(
     installation,
     installUrl,
     checkInstallation,
+    identifyToken,
+    identifying,
+    identifyError,
   };
 }

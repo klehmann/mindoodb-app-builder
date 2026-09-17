@@ -95,10 +95,16 @@ export function useBuilderSession() {
         credentialsDocId.value = loaded.documentId;
       }
     } catch (connectError) {
-      error.value = readErrorMessage(
-        connectError,
-        "Could not reach Haven. Open the builder from Haven rather than directly in a browser tab.",
-      );
+      /*
+       * Deliberately not `readErrorMessage`: the bridge's own wording names internals
+       * ("Missing mindoodbAppLaunchId in the current URL"), which tells a user nothing
+       * and reads as a crash. Every cause has the same fix from their side, so they get
+       * that fix, and whoever is debugging gets the original in the console.
+       */
+      console.error("[app-builder] Could not connect to Haven:", connectError);
+      error.value =
+        "Could not connect to Haven. Open the App Builder from your Haven workspace " +
+        "rather than directly in a browser tab, then reload this page.";
     } finally {
       connecting.value = false;
     }

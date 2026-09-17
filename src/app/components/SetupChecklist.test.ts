@@ -29,7 +29,7 @@ describe("SetupChecklist", () => {
     const panel = render();
 
     expect(panel.text()).toContain("Ready to build");
-    expect(panel.findAll("li")).toHaveLength(5);
+    expect(panel.findAll("li")).toHaveLength(6);
     expect(panel.findAll("li.state-done")).toHaveLength(5);
   });
 
@@ -45,7 +45,7 @@ describe("SetupChecklist", () => {
     const panel = render({ githubInstallation: "missing" });
     const link = panel
       .findAll("li")
-      .find((li) => li.text().includes("GitHub App installed"))
+      .find((li) => li.text().includes("MindooDB GitHub App"))
       ?.find("a.button");
 
     expect(link?.attributes("href")).toBe(

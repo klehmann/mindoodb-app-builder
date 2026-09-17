@@ -36,8 +36,9 @@ describe("buildSetupItems", () => {
       "cloudflare-account",
       "cloudflare-git",
       "cursor",
+      "cursor-github",
     ]);
-    expect(items.every((entry) => entry.state === "done")).toBe(true);
+    expect(items.filter((entry) => entry.key !== "cursor-github").every((entry) => entry.state === "done")).toBe(true);
     expect(countBlockers(items)).toBe(0);
   });
 
@@ -90,13 +91,39 @@ describe("buildSetupItems", () => {
     const entry = item(ready({ cloudflareGit: "unconfirmed" }), "cloudflare-git");
 
     expect(entry.state).toBe("unsure");
-    expect(entry.actionUrl).toBe("https://dash.cloudflare.com/acct-1/workers-and-pages");
+    expect(entry.actionUrl).toBe(
+      "https://github.com/apps/cloudflare-workers-and-pages/installations/new",
+    );
   });
 
   it("marks a missing Cursor key optional", () => {
     const entry = item(ready({ cursorReady: false }), "cursor");
 
     expect(entry.state).toBe("optional");
+  });
+
+  it("states that Cursor needs its own GitHub App for private repositories", () => {
+    // Same reason Cloudflare does: GitHub grants automatic access only to
+    // repositories an app creates itself, and this builder never gives Cursor a
+    // token. The item never blocks — nothing here can see Cursor's installation.
+    const entry = item(ready(), "cursor-github");
+
+    expect(entry.state).toBe("optional");
+    expect(entry.actionUrl).toBe("https://github.com/apps/cursor/installations/new");
+    expect(entry.detail).toContain("All repositories");
+    expect(countBlockers(buildSetupItems(ready()))).toBe(0);
+  });
+
+  it("on the precise path, points Cloudflare and Cursor at adding the new repository", () => {
+    const input = ready({ accessPath: "precise", cloudflareGit: "unconfirmed" });
+
+    expect(item(input, "cloudflare-git").actionUrl).toBe(
+      "https://github.com/apps/cloudflare-workers-and-pages/installations/new",
+    );
+    expect(item(input, "cloudflare-git").detail).toContain("settings/installations");
+    expect(item(ready({ accessPath: "precise" }), "cursor-github").actionLabel).toBe(
+      "Add a repository",
+    );
   });
 
   it("asks for the accounts themselves before anything else", () => {

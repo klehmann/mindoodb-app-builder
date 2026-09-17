@@ -56,9 +56,9 @@ function recheck(item: SetupItem): void {
       </span>
     </div>
     <p class="hint">
-      Each of these is granted once per account, in GitHub's or Cloudflare's own
-      interface — no API can grant them for you. After that, building an app is a name
-      and a brief.
+      Three GitHub Apps, each installed with one click. We can confirm MindooDB's.
+      Cloudflare's and Cursor's repository selection we cannot see — the easy path is
+      All repositories; the precise path adds each new repo after it exists.
     </p>
 
     <ul class="items">

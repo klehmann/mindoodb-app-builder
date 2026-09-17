@@ -1,29 +1,17 @@
 /**
- * The build, as a sequence of named steps.
+ * The build, as named phases that match the wizard pages.
  *
- * Eight things have to happen, in an order that is not arbitrary. The first is a
- * precondition check, deliberately ahead of every side effect: failing there costs
- * nothing, while failing after the Worker exists leaves debris in the user's Cloudflare
- * account and a repository name that is already taken.
+ * GitHub holds the source, Cloudflare hosts every push, Cursor iterates. Those are
+ * separate pages with their own buttons, so the work is split the same way:
  *
- *  1. **check-name** — is the repository name free?
- *  2. **create-repo** — copy the starter template.
- *  2b. **check-repo-access** — ask Cloudflare to read the new repository. A refusal is
- *     reported and does not stop the flow, because the repository already exists; see
- *     the step itself for why aborting would be the worse answer.
- *  3. **create-worker** — a placeholder Worker, so the URL exists and Cloudflare has an
- *     immutable script tag. No clone, no install, no build: the real build happens in
- *     Cloudflare's CI, which is also what every later push will use.
- *  4. **connect-builds** — wire push-to-deploy. Before the identity commit, so that
- *     commit *is* the first deploy rather than needing a second push to wake CI up.
- *  5. **commit-identity** — name the app in the four files that carry its identity and
- *     write the user's description into `TASK.md`. This push triggers the first build.
- *  6. **wait-origin** — poll `haven-app.json` until it is really being served. Haven's
- *     install reads the same file, so a pass here is evidence rather than a guess.
- *  7. **launch-agent** — hand the repository to a Cursor cloud agent. Non-fatal: the app
- *     exists and is deployed either way, and the user can start an agent by hand.
- *  8. **propose** — ask Haven to install it. The user still approves in Haven's own
- *     dialog; a decline is an answer, not an error.
+ *  1. **GitHub** — check the name, copy the starter, commit the identity files.
+ *  2. **Cloudflare** — make sure its GitHub App can read the repo, create the Worker,
+ *     wire push-to-deploy, start the first build, wait until the origin is serving,
+ *     then offer the live URL to Haven.
+ *  3. **Cursor** — hand the repository to a cloud agent. Optional, and never fatal.
+ *
+ * The identity commit happens on the GitHub page, before Cloudflare is involved, so
+ * the first build is started explicitly rather than by hoping a later push wakes CI.
  *
  * Everything reaches the outside world through {@link CreateAppDependencies}, so the
  * whole sequence — including every failure path — is testable without a network.
@@ -37,14 +25,14 @@ import type { OriginProbeResult } from "./originProbe";
 export type FlowStepId =
   | "check-name"
   | "create-repo"
+  | "commit-identity"
   | "check-repo-access"
   | "create-worker"
   | "connect-builds"
-  | "commit-identity"
   | "start-build"
   | "wait-origin"
-  | "launch-agent"
-  | "propose";
+  | "propose"
+  | "launch-agent";
 
 export type FlowStepStatus = "pending" | "running" | "done" | "skipped" | "failed";
 
@@ -55,16 +43,27 @@ export interface FlowStep {
   detail: string;
 }
 
-export const FLOW_STEP_IDS: FlowStepId[] = [
+export const GITHUB_PHASE_STEP_IDS: FlowStepId[] = [
   "check-name",
   "create-repo",
+  "commit-identity",
+];
+
+export const CLOUDFLARE_PHASE_STEP_IDS: FlowStepId[] = [
   "check-repo-access",
   "create-worker",
   "connect-builds",
-  "commit-identity",
+  "start-build",
   "wait-origin",
-  "launch-agent",
   "propose",
+];
+
+export const CURSOR_PHASE_STEP_IDS: FlowStepId[] = ["launch-agent"];
+
+export const FLOW_STEP_IDS: FlowStepId[] = [
+  ...GITHUB_PHASE_STEP_IDS,
+  ...CLOUDFLARE_PHASE_STEP_IDS,
+  ...CURSOR_PHASE_STEP_IDS,
 ];
 
 /**
@@ -79,6 +78,8 @@ export const DEPLOY_NOW_STEP_IDS: FlowStepId[] = [
   "propose",
 ];
 
+export const REGISTER_HAVEN_STEP_IDS: FlowStepId[] = ["propose"];
+
 function createSteps(ids: FlowStepId[]): FlowStep[] {
   return ids.map((id) => ({ id, status: "pending", detail: "" }));
 }
@@ -87,8 +88,24 @@ export function createInitialSteps(): FlowStep[] {
   return createSteps(FLOW_STEP_IDS);
 }
 
+export function createGitHubPhaseSteps(): FlowStep[] {
+  return createSteps(GITHUB_PHASE_STEP_IDS);
+}
+
+export function createCloudflarePhaseSteps(): FlowStep[] {
+  return createSteps(CLOUDFLARE_PHASE_STEP_IDS);
+}
+
+export function createCursorPhaseSteps(): FlowStep[] {
+  return createSteps(CURSOR_PHASE_STEP_IDS);
+}
+
 export function createDeployNowSteps(): FlowStep[] {
   return createSteps(DEPLOY_NOW_STEP_IDS);
+}
+
+export function createRegisterHavenSteps(): FlowStep[] {
+  return createSteps(REGISTER_HAVEN_STEP_IDS);
 }
 
 export interface WorkerDeployment {
@@ -132,6 +149,14 @@ export interface CreateAppDependencies {
       repository: GitHubRepository;
       worker: WorkerDeployment;
     }) => Promise<{ detail: string }>;
+    /**
+     * Start a build with no push behind it. Optional on the one-shot so older callers
+     * still compile; the Cloudflare page always supplies it.
+     */
+    startBuild?: (input: {
+      worker: WorkerDeployment;
+      branch: string;
+    }) => Promise<{ detail: string }>;
   };
   waitForOrigin: (input: { url: string; expectedAppId: string }) => Promise<OriginProbeResult>;
   cursor?: {
@@ -150,12 +175,12 @@ export interface CreateAppDependencies {
 }
 
 /**
- * `deployNow` needs one thing `createApp` never does: a way to start a build with no
+ * `deployNow` needs one thing `createApp` never used to: a way to start a build with no
  * push behind it. Required rather than optional, so the button cannot be offered by a
  * caller that has no way to honour it.
  */
 export type DeployNowDependencies = CreateAppDependencies & {
-  cloudflare: {
+  cloudflare: CreateAppDependencies["cloudflare"] & {
     startBuild: (input: {
       worker: WorkerDeployment;
       branch: string;
@@ -187,16 +212,17 @@ function readErrorMessage(error: unknown, fallback: string): string {
 }
 
 /**
- * Step bookkeeping, shared by the two runs so they report the same way.
+ * Step bookkeeping, shared by the runs so they report the same way.
  *
  * `abort` is the only way a run ends early, and it always leaves the same shape behind:
  * the failing step keeps the reason, later steps say skipped rather than pending, and
- * `error` carries the message the UI shows.
+ * `error` carries the message the UI shows. `keepPending` leaves later work (Cursor)
+ * runnable after a Cloudflare abort.
  */
 interface StepRunner {
   result: CreateAppResult;
   update: (id: FlowStepId, status: FlowStepStatus, detail?: string) => void;
-  abort: (id: FlowStepId, message: string) => CreateAppResult;
+  abort: (id: FlowStepId, message: string, keepPending?: FlowStepId[]) => CreateAppResult;
   warn: (message: string) => void;
 }
 
@@ -222,10 +248,14 @@ function createRunner(steps: FlowStep[], onStep?: (steps: FlowStep[]) => void): 
     emit();
   };
 
-  const abort = (id: FlowStepId, message: string): CreateAppResult => {
+  const abort = (
+    id: FlowStepId,
+    message: string,
+    keepPending: FlowStepId[] = [],
+  ): CreateAppResult => {
     update(id, "failed", message);
     for (const step of steps) {
-      if (step.status === "pending") {
+      if (step.status === "pending" && !keepPending.includes(step.id)) {
         step.status = "skipped";
       }
     }
@@ -260,6 +290,7 @@ async function awaitOrigin(
   deps: CreateAppDependencies,
   worker: WorkerDeployment,
   expectedAppId: string,
+  keepPending: FlowStepId[] = [],
 ): Promise<boolean> {
   try {
     run.update("wait-origin", "running", "Waiting for the first Cloudflare build…");
@@ -281,13 +312,21 @@ async function awaitOrigin(
             " Cloudflare's GitHub App never saw the repository — set it to" +
             ' "All repositories" at https://github.com/settings/installations, or add' +
             " this one to it, then press Build now.";
-      run.abort("wait-origin", `${probe.detail || "The app did not come live in time."}${hint}`);
+      run.abort(
+        "wait-origin",
+        `${probe.detail || "The app did not come live in time."}${hint}`,
+        keepPending,
+      );
       return false;
     }
     run.update("wait-origin", "done", `${worker.url} is serving haven-app.json.`);
     return true;
   } catch (error) {
-    run.abort("wait-origin", readErrorMessage(error, "The app origin could not be checked."));
+    run.abort(
+      "wait-origin",
+      readErrorMessage(error, "The app origin could not be checked."),
+      keepPending,
+    );
     return false;
   }
 }
@@ -310,6 +349,12 @@ async function proposeToHaven(
     if (proposed.ok) {
       run.result.installedAppInstanceId = proposed.appInstanceId;
       for (const warning of proposed.warnings) {
+        // Haven used to report this when it asked the server for a brand-new
+        // database id. The mapping is already on the registration; the first
+        // write creates the store. It is not something this builder can fix.
+        if (/could not create the database .+: not found/i.test(warning)) {
+          continue;
+        }
         run.warn(warning);
       }
       run.update("propose", "done", `${proposed.label} is installed in Haven.`);
@@ -328,8 +373,255 @@ async function proposeToHaven(
   }
 }
 
+async function runGitHubPhase(
+  run: StepRunner,
+  input: CreateAppInput,
+  deps: CreateAppDependencies,
+): Promise<boolean> {
+  const { identity, owner } = input;
+  const { result, update, abort } = run;
+
+  update("check-name", "running");
+  try {
+    const existing = await deps.github.getRepository(owner, identity.slug);
+    if (existing) {
+      abort("check-name", `${existing.fullName} already exists. Choose a different repository name.`);
+      return false;
+    }
+    update("check-name", "done", `${identity.slug} is available.`);
+  } catch (error) {
+    abort("check-name", readErrorMessage(error, "The repository name could not be checked."));
+    return false;
+  }
+
+  try {
+    update("create-repo", "running");
+    const repository = await deps.github.generateFromTemplate({
+      name: identity.slug,
+      description: identity.description,
+      private: input.private ?? false,
+    });
+    result.repository = repository;
+    update("create-repo", "done", repository.fullName);
+  } catch (error) {
+    abort("create-repo", readErrorMessage(error, "The repository could not be created."));
+    return false;
+  }
+
+  try {
+    update("commit-identity", "running");
+    const repository = result.repository!;
+    const sources = await deps.github.readTemplateSources(repository);
+    const files = buildIdentityFiles(sources, identity);
+    await deps.github.commitFiles({
+      repository,
+      message: `chore: set up ${identity.label}`,
+      files,
+    });
+    update("commit-identity", "done", `${files.length} files named for ${identity.label}.`);
+  } catch (error) {
+    abort("commit-identity", readErrorMessage(error, "The app identity could not be committed."));
+    return false;
+  }
+
+  return true;
+}
+
 /**
- * Run the whole sequence.
+ * Ask Cloudflare whether it can clone the repository. Returns `"unreadable"` when the
+ * answer is a clear no — the caller decides whether that is fatal.
+ */
+async function checkCloudflareRepoAccess(
+  run: StepRunner,
+  deps: CreateAppDependencies,
+  repository: GitHubRepository,
+): Promise<"readable" | "unreadable" | "unknown"> {
+  if (!deps.cloudflare.checkRepoReadable) {
+    run.update("check-repo-access", "skipped", "No Cloudflare account to ask.");
+    return "unknown";
+  }
+
+  run.update("check-repo-access", "running");
+  try {
+    const readable = await deps.cloudflare.checkRepoReadable(repository);
+    if (readable.state === "unreadable") {
+      run.update("check-repo-access", "failed", readable.detail);
+      return "unreadable";
+    }
+    run.update(
+      "check-repo-access",
+      "done",
+      readable.state === "readable" ? readable.detail : `Not confirmed: ${readable.detail}`,
+    );
+    return readable.state === "readable" ? "readable" : "unknown";
+  } catch (error) {
+    // A check that could not run says nothing about the build, so it must not colour
+    // one. This is the same reasoning as `unknown` inside the check itself.
+    run.update("check-repo-access", "done", readErrorMessage(error, "Could not be checked."));
+    return "unknown";
+  }
+}
+
+async function runCloudflarePhase(
+  run: StepRunner,
+  input: { identity: AppIdentity; repository: GitHubRepository; skipPropose?: boolean },
+  deps: CreateAppDependencies,
+  keepPending: FlowStepId[] = [],
+): Promise<boolean> {
+  const { result, update, abort, warn } = run;
+  const { identity, repository } = input;
+
+  const access = await checkCloudflareRepoAccess(run, deps, repository);
+  let unreadable: string | null = null;
+  if (access === "unreadable") {
+    unreadable = repoAccessFix(
+      repository.fullName,
+      run.result.steps.find((step) => step.id === "check-repo-access")?.detail ||
+        "Repository not found",
+      "Then press Start first build — the Worker can still be wired without a push.",
+    );
+    warn(unreadable);
+  }
+
+  let worker: WorkerDeployment;
+  try {
+    update("create-worker", "running");
+    worker = await deps.cloudflare.ensureWorker({ name: identity.slug });
+    result.worker = worker;
+    update("create-worker", "done", worker.reused ? `${worker.url} (existing)` : worker.url);
+  } catch (error) {
+    abort("create-worker", readErrorMessage(error, "The Worker could not be created."), keepPending);
+    return false;
+  }
+
+  try {
+    update("connect-builds", "running");
+    const connected = await deps.cloudflare.connectPushToDeploy({ repository, worker });
+    update("connect-builds", "done", connected.detail);
+  } catch (error) {
+    abort(
+      "connect-builds",
+      readErrorMessage(error, "Push-to-deploy could not be configured."),
+      keepPending,
+    );
+    return false;
+  }
+
+  if (unreadable) {
+    update("start-build", "skipped", "No build can run until Cloudflare can read the repository.");
+    update("wait-origin", "skipped", "No build can run until Cloudflare can read the repository.");
+    update("propose", "skipped", "Haven reads the app definition from the live URL.");
+    result.error = unreadable;
+    return true;
+  }
+
+  if (!deps.cloudflare.startBuild) {
+    update("start-build", "skipped", "No way to start a build without a push.");
+  } else {
+    try {
+      update("start-build", "running");
+      const started = await deps.cloudflare.startBuild({
+        worker,
+        branch: repository.defaultBranch,
+      });
+      update("start-build", "done", started.detail);
+    } catch (error) {
+      abort("start-build", readErrorMessage(error, "The build could not be started."), keepPending);
+      return false;
+    }
+  }
+
+  if (!(await awaitOrigin(run, deps, worker, identity.slug, keepPending))) {
+    return false;
+  }
+
+  if (input.skipPropose) {
+    run.update("propose", "skipped", "Press Register in Haven when you are ready.");
+    return true;
+  }
+
+  await proposeToHaven(run, deps, worker);
+  return true;
+}
+
+async function runCursorPhase(
+  run: StepRunner,
+  repository: GitHubRepository,
+  deps: CreateAppDependencies,
+): Promise<void> {
+  if (!deps.cursor) {
+    run.update("launch-agent", "skipped", "No Cursor API key connected.");
+    return;
+  }
+
+  try {
+    run.update("launch-agent", "running");
+    const agent = await deps.cursor.launchAgent({ repository });
+    run.result.agent = agent;
+    run.update("launch-agent", "done", agent.url);
+  } catch (error) {
+    const message = readErrorMessage(error, "The Cursor agent could not be started.");
+    run.warn(message);
+    run.update("launch-agent", "failed", message);
+  }
+}
+
+/** Create the GitHub repository and write its identity. The Cloudflare page starts later. */
+export async function createGitHubProject(
+  input: CreateAppInput,
+  deps: CreateAppDependencies,
+): Promise<CreateAppResult> {
+  const run = createRunner(createGitHubPhaseSteps(), deps.onStep);
+  await runGitHubPhase(run, input, deps);
+  return run.result;
+}
+
+export interface DeployCloudflareInput {
+  identity: AppIdentity;
+  repository: GitHubRepository;
+  worker?: WorkerDeployment | null;
+  /** The wizard registers Haven on its own button. */
+  skipPropose?: boolean;
+}
+
+/** Wire Cloudflare, start the first build, wait for the URL, register in Haven. */
+export async function deployToCloudflare(
+  input: DeployCloudflareInput,
+  deps: CreateAppDependencies,
+): Promise<CreateAppResult> {
+  const run = createRunner(createCloudflarePhaseSteps(), deps.onStep);
+  run.result.repository = input.repository;
+  run.result.worker = input.worker ?? null;
+  await runCloudflarePhase(run, input, deps);
+  return run.result;
+}
+
+export async function launchCursorWork(
+  input: { repository: GitHubRepository; agent?: AgentHandle | null },
+  deps: CreateAppDependencies,
+): Promise<CreateAppResult> {
+  const run = createRunner(createCursorPhaseSteps(), deps.onStep);
+  run.result.repository = input.repository;
+  run.result.agent = input.agent ?? null;
+  await runCursorPhase(run, input.repository, deps);
+  return run.result;
+}
+
+/** Offer a live Worker URL to Haven. Separate from the build so it can be pressed again. */
+export async function registerInHaven(
+  input: { worker: WorkerDeployment; repository?: GitHubRepository | null },
+  deps: CreateAppDependencies,
+): Promise<CreateAppResult> {
+  const run = createRunner(createRegisterHavenSteps(), deps.onStep);
+  run.result.worker = input.worker;
+  run.result.repository = input.repository ?? null;
+  await proposeToHaven(run, deps, input.worker);
+  return run.result;
+}
+
+/**
+ * Run every phase, in page order. Used by tests and as a one-shot; the wizard calls the
+ * phases separately so each page owns its own buttons.
  *
  * Never throws: a build that fails halfway is a normal outcome the UI has to render,
  * and the step list plus `error` says exactly how far it got. Anything already created
@@ -341,166 +633,21 @@ export async function createApp(
   deps: CreateAppDependencies,
 ): Promise<CreateAppResult> {
   const run = createRunner(createInitialSteps(), deps.onStep);
-  const { result, update, abort } = run;
-  const warnings = result.warnings;
 
-  const { identity, owner } = input;
-
-  // 1. Name check.
-  update("check-name", "running");
-  try {
-    const existing = await deps.github.getRepository(owner, identity.slug);
-    if (existing) {
-      return abort(
-        "check-name",
-        `${existing.fullName} already exists. Choose a different repository name.`,
-      );
-    }
-    update("check-name", "done", `${identity.slug} is available.`);
-  } catch (error) {
-    return abort("check-name", readErrorMessage(error, "The repository name could not be checked."));
+  if (!(await runGitHubPhase(run, input, deps))) {
+    return run.result;
   }
 
-  // 2. Repository.
-  let repository: GitHubRepository;
-  try {
-    update("create-repo", "running");
-    repository = await deps.github.generateFromTemplate({
-      name: identity.slug,
-      description: identity.description,
-      private: input.private ?? false,
-    });
-    result.repository = repository;
-    update("create-repo", "done", repository.fullName);
-  } catch (error) {
-    return abort("create-repo", readErrorMessage(error, "The repository could not be created."));
+  const repository = run.result.repository!;
+  await runCloudflarePhase(run, { identity: input.identity, repository }, deps, [
+    "launch-agent",
+  ]);
+
+  if (repository) {
+    await runCursorPhase(run, repository, deps);
   }
 
-  /*
-   * 2b. Can Cloudflare read what was just created?
-   *
-   * Only answerable once the repository exists, and asked of Cloudflare rather than
-   * GitHub — see `checkRepoReadable`. This is the misconfiguration with no other
-   * symptom: `PUT /builds/repos/connections` accepts a repository Cloudflare cannot
-   * see, the push then reaches nobody, and the account shows a Worker "disconnected
-   * from your Git account" with an empty build list.
-   *
-   * A refusal does not stop the flow, for a reason that is easy to miss: the repository
-   * already exists, and aborting here would take its name with it, so the retry after
-   * fixing access would fail the name check and the user would be stuck choosing a new
-   * name for an app they already created. Instead everything else is wired — Worker,
-   * connection, identity commit — so granting access and pushing once finishes the job.
-   * What is skipped is the part that provably cannot succeed: waiting for a build that
-   * was never triggered, and offering Haven a URL that is not serving yet.
-   */
-  let unreadable: string | null = null;
-  if (deps.cloudflare.checkRepoReadable) {
-    update("check-repo-access", "running");
-    try {
-      const readable = await deps.cloudflare.checkRepoReadable(repository);
-      if (readable.state === "unreadable") {
-        unreadable = repoAccessFix(
-          repository.fullName,
-          readable.detail,
-          "Then press Build now — everything else is already wired, so no push is needed.",
-        );
-        warnings.push(unreadable);
-        update("check-repo-access", "failed", readable.detail);
-      } else {
-        update(
-          "check-repo-access",
-          "done",
-          readable.state === "readable" ? readable.detail : `Not confirmed: ${readable.detail}`,
-        );
-      }
-    } catch (error) {
-      // A check that could not run says nothing about the build, so it must not colour
-      // one. This is the same reasoning as `unknown` inside the check itself.
-      update("check-repo-access", "done", readErrorMessage(error, "Could not be checked."));
-    }
-  } else {
-    update("check-repo-access", "skipped", "No Cloudflare account to ask.");
-  }
-
-  // 3. Worker. Created before any build exists, purely so the URL and the script tag do.
-  let worker: WorkerDeployment;
-  try {
-    update("create-worker", "running");
-    worker = await deps.cloudflare.ensureWorker({ name: identity.slug });
-    result.worker = worker;
-    update("create-worker", "done", worker.reused ? `${worker.url} (existing)` : worker.url);
-  } catch (error) {
-    return abort("create-worker", readErrorMessage(error, "The Worker could not be created."));
-  }
-
-  // 4. Push-to-deploy, before the first push.
-  try {
-    update("connect-builds", "running");
-    const connected = await deps.cloudflare.connectPushToDeploy({ repository, worker });
-    update("connect-builds", "done", connected.detail);
-  } catch (error) {
-    // Not fatal in principle — but without it nothing would ever deploy, so the app
-    // would never come live and step 6 would only time out. Stop here and say why.
-    return abort(
-      "connect-builds",
-      readErrorMessage(error, "Push-to-deploy could not be configured."),
-    );
-  }
-
-  // 5. Identity commit — the push that starts the first build.
-  try {
-    update("commit-identity", "running");
-    const sources = await deps.github.readTemplateSources(repository);
-    const files = buildIdentityFiles(sources, identity);
-    await deps.github.commitFiles({
-      repository,
-      message: `chore: set up ${identity.label}`,
-      files,
-    });
-    update("commit-identity", "done", `${files.length} files named for ${identity.label}.`);
-  } catch (error) {
-    return abort(
-      "commit-identity",
-      readErrorMessage(error, "The app identity could not be committed."),
-    );
-  }
-
-  // 6. Wait for the build to publish the origin — unless it provably cannot appear.
-  if (unreadable) {
-    update("wait-origin", "skipped", "No build can run until Cloudflare can read the repository.");
-  } else if (!(await awaitOrigin(run, deps, worker, identity.slug))) {
-    return result;
-  }
-
-  // 7. Cursor agent. Optional, and never fatal: it works on the repository, which exists
-  // whether or not Cloudflare managed to deploy it.
-  if (!deps.cursor) {
-    update("launch-agent", "skipped", "No Cursor API key connected.");
-  } else {
-    try {
-      update("launch-agent", "running");
-      const agent = await deps.cursor.launchAgent({ repository });
-      result.agent = agent;
-      update("launch-agent", "done", agent.url);
-    } catch (error) {
-      const message = readErrorMessage(error, "The Cursor agent could not be started.");
-      warnings.push(message);
-      update("launch-agent", "failed", message);
-    }
-  }
-
-  // 8. Hand it to Haven, which reads the definition from the URL — so something has to
-  // be serving it. The repository, the Worker and the connection are all in place, and
-  // the error says the one thing left to do.
-  if (unreadable) {
-    update("propose", "skipped", "Haven reads the app definition from the live URL.");
-    result.error = unreadable;
-    return result;
-  }
-
-  await proposeToHaven(run, deps, worker);
-
-  return result;
+  return run.result;
 }
 
 export interface DeployNowInput {
@@ -516,8 +663,8 @@ export interface DeployNowInput {
  * Build and finish an app whose first build never ran.
  *
  * The situation this exists for: the repository was created before Cloudflare's GitHub
- * App could read it, so the identity commit triggered nothing. Once access is granted
- * there is no push left to make — the commit is already in the repository — and the app
+ * App could read it, so the first build was never started. Once access is granted there
+ * is no push left to make — the identity is already in the repository — and the app
  * would sit one dashboard visit away from working. This starts the build instead and
  * then picks the original sequence back up: wait for the origin, hand it to Haven.
  *
@@ -537,28 +684,14 @@ export async function deployNow(
   result.worker = worker;
   result.agent = input.agent ?? null;
 
-  if (deps.cloudflare.checkRepoReadable) {
-    update("check-repo-access", "running");
-    try {
-      const readable = await deps.cloudflare.checkRepoReadable(repository);
-      if (readable.state === "unreadable") {
-        return run.abort(
-          "check-repo-access",
-          repoAccessFix(repository.fullName, readable.detail, "Then press Build now again."),
-        );
-      }
-      update(
-        "check-repo-access",
-        "done",
-        readable.state === "readable" ? readable.detail : `Not confirmed: ${readable.detail}`,
-      );
-    } catch (error) {
-      // Same reasoning as in `createApp`: a check that could not run says nothing, and
-      // must not stand between the user and a build that may well work.
-      update("check-repo-access", "done", readErrorMessage(error, "Could not be checked."));
-    }
-  } else {
-    update("check-repo-access", "skipped", "No Cloudflare account to ask.");
+  const access = await checkCloudflareRepoAccess(run, deps, repository);
+  if (access === "unreadable") {
+    const detail =
+      result.steps.find((step) => step.id === "check-repo-access")?.detail || "Repository not found";
+    return run.abort(
+      "check-repo-access",
+      repoAccessFix(repository.fullName, detail, "Then press Build now again."),
+    );
   }
 
   try {

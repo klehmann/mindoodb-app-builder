@@ -193,7 +193,11 @@ quiet and a dashboard that later says "This project is disconnected from your Gi
 account". Nothing can verify it in advance (see above), so the builder states it in the
 setup list and, when a build never appears, says so in the timeout: an empty Builds tab
 means Cloudflare never saw the repository. The same applies to Cursor's GitHub access if
-you want an agent to work on a private repository.
+you want an agent to work on a private repository: Cloud Agents clone through
+[Cursor's own GitHub App](https://github.com/apps/cursor/installations/new), never
+this builder's token. The setup list has a button for that install; set it to
+"All repositories" (or add the new repo after it exists), then start the agent
+again.
 
 ## Deploying your own
 

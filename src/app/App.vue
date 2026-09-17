@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 
-import AgentPanel from "@/app/components/AgentPanel.vue";
-import ConnectPanel from "@/app/components/ConnectPanel.vue";
 import NewAppPanel from "@/app/components/NewAppPanel.vue";
-import ProgressPanel from "@/app/components/ProgressPanel.vue";
-import SetupChecklist from "@/app/components/SetupChecklist.vue";
+import SetupWizard from "@/app/components/SetupWizard.vue";
+import WizardCloudflarePage from "@/app/components/WizardCloudflarePage.vue";
+import WizardCursorPage from "@/app/components/WizardCursorPage.vue";
+import WizardGitHubPage from "@/app/components/WizardGitHubPage.vue";
+import { resolveGitHubOwner } from "@/app/githubOwner";
 import { checkHostAlive, readHostConfig, type BuilderHostConfig } from "@/app/hostApi";
-import { buildSetupItems, countBlockers, type SetupInput } from "@/app/setupChecklist";
 import { useBuilderFlow } from "@/app/useBuilderFlow";
 import { useBuilderSession } from "@/app/useBuilderSession";
 import { useCloudflareConnect } from "@/app/useCloudflareConnect";
 import { useGitHubConnect } from "@/app/useGitHubConnect";
 import { useSetupReadiness } from "@/app/useSetupReadiness";
+import type { WizardReadiness } from "@/app/wizard";
+import type { BuilderCredentials } from "@/core/credentials";
 import { getAuthenticatedUser } from "@/core/github";
 
 const session = useBuilderSession();
@@ -32,18 +34,14 @@ const github = useGitHubConnect(
   async (token) => {
     // Ask GitHub who the token belongs to instead of making the user type it. An owner
     // they already set is left alone — it may be an organization, not themselves.
-    let owner = session.credentials.value.githubOwner;
-    if (!owner) {
-      try {
-        owner = (await getAuthenticatedUser(token)).login;
-      } catch {
-        // Not worth failing the connect over; the field is still there to fill in.
-      }
-    }
     await session.storeCredentials({
       ...session.credentials.value,
       githubToken: token,
-      githubOwner: owner,
+      githubOwner: await resolveGitHubOwner({
+        owner: session.credentials.value.githubOwner,
+        token,
+        lookup: getAuthenticatedUser,
+      }),
     });
   },
   {
@@ -51,6 +49,18 @@ const github = useGitHubConnect(
     token: () => session.credentials.value.githubToken,
   },
 );
+
+/** A pasted token gets its owner resolved the same way a connected one does. */
+async function saveCredentials(next: BuilderCredentials): Promise<void> {
+  await session.storeCredentials({
+    ...next,
+    githubOwner: await resolveGitHubOwner({
+      owner: next.githubOwner,
+      token: next.githubToken,
+      lookup: getAuthenticatedUser,
+    }),
+  });
+}
 
 const cloudflare = useCloudflareConnect(hostConfig, async ({ tokens, accounts }) => {
   await session.storeCredentials({
@@ -64,20 +74,20 @@ const cloudflare = useCloudflareConnect(hostConfig, async ({ tokens, accounts })
   });
 });
 
-/**
- * One description of setup, read twice: the list the user works through, and the count
- * that keeps Create app from starting something that cannot finish.
- */
-const setup = computed<SetupInput>(() => ({
+const wizardReadiness = computed<WizardReadiness>(() => ({
   githubConnected: session.credentialsStatus.value.github,
   githubInstallation: github.installation.value,
-  githubInstallUrl: github.installUrl.value,
   cloudflareConnected: session.credentialsStatus.value.cloudflare,
   cloudflareGit: readiness.cloudflareGit.value,
-  cloudflareDashboardUrl: readiness.cloudflareDashboardUrl.value,
   cursorReady: session.credentialsStatus.value.cursor,
+  identityValid: flow.identityValid.value,
+  hasRepository: Boolean(flow.result.value?.repository),
+  hasLiveOrigin: flow.originReady.value,
 }));
-const setupBlockers = computed(() => countBlockers(buildSetupItems(setup.value)));
+
+const repositoryName = computed(
+  () => flow.result.value?.repository?.name || flow.plannedRepositoryName.value,
+);
 
 onMounted(async () => {
   await session.connect();
@@ -91,67 +101,115 @@ onMounted(async () => {
   <main class="app">
     <header class="head">
       <h1>App Builder</h1>
+      <p class="tagline">Describe an app. Get it into Haven.</p>
       <p v-if="session.connecting.value" class="muted">Connecting to Haven…</p>
       <p v-else-if="session.error.value" class="warn">{{ session.error.value }}</p>
       <p v-else-if="session.connected.value" class="muted">
         Signed in as {{ session.userName.value }}.
         <span v-if="!session.canProposeApps.value">
-          This install did not grant app proposal, so the finished app has to be added to
-          Haven by hand — the builder will show you the URL.
+          This Haven install cannot add apps for you, so you will add the finished app
+          yourself — we show you the link.
         </span>
       </p>
     </header>
 
+    <!--
+      Names both casualties, not just the agent: every Cloudflare call is proxied, so a
+      missing helper takes publishing with it. Claiming only "the AI step" would send
+      someone into a build that cannot finish.
+    -->
     <p v-if="!hostAlive" class="warn banner">
-      The builder host is not answering, so the Cursor agent step is unavailable. Start it
-      with <code>npx mindoodb-app-builder</code>.
+      Publishing and the AI step are unavailable right now. Naming your app and creating
+      its GitHub project still work — reload this page to try publishing again.
+      <span class="banner__note">
+        Running the builder yourself? Start its helper with
+        <code>npx mindoodb-app-builder</code>.
+      </span>
     </p>
 
-    <ConnectPanel
-      :credentials="session.credentials.value"
-      :status="session.credentialsStatus.value"
-      :can-store="session.canStoreCredentials.value"
-      :saving="session.savingCredentials.value"
-      :config="hostConfig"
-      :config-loaded="hostConfigLoaded"
-      :github="github"
-      :cloudflare="cloudflare"
-      :cloudflare-accounts="cloudflare.accounts.value"
-      @save="session.storeCredentials"
-    />
+    <SetupWizard :readiness="wizardReadiness">
+      <template #details>
+        <NewAppPanel
+          :form="flow.form.value"
+          :planned-repository-name="flow.plannedRepositoryName.value"
+          :form-error="flow.formError.value"
+          @label-input="flow.onLabelInput"
+          @slug-input="flow.onSlugInput"
+        />
+      </template>
 
-    <!-- Between connecting and building, because that is where the gap it closes is. -->
-    <SetupChecklist
-      v-bind="setup"
-      :cloudflare-checking="readiness.checking.value"
-      @recheck-git-hub="github.checkInstallation()"
-      @recheck-cloudflare="readiness.checkCloudflare()"
-    />
+      <template #github>
+        <WizardGitHubPage
+          :credentials="session.credentials.value"
+          :status="session.credentialsStatus.value"
+          :can-store="session.canStoreCredentials.value"
+          :saving="session.savingCredentials.value"
+          :config="hostConfig"
+          :config-loaded="hostConfigLoaded"
+          :github="github"
+          :cloudflare="cloudflare"
+          :cloudflare-accounts="cloudflare.accounts.value"
+          :install-url="github.installUrl.value"
+          :repository-name="repositoryName"
+          :github-error="flow.githubError.value"
+          :can-create-repo="flow.canCreateRepo.value"
+          :running="flow.running.value"
+          :steps="flow.githubSteps.value"
+          :result="flow.result.value"
+          @save="saveCredentials"
+          @initialize="flow.createGitHubProject"
+        />
+      </template>
 
-    <NewAppPanel
-      :form="flow.form.value"
-      :planned-repository-name="flow.plannedRepositoryName.value"
-      :form-error="flow.formError.value"
-      :can-start="flow.canStart.value"
-      :running="flow.running.value"
-      :setup-blockers="setupBlockers"
-      @label-input="flow.onLabelInput"
-      @slug-input="flow.onSlugInput"
-      @start="flow.start"
-    />
+      <template #cloudflare>
+        <WizardCloudflarePage
+          :credentials="session.credentials.value"
+          :status="session.credentialsStatus.value"
+          :can-store="session.canStoreCredentials.value"
+          :saving="session.savingCredentials.value"
+          :config="hostConfig"
+          :config-loaded="hostConfigLoaded"
+          :github="github"
+          :cloudflare="cloudflare"
+          :cloudflare-accounts="cloudflare.accounts.value"
+          :repository-name="repositoryName"
+          :cloudflare-error="flow.cloudflareError.value"
+          :can-deploy="flow.canDeploy.value"
+          :can-register-haven="flow.canRegisterHaven.value"
+          :can-build-now="flow.canBuildNow.value"
+          :running="flow.running.value"
+          :steps="flow.cloudflareSteps.value"
+          :result="flow.result.value"
+          @save="saveCredentials"
+          @deploy="flow.deployCloudflare"
+          @register="flow.registerHaven"
+          @build-now="flow.buildNow"
+        />
+      </template>
 
-    <ProgressPanel
-      :steps="flow.steps.value"
-      :result="flow.result.value"
-      :running="flow.running.value"
-      :can-build-now="flow.canBuildNow.value"
-      @build-now="flow.buildNow"
-    />
-
-    <AgentPanel
-      :agent="flow.agent.value"
-      :cursor-token="session.credentials.value.cursorToken"
-    />
+      <template #cursor>
+        <WizardCursorPage
+          :credentials="session.credentials.value"
+          :status="session.credentialsStatus.value"
+          :can-store="session.canStoreCredentials.value"
+          :saving="session.savingCredentials.value"
+          :config="hostConfig"
+          :config-loaded="hostConfigLoaded"
+          :github="github"
+          :cloudflare="cloudflare"
+          :cloudflare-accounts="cloudflare.accounts.value"
+          :repository-name="repositoryName"
+          :cursor-error="flow.cursorError.value"
+          :can-launch-cursor="flow.canLaunchCursor.value"
+          :running="flow.running.value"
+          :steps="flow.cursorSteps.value"
+          :result="flow.result.value"
+          :agent="flow.agent.value"
+          @save="saveCredentials"
+          @launch="flow.launchCursor"
+        />
+      </template>
+    </SetupWizard>
 
     <footer class="foot">
       <p class="muted">
@@ -166,13 +224,16 @@ onMounted(async () => {
 <style>
 :root {
   color-scheme: light;
-  --app-background: #f6f8fb;
+  --app-background: #f5f7fb;
   --app-surface: #ffffff;
-  --app-text: #0d1b2a;
+  --app-text: #101828;
   --app-muted: #5a6b7d;
-  --app-border: #dde4ec;
+  --app-border: #e2e8f0;
   --app-accent: #1b5fd9;
+  /* Tinted backgrounds for badges, callouts and the live-app banner. */
+  --app-accent-soft: rgba(27, 95, 217, 0.09);
   --app-danger: #b42318;
+  --app-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.05);
 }
 
 :root[data-theme="dark"] {
@@ -183,14 +244,25 @@ onMounted(async () => {
   --app-muted: #9fb0c4;
   --app-border: #1e3350;
   --app-accent: #7ec8ff;
+  --app-accent-soft: rgba(126, 200, 255, 0.14);
   --app-danger: #ff9b8f;
+  --app-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 body {
   margin: 0;
   background: var(--app-background);
   color: var(--app-text);
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* System UI first: SF Pro / Segoe UI / Roboto are already on the machine, so the
+     interface has proper type from the first paint and never fetches a font. */
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Inter,
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 a {
@@ -200,16 +272,25 @@ a {
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.85em;
+  padding: 0.05em 0.3em;
+  border-radius: 0.25rem;
+  background: var(--app-accent-soft);
+}
+
+:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
 }
 
 .panel {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
-  border-radius: 0.6rem;
-  padding: 1.1rem 1.25rem;
+  border-radius: 0.85rem;
+  padding: 1.35rem 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 1.1rem;
+  box-shadow: var(--app-shadow);
 }
 
 .panel header {
@@ -229,17 +310,18 @@ code {
 
 .muted {
   color: var(--app-muted);
-  font-size: 0.85rem;
+  font-size: 0.88rem;
 }
 
 .warn {
   color: var(--app-danger);
-  font-size: 0.85rem;
+  font-size: 0.88rem;
 }
 
 .hint {
   color: var(--app-muted);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 .field {
@@ -280,21 +362,55 @@ textarea {
 
 button {
   font: inherit;
+  font-weight: 600;
   align-self: flex-start;
-  padding: 0.45rem 0.9rem;
+  padding: 0.5rem 1rem;
   border: 1px solid transparent;
-  border-radius: 0.35rem;
+  border-radius: 0.5rem;
   background: var(--app-accent);
   color: #ffffff;
   cursor: pointer;
+  transition:
+    filter 0.15s ease,
+    background 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.07);
 }
 
 button:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: default;
 }
 
 button.ghost {
+  background: transparent;
+  color: var(--app-text);
+  border-color: var(--app-border);
+}
+
+/*
+ * Links that look like buttons. They stay real links so a new tab opens without script —
+ * the iframe allows popups, but a plain anchor needs nothing.
+ */
+.button {
+  font: inherit;
+  font-weight: 600;
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: var(--app-accent);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.button:hover {
+  filter: brightness(1.07);
+}
+
+.button--ghost {
   background: transparent;
   color: var(--app-text);
   border-color: var(--app-border);
@@ -318,23 +434,38 @@ button.ghost {
 
 <style scoped>
 .app {
-  max-width: 46rem;
+  max-width: 48rem;
   margin: 0 auto;
-  padding: 2rem 1.25rem 3rem;
+  padding: 2.25rem 1.25rem 3rem;
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
+  gap: 1.25rem;
 }
 
 .head h1 {
-  margin: 0 0 0.3rem;
-  font-size: 1.5rem;
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+}
+
+.tagline {
+  margin: 0.15rem 0 0.4rem;
+  font-size: 1rem;
+  color: var(--app-muted);
 }
 
 .banner {
   border: 1px solid var(--app-border);
   border-radius: 0.5rem;
   padding: 0.6rem 0.8rem;
+}
+
+/* The self-hosting instruction: true, but not what most readers of this banner need. */
+.banner__note {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.85em;
+  opacity: 0.8;
 }
 
 .foot {

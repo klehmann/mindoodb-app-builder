@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { computed, ref } from "vue";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import ConnectPanel from "@/app/components/ConnectPanel.vue";
 import type { BuilderHostConfig } from "@/app/hostApi";
@@ -24,8 +24,23 @@ function githubConnect(
     installation: ref("unknown"),
     installUrl: computed(() => "https://github.com/apps/mindoodb-app-builder/installations/new"),
     checkInstallation: async () => {},
+    identifyToken: async () => "octocat",
+    identifying: ref(false),
+    identifyError: ref(null),
     ...overrides,
   };
+}
+
+/** No GitHub App registered, which is what forces the token fields open. */
+function unregistered(): BuilderHostConfig {
+  return config({
+    oauth: {
+      github: false,
+      cloudflare: false,
+      cloudflareRedirectUri: "https://app-builder.mindoodb.com/oauth/cloudflare/callback",
+    },
+    cloudflareClientId: "",
+  });
 }
 
 function cloudflareConnect(): UseCloudflareConnectReturn {
@@ -85,31 +100,26 @@ describe("ConnectPanel", () => {
     // The bug this pins: with no client ids, the sections used to render as bare
     // headings — no button, no field, no explanation. A deployment before its
     // applications exist is a normal state and has to be usable.
-    const unregistered = config({
-      oauth: {
-        github: false,
-        cloudflare: false,
-        cloudflareRedirectUri: "https://app-builder.mindoodb.com/oauth/cloudflare/callback",
-      },
-      cloudflareClientId: "",
-    });
-    const panel = render({ config: unregistered, configLoaded: true });
+    const panel = render({ config: unregistered(), configLoaded: true });
 
     expect(panel.find("#github-token").exists()).toBe(true);
     expect(panel.find("#cf-token").exists()).toBe(true);
     expect(panel.find("#cf-account").exists()).toBe(true);
-    expect(panel.text()).toContain("no GitHub application registered");
-    expect(panel.text()).toContain("no Cloudflare OAuth client registered");
+    // Usable means the instructions are there, not that the state is explained: how this
+    // deployment is configured is not the user's concern.
+    expect(panel.text()).toContain("Create a token on GitHub");
+    expect(panel.text()).toContain("Create a token on Cloudflare");
+    expect(panel.text()).not.toContain("registered");
+    expect(panel.text()).not.toContain("OAuth client");
   });
 
-  it("says nothing about registration until the config has been read", () => {
+  it("offers nothing until the config has been read", () => {
     // An unreachable host and a host that has not answered yet look identical from
-    // here, so neither may be reported as "nothing is registered".
+    // here, so neither may be turned into a token field the user did not need.
     const panel = render({ config: null, configLoaded: false });
 
-    expect(panel.text()).not.toContain("no GitHub application registered");
     expect(panel.find("#github-token").exists()).toBe(false);
-    expect(panel.text()).toContain("Checking what this builder can connect to");
+    expect(panel.text()).toContain("Checking how you can connect");
   });
 
   it("still shows the token fields when a host cannot be reached at all", () => {
@@ -149,5 +159,66 @@ describe("ConnectPanel", () => {
 
     expect(panel.find("#github-owner").exists()).toBe(true);
     expect(panel.find("#github-token").exists()).toBe(false);
+  });
+
+  it("names the token's account as soon as the token is pasted", async () => {
+    // Nobody should have to type their own login, and this is the earliest moment
+    // anything can tell the user the token works at all.
+    const panel = render({ config: unregistered(), configLoaded: true });
+
+    await panel.find("#github-token").setValue("ghp_x");
+    await panel.find("#github-token").trigger("blur");
+    await flushPromises();
+
+    expect((panel.find("#github-owner").element as HTMLInputElement).value).toBe("octocat");
+  });
+
+  it("does not overwrite an organization the user typed", async () => {
+    const identifyToken = vi.fn(async () => "octocat");
+    const panel = render({
+      config: unregistered(),
+      configLoaded: true,
+      github: githubConnect({ identifyToken }),
+    });
+
+    await panel.find("#github-owner").setValue("acme-inc");
+    await panel.find("#github-token").setValue("ghp_x");
+    await panel.find("#github-token").trigger("blur");
+    await flushPromises();
+
+    expect(identifyToken).not.toHaveBeenCalled();
+    expect((panel.find("#github-owner").element as HTMLInputElement).value).toBe("acme-inc");
+  });
+
+  it("does not call GitHub on an empty token field", async () => {
+    const identifyToken = vi.fn(async () => "octocat");
+    const panel = render({
+      config: unregistered(),
+      configLoaded: true,
+      github: githubConnect({ identifyToken }),
+    });
+
+    await panel.find("#github-token").trigger("blur");
+    await flushPromises();
+
+    expect(identifyToken).not.toHaveBeenCalled();
+  });
+
+  it("shows why a rejected token was rejected, and leaves the owner alone", async () => {
+    const panel = render({
+      config: unregistered(),
+      configLoaded: true,
+      github: githubConnect({
+        identifyToken: async () => "",
+        identifyError: ref("GitHub did not accept this token."),
+      }),
+    });
+
+    await panel.find("#github-token").setValue("ghp_bad");
+    await panel.find("#github-token").trigger("blur");
+    await flushPromises();
+
+    expect(panel.text()).toContain("GitHub did not accept this token.");
+    expect((panel.find("#github-owner").element as HTMLInputElement).value).toBe("");
   });
 });

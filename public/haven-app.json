@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "appId": "mindoodb-app-builder",
   "label": "App Builder",
-  "description": "Create a new MindooDB app: a GitHub repository, a live Cloudflare deployment, a Cursor cloud agent to build it, and the finished app registered in Haven.",
+  "description": "Add any app you can describe to Haven. Write what you need in plain language, let AI build and publish it, then share it with colleagues by sending a link. No programming skills required, and the app stays yours to extend later.",
   "version": "0.1.0",
   "runtime": "iframe",
   "hosting": "external",
