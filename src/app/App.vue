@@ -7,11 +7,7 @@ import WizardCloudflarePage from "@/app/components/WizardCloudflarePage.vue";
 import WizardCursorPage from "@/app/components/WizardCursorPage.vue";
 import WizardGitHubPage from "@/app/components/WizardGitHubPage.vue";
 import { resolveGitHubOwner } from "@/app/githubOwner";
-import {
-  checkHostAlive,
-  readHostConfig,
-  type BuilderHostConfig,
-} from "@/app/hostApi";
+import { readHostConfig, type BuilderHostConfig } from "@/app/hostApi";
 import { useBuilderFlow } from "@/app/useBuilderFlow";
 import { useBuilderSession } from "@/app/useBuilderSession";
 import { useCloudflareConnect } from "@/app/useCloudflareConnect";
@@ -25,7 +21,6 @@ const session = useBuilderSession();
 const readiness = useSetupReadiness(session.credentials);
 const hostConfig = ref<BuilderHostConfig | null>(null);
 const flow = useBuilderFlow(session, hostConfig);
-const hostAlive = ref(true);
 /** Distinguishes "still asking" from "asked, and there is nothing to connect to". */
 const hostConfigLoaded = ref(false);
 
@@ -100,7 +95,6 @@ const repositoryName = computed(
 
 onMounted(async () => {
   await session.connect();
-  hostAlive.value = await checkHostAlive();
   hostConfig.value = await readHostConfig();
   hostConfigLoaded.value = true;
 });
@@ -115,29 +109,14 @@ onMounted(async () => {
       <p v-else-if="session.error.value" class="warn">
         {{ session.error.value }}
       </p>
-      <p v-else-if="session.connected.value" class="muted">
-        Signed in as {{ session.userName.value }}.
-        <span v-if="!session.canProposeApps.value">
-          This Haven install cannot add apps for you, so you will add the
-          finished app yourself — we show you the link.
-        </span>
+      <p
+        v-else-if="session.connected.value && !session.canProposeApps.value"
+        class="muted"
+      >
+        This Haven install cannot add apps for you, so you will add the finished
+        app yourself — we show you the link.
       </p>
     </header>
-
-    <!--
-      Names both casualties, not just the agent: every Cloudflare call is proxied, so a
-      missing helper takes publishing with it. Claiming only "the AI step" would send
-      someone into a build that cannot finish.
-    -->
-    <p v-if="!hostAlive" class="warn banner">
-      Publishing and the AI step are unavailable right now. Naming your app and
-      creating its GitHub project still work — reload this page to try
-      publishing again.
-      <span class="banner__note">
-        Running the builder yourself? Start its helper with
-        <code>npx mindoodb-app-builder</code>.
-      </span>
-    </p>
 
     <SetupWizard :readiness="wizardReadiness">
       <template #details>
@@ -500,20 +479,6 @@ button.ghost {
   margin: 0.15rem 0 0.4rem;
   font-size: 1rem;
   color: var(--app-muted);
-}
-
-.banner {
-  border: 1px solid var(--app-border);
-  border-radius: 0.5rem;
-  padding: 0.6rem 0.8rem;
-}
-
-/* The self-hosting instruction: true, but not what most readers of this banner need. */
-.banner__note {
-  display: block;
-  margin-top: 0.35rem;
-  font-size: 0.85em;
-  opacity: 0.8;
 }
 
 .foot {

@@ -48,10 +48,14 @@ export function useBuilderSession() {
   let unsubscribeTheme: (() => void) | null = null;
 
   const connected = computed(() => session.value !== null);
-  const userName = computed(() => launchContext.value?.user.username ?? "");
-  const credentialsStatus = computed(() => readCredentialsStatus(credentials.value));
+  const credentialsStatus = computed(() =>
+    readCredentialsStatus(credentials.value),
+  );
   const databaseInfo = computed(
-    () => launchContext.value?.databases.find((entry) => entry.id === BUILDER_DATABASE_ID) ?? null,
+    () =>
+      launchContext.value?.databases.find(
+        (entry) => entry.id === BUILDER_DATABASE_ID,
+      ) ?? null,
   );
   /**
    * Without write access the builder can still create repositories and deploy, but it
@@ -131,7 +135,10 @@ export function useBuilderSession() {
         credentialsDocId.value,
       );
     } catch (saveError) {
-      error.value = readErrorMessage(saveError, "The credentials could not be stored.");
+      error.value = readErrorMessage(
+        saveError,
+        "The credentials could not be stored.",
+      );
     } finally {
       savingCredentials.value = false;
     }
@@ -193,6 +200,5 @@ export function useBuilderSession() {
     savingCredentials,
     storeCredentials,
     theme,
-    userName,
   };
 }
