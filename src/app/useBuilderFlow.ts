@@ -21,14 +21,16 @@ import {
 import { isCloudflareTokenStale } from "@/core/credentials";
 import {
   createApp as runCreateApp,
+  createDeployNowSteps,
   createInitialSteps,
+  deployNow as runDeployNow,
   type AgentHandle,
   type CreateAppDependencies,
   type CreateAppResult,
+  type DeployNowDependencies,
   type FlowStep,
 } from "@/core/createAppFlow";
 import {
-  checkCloudflareRepoAccess,
   commitFiles,
   generateRepositoryFromTemplate,
   getFileText,
@@ -37,10 +39,12 @@ import {
 } from "@/core/github";
 import { waitForOrigin } from "@/core/originProbe";
 import {
+  checkCloudflareRepoReadable,
   connectCloudflarePushToDeploy,
   ensureCloudflareWorker,
   launchCursorAgent,
   refreshCloudflareTokenViaHost,
+  startCloudflareBuild,
   type BuilderHostConfig,
 } from "@/app/hostApi";
 import type { useBuilderSession } from "@/app/useBuilderSession";
@@ -123,7 +127,7 @@ export function useBuilderFlow(
     form.value.slugFollowsLabel = false;
   }
 
-  function buildDependencies(): CreateAppDependencies {
+  function buildDependencies(): DeployNowDependencies {
     const credentials = session.credentials.value;
     const githubToken = credentials.githubToken;
     const owner = credentials.githubOwner;
@@ -140,7 +144,6 @@ export function useBuilderFlow(
             description: input.description,
             private: input.private,
           }),
-        checkCloudflareRepoAccess: () => checkCloudflareRepoAccess(githubToken),
         readTemplateSources: async (repository: GitHubRepository) => {
           const read = async (path: string) => {
             const text = await getFileText({
@@ -181,6 +184,25 @@ export function useBuilderFlow(
             accountId: credentials.cloudflareAccountId,
             name,
           }),
+        // The ids are GitHub's, read here for the same reason as below: the host needs
+        // them to ask Cloudflare, and they are not secret.
+        checkRepoReadable: (repository) =>
+          checkCloudflareRepoReadable({
+            cloudflareToken: credentials.cloudflareToken,
+            accountId: credentials.cloudflareAccountId,
+            providerAccountId: String(repository.ownerId),
+            repoId: String(repository.id),
+            branch: repository.defaultBranch,
+          }),
+        startBuild: async ({ worker, branch }) => {
+          const build = await startCloudflareBuild({
+            cloudflareToken: credentials.cloudflareToken,
+            accountId: credentials.cloudflareAccountId,
+            scriptTag: worker.scriptTag,
+            branch,
+          });
+          return { detail: `Cloudflare is building ${branch} (${build.buildUuid}).` };
+        },
         connectPushToDeploy: async ({ repository, worker }) => {
           const connection = await connectCloudflarePushToDeploy({
             cloudflareToken: credentials.cloudflareToken,
@@ -291,6 +313,59 @@ export function useBuilderFlow(
     }
   }
 
+  /**
+   * Offered when an app was fully wired but never built.
+   *
+   * The distinction that matters is `connect-builds`: a build belongs to a trigger, and
+   * without one there is nothing to start. A finished `wait-origin` means the app is
+   * already live and the button would be noise.
+   */
+  const canBuildNow = computed(() => {
+    const outcome = result.value;
+    if (!outcome || !outcome.repository || !outcome.worker) {
+      return false;
+    }
+    const statusOf = (id: string): string | undefined =>
+      outcome.steps.find((step) => step.id === id)?.status;
+    return statusOf("connect-builds") === "done" && statusOf("wait-origin") !== "done";
+  });
+
+  /**
+   * Build the app that never built, and carry on where the first run stopped.
+   *
+   * Stays offered while it runs — disabled, not hidden — because a button that vanishes
+   * on click makes the user wonder whether it registered.
+   *
+   * The app id comes from the repository rather than from the form, which the user may
+   * have edited since — the repository name *is* the app id the first run committed.
+   */
+  async function buildNow(): Promise<void> {
+    const outcome = result.value;
+    if (!canBuildNow.value || running.value || !outcome?.repository || !outcome.worker) {
+      return;
+    }
+    await refreshCloudflareIfStale();
+    running.value = true;
+    steps.value = createDeployNowSteps();
+
+    try {
+      const next = await runDeployNow(
+        {
+          repository: outcome.repository,
+          worker: outcome.worker,
+          appId: outcome.repository.name,
+          agent: outcome.agent,
+        },
+        buildDependencies(),
+      );
+      result.value = next;
+      agent.value = next.agent;
+      steps.value = next.steps.map((step) => ({ ...step }));
+    } finally {
+      running.value = false;
+    }
+  }
+
   function reset(): void {
     form.value = createEmptyForm();
     steps.value = createInitialSteps();
@@ -300,6 +375,8 @@ export function useBuilderFlow(
 
   return {
     agent,
+    buildNow,
+    canBuildNow,
     canStart,
     form,
     formError,

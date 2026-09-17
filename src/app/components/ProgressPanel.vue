@@ -6,22 +6,39 @@
  * "something went wrong" at the end. The slow step — waiting for Cloudflare's first
  * build — reports each attempt, so a two-minute wait looks like progress instead of a
  * hang.
+ *
+ * "Build now" appears when the app was wired but never built, which happens when
+ * Cloudflare could not read the repository at the time of the first push. By then there
+ * is no push left to make, so the button starts the build directly and the run carries
+ * on to the origin wait and the Haven install.
  */
+import { computed } from "vue";
+
 import type { CreateAppResult, FlowStep, FlowStepId } from "@/core/createAppFlow";
 
-defineProps<{
+const props = defineProps<{
   steps: FlowStep[];
   result: CreateAppResult | null;
   running: boolean;
+  /** True when a build can be started without a push. See `canBuildNow`. */
+  canBuildNow?: boolean;
 }>();
+
+defineEmits<{ (event: "build-now"): void }>();
+
+/** Whether the URL is worth calling live — the origin probe is what decides that. */
+const serving = computed(() =>
+  props.steps.some((step) => step.id === "wait-origin" && step.status === "done"),
+);
 
 const LABELS: Record<FlowStepId, string> = {
   "check-name": "Check the repository name",
-  "check-deploy-access": "Check Cloudflare's repository access",
   "create-repo": "Create the GitHub repository",
+  "check-repo-access": "Check that Cloudflare can read it",
   "create-worker": "Create the Cloudflare Worker",
   "connect-builds": "Connect push-to-deploy",
   "commit-identity": "Name the app and write TASK.md",
+  "start-build": "Start the build",
   "wait-origin": "Wait for the first deployment",
   "launch-agent": "Start the Cursor agent",
   propose: "Add the app to Haven",
@@ -55,6 +72,13 @@ const SYMBOLS: Record<FlowStep["status"], string> = {
     <div v-if="result" class="outcome">
       <p v-if="result.error" class="warn">{{ result.error }}</p>
 
+      <p v-if="canBuildNow" class="retry">
+        <button type="button" :disabled="running" @click="$emit('build-now')">Build now</button>
+        <span class="retry__hint">
+          Granted access? This starts the build and finishes the setup — no push needed.
+        </span>
+      </p>
+
       <ul class="links">
         <li v-if="result.repository">
           <a :href="result.repository.htmlUrl" target="_blank" rel="noopener noreferrer">
@@ -66,7 +90,7 @@ const SYMBOLS: Record<FlowStep["status"], string> = {
           <a :href="result.worker.url" target="_blank" rel="noopener noreferrer">
             {{ result.worker.url }}
           </a>
-          live app
+          {{ serving ? "live app" : "app URL, not serving yet" }}
         </li>
       </ul>
 
@@ -117,6 +141,19 @@ const SYMBOLS: Record<FlowStep["status"], string> = {
 
 .step--failed {
   color: var(--app-danger);
+}
+
+.retry {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0.75rem 0 0;
+}
+
+.retry__hint {
+  font-size: 0.85rem;
+  color: var(--app-muted);
 }
 
 .links,

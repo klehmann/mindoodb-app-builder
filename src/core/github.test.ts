@@ -153,11 +153,14 @@ describe("generateRepositoryFromTemplate", () => {
 });
 
 describe("findAppInstallation", () => {
-  it("finds this app's installation among the user's", async () => {
+  it("finds this app's installation", async () => {
+    // The response carries only this app's installations, whatever else the account has
+    // installed: GitHub scopes `GET /user/installations` to the app the token belongs
+    // to. Anything built on the assumption that another vendor's app would appear here
+    // reads its absence as "not installed" and is wrong for every user.
     mockFetch(() =>
       json({
         installations: [
-          { id: 1, app_slug: "some-other-app", repository_selection: "all" },
           { id: 42, app_slug: "mindoodb-app-builder", repository_selection: "selected" },
         ],
       }),

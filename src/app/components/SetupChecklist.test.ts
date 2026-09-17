@@ -18,7 +18,6 @@ function render(overrides: Partial<InstanceType<typeof SetupChecklist>["$props"]
       cloudflareGit: "connected",
       cloudflareChecking: false,
       cloudflareDashboardUrl: "https://dash.cloudflare.com/acct-1/workers-and-pages",
-      cloudflareRepoAccess: { state: "all" } as const,
       cursorReady: true,
       ...overrides,
     },
@@ -30,18 +29,12 @@ describe("SetupChecklist", () => {
     const panel = render();
 
     expect(panel.text()).toContain("Ready to build");
-    expect(panel.findAll("li")).toHaveLength(6);
-    expect(panel.findAll("li.state-done")).toHaveLength(6);
+    expect(panel.findAll("li")).toHaveLength(5);
+    expect(panel.findAll("li.state-done")).toHaveLength(5);
   });
 
   it("summarises how many items would stop a build", () => {
-    const panel = render({
-      githubInstallation: "missing",
-      cloudflareRepoAccess: {
-        state: "selected",
-        settingsUrl: "https://github.com/settings/installations/106039904",
-      },
-    });
+    const panel = render({ githubConnected: false, githubInstallation: "missing" });
 
     expect(panel.text()).toContain("2 to do");
     expect(panel.findAll("li.state-todo")).toHaveLength(2);

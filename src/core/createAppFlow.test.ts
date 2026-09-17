@@ -4,7 +4,9 @@ import type { AppIdentity } from "@/core/appIdentity";
 import {
   createApp,
   createInitialSteps,
+  deployNow,
   type CreateAppDependencies,
+  type DeployNowDependencies,
   type FlowStep,
   type FlowStepId,
 } from "@/core/createAppFlow";
@@ -52,6 +54,10 @@ function makeDeps(overrides: Partial<CreateAppDependencies> = {}): CreateAppDepe
     cloudflare: {
       ensureWorker: vi.fn(async () => worker),
       connectPushToDeploy: vi.fn(async () => ({ detail: "Pushes to main deploy." })),
+      checkRepoReadable: vi.fn(async () => ({
+        state: "readable" as const,
+        detail: "Cloudflare can read the repository.",
+      })),
       ...overrides.cloudflare,
     },
     waitForOrigin:
@@ -96,8 +102,8 @@ describe("createInitialSteps", () => {
     const steps = createInitialSteps();
     expect(steps.map((step) => step.id)).toEqual([
       "check-name",
-      "check-deploy-access",
       "create-repo",
+      "check-repo-access",
       "create-worker",
       "connect-builds",
       "commit-identity",
@@ -118,9 +124,7 @@ describe("createApp", () => {
     expect(result.error).toBeNull();
     expect(result.steps.map((step) => step.status)).toEqual([
       "done",
-      // The default deps wire no Cloudflare access check, and an unmade check is
-      // skipped rather than failed.
-      "skipped",
+      "done",
       "done",
       "done",
       "done",
@@ -234,11 +238,10 @@ describe("createApp", () => {
 
     await createApp({ identity, owner: "octocat" }, deps);
 
-    // `check-deploy-access` is absent because these deps wire no checker: a skipped
-    // step never becomes the running one.
     expect(seen.map(([id]) => id)).toEqual([
       "check-name",
       "create-repo",
+      "check-repo-access",
       "create-worker",
       "connect-builds",
       "commit-identity",
@@ -274,57 +277,92 @@ describe("createApp", () => {
       expect(ensureWorker).not.toHaveBeenCalled();
     });
 
-    it("refuses when Cloudflare's app cannot read repositories yet to exist", async () => {
-      // The bug this pins: Cloudflare's `PUT /builds/repos/connections` succeeds for a
-      // repository its GitHub App cannot see, so push-to-deploy reported success, no
-      // build ever ran, and the only symptom was `wait-origin` timing out five steps
-      // later — with the repository created and its name taken.
-      const generateFromTemplate = vi.fn();
-      const ensureWorker = vi.fn();
-      const deps = makeDeps({
-        github: {
-          getRepository: vi.fn(async () => null),
-          generateFromTemplate,
-          checkCloudflareRepoAccess: vi.fn(async () => ({
-            state: "selected" as const,
-            settingsUrl: "https://github.com/settings/installations/106039904",
-          })),
-          readTemplateSources: vi.fn(async () => templateSources),
-          commitFiles: vi.fn(async () => "sha"),
-        },
-        cloudflare: {
-          ensureWorker,
-          connectPushToDeploy: vi.fn(async () => ({ detail: "" })),
-        },
-      });
-
-      const result = await createApp({ identity, owner: "octocat" }, deps);
-
-      expect(statusOf(result.steps, "check-deploy-access")).toBe("failed");
-      expect(result.error).toContain("installations/106039904");
-      expect(generateFromTemplate).not.toHaveBeenCalled();
-      expect(ensureWorker).not.toHaveBeenCalled();
-    });
-
-    it("continues when the access check itself cannot answer", async () => {
-      // A token that may not list installations says nothing about whether the build
-      // would work, so it must not stop one.
+    it("reports a repository Cloudflare cannot read, and wires the rest anyway", async () => {
+      // The failure with no other symptom: `PUT /builds/repos/connections` accepts a
+      // repository Cloudflare's GitHub App cannot see, so the push reaches nobody and
+      // the only evidence is an origin that never answers.
+      //
+      // Deliberately not an abort. The repository exists by now, so stopping here would
+      // take its name with it and the retry after granting access would fail the name
+      // check. Wiring the Worker, the connection and the identity commit means one grant
+      // plus one push finishes the app.
+      const ensureWorker = vi.fn(async () => worker);
+      const connectPushToDeploy = vi.fn(async () => ({ detail: "Pushes to main deploy." }));
+      const commitFiles = vi.fn(async () => "commit-sha");
+      const waitForOrigin = vi.fn();
       const deps = makeDeps({
         github: {
           getRepository: vi.fn(async () => null),
           generateFromTemplate: vi.fn(async () => repository),
-          checkCloudflareRepoAccess: vi.fn(async () => {
-            throw new Error("Bad credentials");
-          }),
           readTemplateSources: vi.fn(async () => templateSources),
-          commitFiles: vi.fn(async () => "sha"),
+          commitFiles,
+        },
+        cloudflare: {
+          ensureWorker,
+          connectPushToDeploy,
+          checkRepoReadable: vi.fn(async () => ({
+            state: "unreadable" as const,
+            detail: "Repository not found",
+          })),
+        },
+        waitForOrigin,
+      });
+
+      const result = await createApp({ identity, owner: "octocat" }, deps);
+
+      expect(statusOf(result.steps, "check-repo-access")).toBe("failed");
+      expect(ensureWorker).toHaveBeenCalled();
+      expect(connectPushToDeploy).toHaveBeenCalled();
+      expect(commitFiles).toHaveBeenCalled();
+
+      // Waiting for a build that was never triggered is the one thing worth skipping,
+      // and Haven cannot read a definition from a URL that is not serving yet.
+      expect(waitForOrigin).not.toHaveBeenCalled();
+      expect(statusOf(result.steps, "wait-origin")).toBe("skipped");
+      expect(statusOf(result.steps, "propose")).toBe("skipped");
+
+      // The agent is not skipped: it works on the repository, which exists.
+      expect(statusOf(result.steps, "launch-agent")).toBe("done");
+      expect(result.error).toContain("settings/installations");
+      expect(result.error).toContain("Repository not found");
+      expect(result.repository?.fullName).toBe("octocat/team-notes");
+      expect(result.worker?.url).toBe("https://team-notes.acme.workers.dev");
+    });
+
+    it("carries on when the readability check cannot answer", async () => {
+      // `unknown` is not a refusal. A token that may not ask, or an endpoint Cloudflare
+      // has since moved, must not colour a build that would have worked.
+      const deps = makeDeps({
+        cloudflare: {
+          ensureWorker: vi.fn(async () => worker),
+          connectPushToDeploy: vi.fn(async () => ({ detail: "Pushes to main deploy." })),
+          checkRepoReadable: vi.fn(async () => ({
+            state: "unknown" as const,
+            detail: "No route for that URI",
+          })),
         },
       });
 
       const result = await createApp({ identity, owner: "octocat" }, deps);
 
       expect(result.error).toBeNull();
-      expect(statusOf(result.steps, "check-deploy-access")).toBe("done");
+      expect(statusOf(result.steps, "check-repo-access")).toBe("done");
+      expect(statusOf(result.steps, "wait-origin")).toBe("done");
+    });
+
+    it("skips the check when there is no Cloudflare account to ask", async () => {
+      const deps = makeDeps({
+        cloudflare: {
+          ensureWorker: vi.fn(async () => worker),
+          connectPushToDeploy: vi.fn(async () => ({ detail: "Pushes to main deploy." })),
+          checkRepoReadable: undefined,
+        },
+      });
+
+      const result = await createApp({ identity, owner: "octocat" }, deps);
+
+      expect(result.error).toBeNull();
+      expect(statusOf(result.steps, "check-repo-access")).toBe("skipped");
     });
 
     it("keeps the repository it already created when the Worker fails", async () => {
@@ -457,5 +495,114 @@ describe("createApp", () => {
       expect(result.installedAppInstanceId).toBe("instance-1");
       expect(result.warnings).toContain("The database main could not be created.");
     });
+  });
+});
+
+describe("deployNow", () => {
+  function makeDeployDeps(overrides: Partial<CreateAppDependencies> = {}): DeployNowDependencies {
+    const base = makeDeps(overrides);
+    return {
+      ...base,
+      cloudflare: {
+        ...base.cloudflare,
+        startBuild: vi.fn(async () => ({ detail: "Cloudflare is building main." })),
+        ...(overrides.cloudflare ?? {}),
+      },
+    } as DeployNowDependencies;
+  }
+
+  const input = { repository, worker, appId: "team-notes" };
+
+  it("builds without a push and finishes the setup", async () => {
+    // The whole point: after access is granted there is no commit left to make, so the
+    // build is started directly and the original sequence resumes from the origin wait.
+    const startBuild = vi.fn(async () => ({ detail: "Cloudflare is building main." }));
+    const proposeApp = vi.fn(async () => ({
+      ok: true as const,
+      appId: "team-notes",
+      appInstanceId: "instance-1",
+      label: "Team Notes",
+      warnings: [],
+    }));
+    const deps = makeDeployDeps({ haven: { proposeApp } });
+    deps.cloudflare.startBuild = startBuild;
+
+    const result = await deployNow(input, deps);
+
+    expect(startBuild).toHaveBeenCalledWith({ worker, branch: "main" });
+    expect(result.error).toBeNull();
+    expect(result.steps.map((step) => step.id)).toEqual([
+      "check-repo-access",
+      "start-build",
+      "wait-origin",
+      "propose",
+    ]);
+    expect(result.steps.every((step) => step.status === "done")).toBe(true);
+    expect(result.installedAppInstanceId).toBe("instance-1");
+
+    // The links stay in the outcome, and the agent the first run started is not lost.
+    expect(result.repository).toBe(repository);
+    expect(result.worker).toBe(worker);
+  });
+
+  it("carries the agent from the first run into the result", async () => {
+    const agent = { id: "bc-1", url: "https://cursor.com/agents/bc-1", runId: "run-1" };
+
+    const result = await deployNow({ ...input, agent }, makeDeployDeps());
+
+    expect(result.agent).toBe(agent);
+  });
+
+  it("refuses to build when Cloudflare still cannot read the repository", async () => {
+    // Fatal here, unlike during creation: nothing has been created, so stopping costs
+    // nothing, and a build Cloudflare cannot clone would replace a clear answer with a
+    // failed build log.
+    const startBuild = vi.fn(async () => ({ detail: "" }));
+    const deps = makeDeployDeps({
+      cloudflare: {
+        ensureWorker: vi.fn(async () => worker),
+        connectPushToDeploy: vi.fn(async () => ({ detail: "" })),
+        checkRepoReadable: vi.fn(async () => ({
+          state: "unreadable" as const,
+          detail: "Repository not found",
+        })),
+      },
+    });
+    deps.cloudflare.startBuild = startBuild;
+
+    const result = await deployNow(input, deps);
+
+    expect(startBuild).not.toHaveBeenCalled();
+    expect(statusOf(result.steps, "check-repo-access")).toBe("failed");
+    expect(statusOf(result.steps, "start-build")).toBe("skipped");
+    expect(result.error).toContain("settings/installations");
+  });
+
+  it("stops with Cloudflare's reason when the build cannot be started", async () => {
+    const deps = makeDeployDeps();
+    deps.cloudflare.startBuild = vi.fn(async () => {
+      throw new Error("This Worker has no build trigger for main.");
+    });
+
+    const result = await deployNow(input, deps);
+
+    expect(statusOf(result.steps, "start-build")).toBe("failed");
+    expect(statusOf(result.steps, "wait-origin")).toBe("skipped");
+    expect(result.error).toBe("This Worker has no build trigger for main.");
+  });
+
+  it("does not offer Haven an origin that never came up", async () => {
+    const deps = makeDeployDeps({
+      waitForOrigin: vi.fn(async () => ({
+        state: "not-published" as const,
+        definition: null,
+        detail: "The app did not answer.",
+      })),
+    });
+
+    const result = await deployNow(input, deps);
+
+    expect(statusOf(result.steps, "wait-origin")).toBe("failed");
+    expect(statusOf(result.steps, "propose")).toBe("skipped");
   });
 });

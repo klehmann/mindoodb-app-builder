@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  checkRepoReadable,
+  startBuild,
   connectPushToDeploy,
   ensureWorker,
   getAccountSubdomain,
@@ -357,5 +359,154 @@ describe("connectPushToDeploy", () => {
     await expect(connectPushToDeploy({ ...base, fetchImpl })).rejects.toThrow(
       /Install the Cloudflare GitHub App/i,
     );
+  });
+});
+
+describe("checkRepoReadable", () => {
+  const AUTOFILL = "GET /accounts/acct-1/builds/repos/github/4291861/987/config_autofill";
+
+  /**
+   * `stubFetch` wraps every body as a successful envelope, which is exactly what these
+   * cases need to contradict: the interesting input is Cloudflare's error envelope, and
+   * its `code` is what separates "no access" from "no such endpoint".
+   */
+  function refusingFetch(status: number, code: number, message: string): typeof fetch {
+    return vi.fn(
+      async () =>
+        new Response(JSON.stringify({ success: false, errors: [{ code, message }] }), { status }),
+    ) as unknown as typeof fetch;
+  }
+
+  function ask(fetchImpl: typeof fetch) {
+    return checkRepoReadable({
+      token: "cf-token",
+      accountId: "acct-1",
+      providerAccountId: "4291861",
+      repoId: "987",
+      branch: "main",
+      fetchImpl,
+    });
+  }
+
+  it("reads as readable when Cloudflare can analyse the repository", async () => {
+    // Success here is end-to-end evidence: Cloudflare had to reach the repository
+    // through its own GitHub App to answer at all.
+    const { fetchImpl, calls } = stubFetch({
+      [AUTOFILL]: { body: { success: true, result: { build_command: "npm run build" } } },
+    });
+
+    await expect(ask(fetchImpl)).resolves.toMatchObject({ state: "readable" });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("asks about the repository's own default branch", async () => {
+    const { fetchImpl } = stubFetch({
+      [AUTOFILL]: { body: { success: true, result: {} } },
+    });
+
+    await ask(fetchImpl);
+
+    // The branch travels as a query parameter, which the path-keyed stub drops — so
+    // assert on the call itself rather than on the route.
+    const url = vi.mocked(fetchImpl).mock.calls[0][0];
+    expect(String(url)).toContain("config_autofill?branch=main");
+  });
+
+  it("reads a refusal as unreadable, and quotes Cloudflare", async () => {
+    // What a repository outside Cloudflare's installation looks like. The message is
+    // kept because the user has no other way to see what Cloudflare actually said.
+    await expect(ask(refusingFetch(404, 8000000, "Repository not found"))).resolves.toEqual({
+      state: "unreadable",
+      detail: "Repository not found",
+    });
+  });
+
+  it("treats a routing error as unknown rather than as no access", async () => {
+    // 7000 and 7003 are Cloudflare's "no route for that URI" and "could not route to".
+    // That is what a moved endpoint looks like, and reading it as "no access" would
+    // invent a problem in every build the day Cloudflare changes the path.
+    await expect(
+      ask(refusingFetch(404, 7000, "No route for that URI")),
+    ).resolves.toMatchObject({ state: "unknown" });
+  });
+
+  it("treats a token problem as unknown, because it says nothing about the repository", async () => {
+    await expect(
+      ask(refusingFetch(401, 10000, "Authentication error")),
+    ).resolves.toMatchObject({ state: "unknown" });
+  });
+
+  it("treats an unreachable Cloudflare as unknown", async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError("network down");
+    }) as unknown as typeof fetch;
+
+    await expect(ask(fetchImpl)).resolves.toMatchObject({ state: "unknown" });
+  });
+});
+
+describe("startBuild", () => {
+  const TRIGGERS = `GET /accounts/${ACCOUNT}/builds/workers/tag-1/triggers`;
+
+  function build(fetchImpl: typeof fetch) {
+    return startBuild({
+      token: "cf-token",
+      accountId: ACCOUNT,
+      scriptTag: "tag-1",
+      branch: "main",
+      fetchImpl,
+    });
+  }
+
+  it("builds the branch through the trigger that covers it", async () => {
+    const { fetchImpl, calls } = stubFetch({
+      [TRIGGERS]: { body: [{ trigger_uuid: "trig-1", branch_includes: ["main"] }] },
+      [`POST /accounts/${ACCOUNT}/builds/triggers/trig-1/builds`]: {
+        body: { build_uuid: "build-1" },
+      },
+    });
+
+    await expect(build(fetchImpl)).resolves.toEqual({ buildUuid: "build-1" });
+    // Cloudflare requires a branch or a commit; without one it has nothing to check out.
+    expect(calls[1].body).toEqual({ branch: "main" });
+  });
+
+  it("prefers the production trigger over a preview trigger", async () => {
+    // A preview trigger catches every branch with `*` and deploys with
+    // `wrangler versions upload`, which uploads a version without publishing it — so
+    // building through it would leave the app just as unreachable as before.
+    const { fetchImpl, calls } = stubFetch({
+      [TRIGGERS]: {
+        body: [
+          { trigger_uuid: "preview", branch_includes: ["*"], branch_excludes: ["main"] },
+          { trigger_uuid: "production", branch_includes: ["main"] },
+        ],
+      },
+      [`POST /accounts/${ACCOUNT}/builds/triggers/production/builds`]: {
+        body: { build_uuid: "build-2" },
+      },
+    });
+
+    await expect(build(fetchImpl)).resolves.toEqual({ buildUuid: "build-2" });
+    expect(calls[1].path).toContain("/triggers/production/builds");
+  });
+
+  it("falls back to a catch-all trigger", async () => {
+    const { fetchImpl } = stubFetch({
+      [TRIGGERS]: { body: [{ trigger_uuid: "any", branch_includes: ["*"] }] },
+      [`POST /accounts/${ACCOUNT}/builds/triggers/any/builds`]: { body: { build_uuid: "b" } },
+    });
+
+    await expect(build(fetchImpl)).resolves.toEqual({ buildUuid: "b" });
+  });
+
+  it("says what to do when the Worker has no trigger for the branch", async () => {
+    // Builds belong to a trigger, so there is nothing to start — and "resource not
+    // found" would leave the user looking in the wrong place.
+    const { fetchImpl } = stubFetch({
+      [TRIGGERS]: { body: [{ trigger_uuid: "other", branch_includes: ["release"] }] },
+    });
+
+    await expect(build(fetchImpl)).rejects.toThrow(/no build trigger for main/);
   });
 });

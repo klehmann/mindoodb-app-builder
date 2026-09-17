@@ -25,7 +25,6 @@ const props = defineProps<SetupInput & { cloudflareChecking: boolean }>();
 const emit = defineEmits<{
   recheckGitHub: [];
   recheckCloudflare: [];
-  recheckRepoAccess: [];
 }>();
 
 const items = computed(() => buildSetupItems(props));
@@ -44,8 +43,6 @@ function recheck(item: SetupItem): void {
     emit("recheckGitHub");
   } else if (item.recheck === "cloudflare") {
     emit("recheckCloudflare");
-  } else if (item.recheck === "repoAccess") {
-    emit("recheckRepoAccess");
   }
 }
 </script>

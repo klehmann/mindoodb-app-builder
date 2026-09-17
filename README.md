@@ -108,12 +108,11 @@ rather than once per app:
 2. **Install the builder's GitHub App.** Authorizing it and installing it are separate;
    only the installation carries repository permissions. Any repository selection works,
    including none, because GitHub grants access to repositories an app creates itself.
-3. **Connect Cloudflare to GitHub** — dashboard → any Worker → Settings → Builds →
-   Connect. Cloudflare documents this as a prerequisite for its Builds API, so it is the
-   single step of a deploy with no programmatic route. Everything after it is API.
-4. **Set Cloudflare's GitHub App to "All repositories"** — see below for why this one is
-   not optional.
-5. **Paste a Cursor API key**, if you want an agent to work on the app. Cursor has no
+3. **Connect Cloudflare to GitHub, on "All repositories"** — dashboard → any Worker →
+   Settings → Builds → Connect. Cloudflare documents this as a prerequisite for its
+   Builds API, so it is the single step of a deploy with no programmatic route, and the
+   repository scope is not optional for the reason below.
+4. **Paste a Cursor API key**, if you want an agent to work on the app. Cursor has no
    consent flow at all.
 
 Each item carries its own link to the page where the grant is made and a "Check again"
@@ -123,15 +122,63 @@ marked as such rather than as a fault. While the count is above zero, **Create a
 disabled** — the same reasoning drives the list and the button, so the builder cannot
 offer a build it already knows will fail.
 
-The Cloudflare item is detected rather than recorded: no endpoint lists Git connections
+#### What can and cannot be checked
+
+Only two of these are observable, and knowing which is which is the difference between a
+useful list and a list that lies.
+
+The **builder's own GitHub App** is a real lookup: `GET /user/installations` answers for
+the app the token belongs to, so its installation either appears or does not.
+
+The **Cloudflare connection** is only inferable. No endpoint lists Git connections
 (`PUT /builds/repos/connections` and its `DELETE` are the whole surface), so the builder
 looks for an existing build trigger, which cannot exist without a connection. An account
-that has built from a repository before therefore reads as connected, and one that has
-not reads as "not confirmed" — which is why that item is worded as a question rather than
-an accusation, and why nothing blocks a build on it. GitHub's installation listing does
-answer definitively, so when it reports Cloudflare's app as absent the two Cloudflare
-items collapse into one: a single install fixes both, and two entries demanding one click
-read as twice the work.
+that has built from a repository before reads as connected; one that has not reads as
+"not confirmed", which is why that item is worded as a question and never blocks a build.
+
+**Cloudflare's repository selection cannot be read from GitHub at all.** GitHub scopes
+`GET /user/installations` to the app the token belongs to — "Lists installations of *your*
+GitHub App" — so this builder's token sees exactly one installation, its own, however
+many other apps the account has. Cloudflare's app is not missing from that response; it
+is unaddressable. The builder used to check it anyway and read the silence as "not
+installed", which told every user to install something most of them had already
+installed, and refused their builds on the way.
+
+**Cloudflare can be asked instead, and is.** `GET /builds/repos/github/{owner_id}/{repo_id}/config_autofill`
+is what the dashboard calls when a repository is picked: Cloudflare reads the repository
+to guess build settings, so a success proves access end to end, through whatever
+installation the account really has. That also makes it a better question than the one
+above — someone who keeps a hand-picked list and adds each repository to it passes, where
+an "is it set to all repositories" check would wrongly fail them. It can only answer for a
+repository that exists, so it runs as `check-repo-access`, immediately after
+`create-repo`.
+
+A refusal there does not stop the build, which is deliberate. The repository exists by
+then, so aborting would take its name with it and the retry after granting access would
+fail the name check — leaving the user renaming an app they had already created. Instead
+the Worker, the connection and the identity commit all go ahead, so the app is wired and
+only unbuilt. Only the two things that provably cannot work are skipped: waiting for a
+build that was never triggered, and offering Haven a URL that is not serving yet.
+
+**Build now** is how that app gets finished. Cloudflare builds on push, and by this point
+there is no push left to make — the identity commit is already in the repository — so
+asking the user to invent a commit would be asking them to work around us. The button
+runs `deployNow`: it re-checks access (a refusal is fatal *here*, since nothing is
+created and a build Cloudflare cannot clone would only replace a clear answer with a
+failed build log), starts a build through the Worker's production trigger
+(`POST /builds/triggers/{uuid}/builds` with the branch), then rejoins the original
+sequence at the origin wait and the Haven install. Picking the production trigger
+matters: an account with a hand-made preview trigger would otherwise build with
+`wrangler versions upload`, which uploads a version without publishing it and leaves the
+app just as unreachable.
+
+The button appears whenever `connect-builds` succeeded and `wait-origin` did not — so it
+also covers the origin timeout, not just a refused access check.
+
+Cloudflare documents only 200 and 401 for that endpoint, so the mapping is cautious. A
+refusal naming the repository (403/404) is a refusal; Cloudflare's routing codes 7000 and
+7003 — "no route for that URI" — stay `unknown`, because that is what a moved endpoint
+looks like and reading it as "no access" would invent a problem in every build.
 
 New repositories are **private by default**, so an unfinished app's brief in `TASK.md`
 is not public while you work on it.
@@ -143,9 +190,10 @@ itself. With a selected-repositories installation the failure is silent rather t
 loud: `PUT /builds/repos/connections` accepts the connection from ids alone, Cloudflare
 never receives the push, no build runs, and the only symptoms are an origin that stays
 quiet and a dashboard that later says "This project is disconnected from your Git
-account". The builder therefore checks this *before* creating anything and refuses with
-a link to the installation settings. The same applies to Cursor's GitHub access if you
-want an agent to work on a private repository.
+account". Nothing can verify it in advance (see above), so the builder states it in the
+setup list and, when a build never appears, says so in the timeout: an empty Builds tab
+means Cloudflare never saw the repository. The same applies to Cursor's GitHub access if
+you want an agent to work on a private repository.
 
 ## Deploying your own
 

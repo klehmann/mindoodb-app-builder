@@ -172,14 +172,6 @@ export function githubAppInstallUrl(appSlug: string): string {
   return `https://github.com/apps/${encodeURIComponent(appSlug)}/installations/new`;
 }
 
-/** Where the user changes which repositories an installation can see. */
-export function githubInstallationSettingsUrl(installationId: number): string {
-  return `https://github.com/settings/installations/${installationId}`;
-}
-
-/** Cloudflare's own GitHub App, which is what actually reads the repo to build it. */
-export const CLOUDFLARE_GITHUB_APP_SLUG = "cloudflare-workers-and-pages";
-
 interface RawInstallation {
   id?: number;
   app_slug?: string;
@@ -193,6 +185,11 @@ interface RawInstallation {
  * refused lookup is a fact about the token — a pasted personal access token may simply
  * not be allowed to ask. Collapsing the two would turn "cannot tell" into "not
  * installed" and send people to fix something that is already fine.
+ *
+ * Scope worth knowing before building anything on this: with a user-to-server token the
+ * endpoint lists installations *of the app the token belongs to*, and nothing else. It
+ * cannot see another vendor's app however it is filtered — see the note below
+ * `findAppInstallation`.
  */
 async function listUserInstallations(token: string): Promise<RawInstallation[] | null> {
   const payload = await githubRequest<{ installations?: RawInstallation[] }>({
@@ -242,45 +239,25 @@ export async function findAppInstallation(options: {
   };
 }
 
-/**
- * Can Cloudflare build a repository this builder is about to create?
+/*
+ * There used to be a `checkCloudflareRepoAccess` here, reading `GET /user/installations`
+ * to find Cloudflare's app and warn when it was limited to hand-picked repositories.
+ * It could not work, and it is worth knowing why before anyone writes it again.
  *
- * `"selected"` is the state worth catching, and it is a certainty rather than a guess:
- * GitHub grants an installation automatic access only to repositories that *that* app
- * creates, so a repository created by this builder is never in Cloudflare's hand-picked
- * list. Push-to-deploy then fails in the quietest possible way — `PUT
- * /builds/repos/connections` records the connection from ids alone and reports success,
- * Cloudflare never receives the push webhook, no build runs, and the only symptom is an
- * origin that stays silent until the wait gives up. Cloudflare's dashboard describes it
- * after the fact as "This project is disconnected from your Git account".
+ * GitHub scopes that endpoint to the *app the token belongs to*: "Lists installations of
+ * your GitHub App that the authenticated user has explicit permission to access." With
+ * the `ghu_` token the device flow issues, the response therefore contains exactly one
+ * entry — this builder's own installation — no matter how many other apps the account
+ * has. Cloudflare's app is not absent from the list; it is not addressable by this
+ * token at all. The old code read that silence as "not installed" and told every user,
+ * correctly installed or not, to go and install it.
+ *
+ * There is no substitute. `GET /installation/repositories` answers for the token's own
+ * installation, and Cloudflare exposes no endpoint listing its Git connections. The
+ * requirement is real — a repository that does not exist yet cannot be in a hand-picked
+ * list, so a build would connect and never run — but it can only be *stated*, not
+ * verified, which is what the setup list now does.
  */
-export type CloudflareRepoAccess =
-  /** Every repository, including ones that do not exist yet. */
-  | { state: "all" }
-  /** Hand-picked repositories, which cannot include the one about to be created. */
-  | { state: "selected"; settingsUrl: string }
-  /** Cloudflare's app is not installed at all. */
-  | { state: "missing"; installUrl: string }
-  /** The token could not answer, so nothing should be concluded. */
-  | { state: "unknown" };
-
-export async function checkCloudflareRepoAccess(token: string): Promise<CloudflareRepoAccess> {
-  const installations = await listUserInstallations(token);
-  if (!installations) {
-    return { state: "unknown" };
-  }
-
-  const installation = installations.find(
-    (entry) => entry.app_slug === CLOUDFLARE_GITHUB_APP_SLUG,
-  );
-  if (!installation || typeof installation.id !== "number") {
-    return { state: "missing", installUrl: githubAppInstallUrl(CLOUDFLARE_GITHUB_APP_SLUG) };
-  }
-  if (installation.repository_selection === "all") {
-    return { state: "all" };
-  }
-  return { state: "selected", settingsUrl: githubInstallationSettingsUrl(installation.id) };
-}
 
 /*
  * There used to be an `ensureRepositoryInInstallation` here, adding a freshly created

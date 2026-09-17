@@ -12,7 +12,6 @@
  */
 import type { GitHubInstallationState } from "@/app/useGitHubConnect";
 import type { CloudflareGitState } from "@/app/useSetupReadiness";
-import type { CloudflareRepoAccess } from "@/core/github";
 
 /**
  * `todo` is the only state that stops a build.
@@ -31,7 +30,7 @@ export interface SetupItem {
   /** Opens where the grant is actually made. */
   actionUrl?: string;
   actionLabel?: string;
-  recheck?: "github" | "cloudflare" | "repoAccess";
+  recheck?: "github" | "cloudflare";
 }
 
 export interface SetupInput {
@@ -41,7 +40,6 @@ export interface SetupInput {
   cloudflareConnected: boolean;
   cloudflareGit: CloudflareGitState;
   cloudflareDashboardUrl: string;
-  cloudflareRepoAccess: CloudflareRepoAccess;
   cursorReady: boolean;
 }
 
@@ -64,7 +62,7 @@ export function buildSetupItems(input: SetupInput): SetupItem[] {
         ? "Used to create the Worker and wire push-to-deploy."
         : 'Use "Connect Cloudflare" above.',
     },
-    ...cloudflareGitHubItems(input),
+    cloudflareGitItem(input),
     {
       key: "cursor",
       title: "Cursor API key",
@@ -116,36 +114,24 @@ function githubAppItem(input: SetupInput): SetupItem {
 }
 
 /**
- * Cloudflare's side of the wiring, as one item or two.
+ * Cloudflare's side of the wiring: install its GitHub App, and let it see repositories
+ * that do not exist yet.
  *
- * Two questions are being asked — is Cloudflare's GitHub app installed, and can it see
- * repositories that do not exist yet — but when the app is absent both have the same
- * answer and the same fix, and two entries demanding one click read as twice the work.
- * GitHub's installation listing settles it outright, so it wins over the weaker
- * build-trigger inference whenever it has an opinion.
- */
-function cloudflareGitHubItems(input: SetupInput): SetupItem[] {
-  if (input.cloudflareRepoAccess.state === "missing") {
-    return [
-      {
-        key: "cloudflare-git",
-        title: "Cloudflare connected to GitHub",
-        state: "todo",
-        detail:
-          'Cloudflare\'s own GitHub app is not installed, so no push could reach Cloudflare. Install it on "All repositories" — from its dashboard under any Worker, Settings, Builds, Connect, or directly.',
-        actionUrl: input.cloudflareRepoAccess.installUrl,
-        actionLabel: "Install",
-        recheck: "repoAccess",
-      },
-    ];
-  }
-  return [cloudflareGitItem(input), cloudflareRepoAccessItem(input)];
-}
-
-/**
- * Installing Cloudflare's GitHub App is the one step of a deploy with no API at all, so
- * this is detected from its footprint: an existing build trigger cannot exist without
- * it. Absence of evidence is reported as `unsure`, never as a fault.
+ * Both halves are stated in one item because neither can be verified and both are fixed
+ * in the same place. The connection itself is only inferable — no endpoint lists Git
+ * connections, so `probeGitIntegration` looks for a build trigger, which cannot exist
+ * without one — and the repository selection cannot be read at all: GitHub scopes
+ * `GET /user/installations` to the app the token belongs to, so this builder's token is
+ * blind to Cloudflare's installation however it asks.
+ *
+ * So this item never blocks a build. It carries the requirement that actually bites —
+ * "All repositories", because GitHub grants automatic access only to repositories an app
+ * creates itself, and Cloudflare accepts a connection for a repository it cannot see and
+ * then never builds — and says plainly that it cannot confirm it.
+ *
+ * The confirmation happens during the build instead, where it is finally possible:
+ * `check-repo-access` asks Cloudflare to read the new repository (`checkRepoReadable`)
+ * seconds after creating it.
  */
 function cloudflareGitItem(input: SetupInput): SetupItem {
   if (input.cloudflareGit === "connected") {
@@ -153,7 +139,11 @@ function cloudflareGitItem(input: SetupInput): SetupItem {
       key: "cloudflare-git",
       title: "Cloudflare connected to GitHub",
       state: "done",
-      detail: "This account has built from a repository before.",
+      detail:
+        'This account has built from a repository before. New repositories still need to be in reach of Cloudflare\'s GitHub app — "All repositories" covers them; a hand-picked list cannot.',
+      actionUrl: input.cloudflareDashboardUrl,
+      actionLabel: "Open the dashboard",
+      recheck: "cloudflare",
     };
   }
   return {
@@ -161,49 +151,9 @@ function cloudflareGitItem(input: SetupInput): SetupItem {
     title: "Cloudflare connected to GitHub",
     state: "unsure",
     detail:
-      "Cloudflare's own GitHub app is installed from its dashboard: open any Worker, then Settings, Builds, Connect. If you have connected a repository on this account before, it is already done — nothing here can confirm it until the first build.",
+      'Install Cloudflare\'s own GitHub app from its dashboard — any Worker, then Settings, Builds, Connect — and give it "All repositories". A repository that does not exist yet cannot be picked from a hand-picked list. Already done? Nothing here can confirm it, but the build will: right after creating the repository it asks Cloudflare to read it, and says so within seconds if it cannot. Fixing it then takes one click on Build now.',
     actionUrl: input.cloudflareDashboardUrl,
     actionLabel: "Open the dashboard",
     recheck: "cloudflare",
-  };
-}
-
-/**
- * The one hard requirement nobody guesses, and the only check here that is a certainty
- * rather than an inference: a repository that does not exist yet cannot be in a
- * hand-picked list, and GitHub grants automatic access only to repositories an app
- * creates itself. Cloudflare accepts the connection anyway and then never builds.
- */
-function cloudflareRepoAccessItem(input: SetupInput): SetupItem {
-  const access = input.cloudflareRepoAccess;
-  const title = "Cloudflare can read new repositories";
-
-  if (access.state === "all") {
-    return {
-      key: "cloudflare-repo-access",
-      title,
-      state: "done",
-      detail:
-        'Its GitHub app is set to "All repositories", which includes the ones this builder creates.',
-    };
-  }
-  if (access.state === "selected") {
-    return {
-      key: "cloudflare-repo-access",
-      title,
-      state: "todo",
-      detail:
-        'Its GitHub app is limited to selected repositories, so a new app would be connected but never built. Set it to "All repositories" — a repository that does not exist yet cannot be picked from a list.',
-      actionUrl: access.settingsUrl,
-      actionLabel: "Change repository access",
-      recheck: "repoAccess",
-    };
-  }
-  // `missing` never reaches here: it is folded into the connection item above.
-  return {
-    key: "cloudflare-repo-access",
-    title,
-    state: "unsure",
-    detail: "Not checked yet. Connect GitHub to check.",
   };
 }

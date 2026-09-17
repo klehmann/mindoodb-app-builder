@@ -14,6 +14,7 @@ import type {
   ConnectPushToDeployResult,
   EnsureWorkerResult,
   GitIntegrationState,
+  RepoReadableResult,
 } from "@/core/cloudflare";
 import type { CloudflareOAuthTokens } from "@/core/cloudflareOAuth";
 import type { CursorAgent, CursorRun } from "@/core/cursorAgents";
@@ -148,6 +149,20 @@ export function probeCloudflareGitIntegration(input: {
   return post("/api/cloudflare/git-integration", { ...input });
 }
 
+/**
+ * Can Cloudflare read this repository? Asked by making Cloudflare try — see
+ * `checkRepoReadable`. The repository must already exist.
+ */
+export function checkCloudflareRepoReadable(input: {
+  cloudflareToken: string;
+  accountId: string;
+  providerAccountId: string;
+  repoId: string;
+  branch: string;
+}): Promise<RepoReadableResult> {
+  return post("/api/cloudflare/repo-access", { ...input });
+}
+
 export function verifyCursorKey(cursorToken: string): Promise<{ email?: string }> {
   return post("/api/cursor/verify", { cursorToken });
 }
@@ -175,6 +190,19 @@ export function connectCloudflarePushToDeploy(input: {
   branch: string;
 }): Promise<ConnectPushToDeployResult> {
   return post("/api/cloudflare/push-to-deploy", { ...input });
+}
+
+/**
+ * Start a build without pushing anything — the way out of a repository whose first
+ * push reached nobody. See `startBuild`.
+ */
+export function startCloudflareBuild(input: {
+  cloudflareToken: string;
+  accountId: string;
+  scriptTag: string;
+  branch: string;
+}): Promise<{ buildUuid: string }> {
+  return post("/api/cloudflare/build", { ...input });
 }
 
 export function launchCursorAgent(input: {

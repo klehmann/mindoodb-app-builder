@@ -11,7 +11,6 @@ function ready(overrides: Partial<SetupInput> = {}): SetupInput {
     cloudflareConnected: true,
     cloudflareGit: "connected",
     cloudflareDashboardUrl: "https://dash.cloudflare.com/acct-1/workers-and-pages",
-    cloudflareRepoAccess: { state: "all" },
     cursorReady: true,
     ...overrides,
   };
@@ -36,7 +35,6 @@ describe("buildSetupItems", () => {
       "github-app",
       "cloudflare-account",
       "cloudflare-git",
-      "cloudflare-repo-access",
       "cursor",
     ]);
     expect(items.every((entry) => entry.state === "done")).toBe(true);
@@ -71,48 +69,20 @@ describe("buildSetupItems", () => {
     expect(entry.actionUrl).toBeUndefined();
   });
 
-  it("blocks on a hand-picked Cloudflare repository list", () => {
-    // The one certainty among these checks: the repository does not exist yet, so it
-    // cannot be on the list, so the build would connect and never run.
-    const entry = item(
-      ready({
-        cloudflareRepoAccess: {
-          state: "selected",
-          settingsUrl: "https://github.com/settings/installations/106039904",
-        },
-      }),
-      "cloudflare-repo-access",
-    );
-
-    expect(entry.state).toBe("todo");
-    expect(entry.actionUrl).toBe("https://github.com/settings/installations/106039904");
-  });
-
-  it("asks once, not twice, when Cloudflare's GitHub app is absent altogether", () => {
-    // Its absence answers both Cloudflare questions, and one install fixes both.
-    const input = ready({
-      cloudflareRepoAccess: {
-        state: "missing",
-        installUrl: "https://github.com/apps/cloudflare-workers-and-pages/installations/new",
-      },
-    });
-    const items = buildSetupItems(input);
+  it('states the "All repositories" requirement without claiming to have checked it', () => {
+    // This replaced a check that could not exist. `GET /user/installations` lists only
+    // installations of the app the token belongs to, so asking it about Cloudflare's app
+    // always came back empty, and the checklist told every user — including ones who had
+    // just granted access to all their repositories — to go and install it. The
+    // requirement is real, so it is stated; it is not observable, so it never blocks.
+    const items = buildSetupItems(ready());
 
     expect(items.some((entry) => entry.key === "cloudflare-repo-access")).toBe(false);
-    expect(countBlockers(items)).toBe(1);
-    expect(item(input, "cloudflare-git")).toMatchObject({
-      state: "todo",
-      actionUrl: "https://github.com/apps/cloudflare-workers-and-pages/installations/new",
-      recheck: "repoAccess",
-    });
-  });
-
-  it("prefers GitHub's answer over the build-trigger guess", () => {
-    // An account that has never built looks "unconfirmed", but the installation listing
-    // proves the connection exists — so the weaker signal must not raise a to-do.
-    const items = buildSetupItems(ready({ cloudflareGit: "unconfirmed" }));
-
-    expect(countBlockers(items)).toBe(0);
+    expect(item(ready(), "cloudflare-git").detail).toContain("All repositories");
+    expect(item(ready({ cloudflareGit: "unconfirmed" }), "cloudflare-git").detail).toContain(
+      "All repositories",
+    );
+    expect(countBlockers(buildSetupItems(ready({ cloudflareGit: "unconfirmed" })))).toBe(0);
   });
 
   it("offers the dashboard while Cloudflare's own connection is unconfirmed", () => {

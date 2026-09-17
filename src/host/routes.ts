@@ -9,9 +9,11 @@
  * one call. There is no route that stores a token and none that returns one.
  */
 import {
+  checkRepoReadable,
   connectPushToDeploy,
   ensureWorker,
   listAccounts,
+  startBuild,
   probeGitIntegration,
   CloudflareApiError,
 } from "../core/cloudflare";
@@ -264,6 +266,34 @@ export async function handleApiRequest(request: ApiRequest): Promise<ApiResponse
       }
     }
 
+    // Asks Cloudflare to read the repository, which is the only way to learn whether its
+    // GitHub App can. The ids are GitHub's and are not secret; the repository has to
+    // exist already, so the caller runs this after creating it.
+    case "/api/cloudflare/repo-access": {
+      const providerAccountId = readBodyString(body, "providerAccountId");
+      const repoId = readBodyString(body, "repoId");
+      const branch = readBodyString(body, "branch");
+      if (!cloudflareToken || !accountId) {
+        return badRequest("A Cloudflare token and account ID are required.");
+      }
+      if (!providerAccountId || !repoId || !branch) {
+        return badRequest("A provider account ID, repository ID and branch are required.");
+      }
+      try {
+        const readable = await checkRepoReadable({
+          token: cloudflareToken,
+          accountId,
+          providerAccountId,
+          repoId,
+          branch,
+          fetchImpl,
+        });
+        return { status: 200, payload: readable };
+      } catch (error) {
+        return toErrorResponse(error);
+      }
+    }
+
     // Cloudflare's API sends no CORS headers, so these two cannot happen in the page at
     // all. The token is used for the one call and then forgotten.
     case "/api/cloudflare/worker": {
@@ -282,6 +312,31 @@ export async function handleApiRequest(request: ApiRequest): Promise<ApiResponse
           fetchImpl,
         });
         return { status: 200, payload: worker };
+      } catch (error) {
+        return toErrorResponse(error);
+      }
+    }
+
+    // Starts a build with no push behind it, for a repository whose first push reached
+    // nobody. See `startBuild`.
+    case "/api/cloudflare/build": {
+      const scriptTag = readBodyString(body, "scriptTag");
+      const branch = readBodyString(body, "branch");
+      if (!cloudflareToken || !accountId) {
+        return badRequest("A Cloudflare token and account ID are required.");
+      }
+      if (!scriptTag || !branch) {
+        return badRequest("A Worker script tag and branch are required.");
+      }
+      try {
+        const build = await startBuild({
+          token: cloudflareToken,
+          accountId,
+          scriptTag,
+          branch,
+          fetchImpl,
+        });
+        return { status: 200, payload: build };
       } catch (error) {
         return toErrorResponse(error);
       }

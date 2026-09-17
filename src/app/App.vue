@@ -75,7 +75,6 @@ const setup = computed<SetupInput>(() => ({
   cloudflareConnected: session.credentialsStatus.value.cloudflare,
   cloudflareGit: readiness.cloudflareGit.value,
   cloudflareDashboardUrl: readiness.cloudflareDashboardUrl.value,
-  cloudflareRepoAccess: readiness.cloudflareRepoAccess.value,
   cursorReady: session.credentialsStatus.value.cursor,
 }));
 const setupBlockers = computed(() => countBlockers(buildSetupItems(setup.value)));
@@ -127,7 +126,6 @@ onMounted(async () => {
       :cloudflare-checking="readiness.checking.value"
       @recheck-git-hub="github.checkInstallation()"
       @recheck-cloudflare="readiness.checkCloudflare()"
-      @recheck-repo-access="readiness.checkRepoAccess()"
     />
 
     <NewAppPanel
@@ -146,6 +144,8 @@ onMounted(async () => {
       :steps="flow.steps.value"
       :result="flow.result.value"
       :running="flow.running.value"
+      :can-build-now="flow.canBuildNow.value"
+      @build-now="flow.buildNow"
     />
 
     <AgentPanel

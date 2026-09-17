@@ -354,6 +354,74 @@ export async function ensureWorker(input: {
   return { url, scriptTag: created.tag, reused: false };
 }
 
+/**
+ * Whether Cloudflare can read a repository — asked of Cloudflare, not of GitHub.
+ *
+ * `unknown` is a real answer and the default for anything ambiguous: this check exists
+ * to catch a specific misconfiguration, not to become a new way for a working build to
+ * be refused.
+ */
+export interface RepoReadableResult {
+  state: "readable" | "unreadable" | "unknown";
+  /** Cloudflare's own wording when it refused, so the UI can quote rather than guess. */
+  detail: string;
+}
+
+/**
+ * Can Cloudflare's GitHub App actually read this repository?
+ *
+ * The question that matters, asked the only way it can be answered: by making Cloudflare
+ * try. `config_autofill` is what the dashboard calls when a repository is picked — it
+ * reads the repository to guess build settings — so a success proves access end to end,
+ * through whatever installation the account really has. That is a better question than
+ * "is the installation set to all repositories", which this builder cannot ask anyway
+ * (`GET /user/installations` is scoped to the app the token belongs to) and which is
+ * wrong for anyone who keeps a hand-picked list and adds each repository to it.
+ *
+ * It answers only for a repository that exists, so this runs after the repository is
+ * created. That is still seconds in, rather than after the origin wait gives up.
+ *
+ * Cloudflare documents only 200 and 401 here, so the mapping below is deliberately
+ * cautious: a refusal that names the repository is treated as a refusal, and anything
+ * that looks like a routing or platform problem stays `unknown`. Codes 7000 and 7003 are
+ * Cloudflare's "no route for that URI" and "could not route to …", which is what a
+ * moved or renamed endpoint looks like — reading those as "no access" would invent a
+ * problem in every build the day Cloudflare changes the path.
+ */
+export async function checkRepoReadable(input: {
+  token: string;
+  accountId: string;
+  /** GitHub's numeric account id — Cloudflare's `provider_account_id`. */
+  providerAccountId: string;
+  /** GitHub's numeric repository id. */
+  repoId: string;
+  branch: string;
+  fetchImpl?: typeof fetch;
+}): Promise<RepoReadableResult> {
+  const { token, accountId, providerAccountId, repoId, branch, fetchImpl } = input;
+
+  const path =
+    `/accounts/${encodeURIComponent(accountId)}/builds/repos/github/` +
+    `${encodeURIComponent(providerAccountId)}/${encodeURIComponent(repoId)}/config_autofill` +
+    `?branch=${encodeURIComponent(branch)}`;
+
+  try {
+    await callCloudflare<unknown>({ token, path, fetchImpl });
+    return { state: "readable", detail: "Cloudflare can read the repository." };
+  } catch (error) {
+    if (!(error instanceof CloudflareApiError)) {
+      return { state: "unknown", detail: "The check could not be made." };
+    }
+    if (error.code === 7000 || error.code === 7003) {
+      return { state: "unknown", detail: error.message };
+    }
+    if (error.status === 403 || error.status === 404) {
+      return { state: "unreadable", detail: error.message };
+    }
+    return { state: "unknown", detail: error.message };
+  }
+}
+
 export interface ConnectPushToDeployResult {
   repoConnectionUuid: string;
   triggerUuid: string;
@@ -420,6 +488,75 @@ async function resolveBuildToken(input: {
     throw new CloudflareApiError("Cloudflare did not return a build token.", 502);
   }
   return { uuid: created.build_token_uuid, created: true };
+}
+
+/**
+ * Start a build without a push.
+ *
+ * Cloudflare builds on push, which is the right default and the wrong one in exactly
+ * one situation: the repository was created before Cloudflare could read it, so the
+ * push that should have built it reached nobody. Once access is granted there is
+ * nothing left to push — the commit is already there — and asking a user to invent a
+ * commit to trigger CI is asking them to work around us.
+ *
+ * Builds belong to a trigger, not to a Worker, so the trigger has to be found first.
+ * The production trigger is the one whose branch list covers the branch being built;
+ * `connectPushToDeploy` creates exactly one, but an account that was set up by hand can
+ * have a preview trigger too, and building the app with `wrangler versions upload`
+ * would upload a version without deploying it.
+ */
+export async function startBuild(input: {
+  token: string;
+  accountId: string;
+  scriptTag: string;
+  branch: string;
+  fetchImpl?: typeof fetch;
+}): Promise<{ buildUuid: string }> {
+  const { token, accountId, scriptTag, branch, fetchImpl } = input;
+
+  const triggers = await callCloudflare<Array<{
+    trigger_uuid?: string;
+    branch_includes?: string[];
+    branch_excludes?: string[];
+  }>>({
+    token,
+    path: `/accounts/${encodeURIComponent(accountId)}/builds/workers/${encodeURIComponent(scriptTag)}/triggers`,
+    fetchImpl,
+  });
+
+  const usable = (triggers ?? []).filter((entry) => Boolean(entry?.trigger_uuid));
+  const covers = (entry: (typeof usable)[number]): boolean => {
+    if ((entry.branch_excludes ?? []).includes(branch)) {
+      return false;
+    }
+    const includes = entry.branch_includes ?? [];
+    return includes.includes(branch) || includes.includes("*");
+  };
+  // Prefer a trigger that names the branch over one that catches everything with `*`,
+  // which is how a preview trigger is written.
+  const trigger =
+    usable.find((entry) => (entry.branch_includes ?? []).includes(branch))
+    ?? usable.find(covers);
+
+  if (!trigger?.trigger_uuid) {
+    throw new CloudflareApiError(
+      `This Worker has no build trigger for ${branch}, so there is nothing to build from. Connect the repository in Cloudflare under the Worker, Settings, Builds.`,
+      404,
+    );
+  }
+
+  const build = await callCloudflare<{ build_uuid?: string }>({
+    token,
+    method: "POST",
+    path: `/accounts/${encodeURIComponent(accountId)}/builds/triggers/${encodeURIComponent(trigger.trigger_uuid)}/builds`,
+    body: { branch },
+    fetchImpl,
+  });
+
+  if (!build?.build_uuid) {
+    throw new CloudflareApiError("Cloudflare accepted the build but did not identify it.", 502);
+  }
+  return { buildUuid: build.build_uuid };
 }
 
 /**
