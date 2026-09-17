@@ -17,7 +17,7 @@
  * Cursor is last and always typed: its API keys are dashboard-only, with no consent flow
  * to offer.
  */
-import { computed, reactive, ref, watch } from "vue";
+import { computed, onUnmounted, reactive, ref, watch } from "vue";
 
 import type { BuilderHostConfig } from "@/app/hostApi";
 import type { UseCloudflareConnectReturn } from "@/app/useCloudflareConnect";
@@ -125,6 +125,41 @@ async function identifyGitHubToken(): Promise<void> {
 function save(): void {
   emit("save", { ...draft });
 }
+
+/** Brief confirmation after a successful copy, then back to "Copy". */
+const copiedDeviceCode = ref(false);
+let copiedReset: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * The device code is the one thing on this page the user has to type somewhere else,
+ * so it gets its own copy control. Clipboard access can fail in a framed tab; the
+ * fallback still selects the code so a right-click or Cmd+C works.
+ */
+async function copyDeviceCode(): Promise<void> {
+  const code = props.github.userCode.value;
+  if (!code) {
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(code);
+  } catch {
+    // Permission denied or no Clipboard API — leave the code selected instead.
+    return;
+  }
+  copiedDeviceCode.value = true;
+  if (copiedReset) {
+    clearTimeout(copiedReset);
+  }
+  copiedReset = setTimeout(() => {
+    copiedDeviceCode.value = false;
+  }, 2000);
+}
+
+onUnmounted(() => {
+  if (copiedReset) {
+    clearTimeout(copiedReset);
+  }
+});
 </script>
 
 <template>
@@ -157,9 +192,12 @@ function save(): void {
           </a>
           and enter this code:
         </p>
-        <p v-if="github.status.value === 'waiting'" class="device-code">
-          {{ github.userCode.value }}
-        </p>
+        <div v-if="github.status.value === 'waiting'" class="device-code-row">
+          <p class="device-code">{{ github.userCode.value }}</p>
+          <button type="button" class="ghost" @click="copyDeviceCode">
+            {{ copiedDeviceCode ? "Copied" : "Copy" }}
+          </button>
+        </div>
         <p v-else class="hint">
           Grants permission to create a repository and make the first commit, on the
           repositories you choose. Revoke it any time in GitHub's application settings.
@@ -421,8 +459,16 @@ function save(): void {
   text-decoration: none;
 }
 
+.device-code-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 /* The one thing the user has to read off the screen and type somewhere else. */
 .device-code {
+  margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 1.5rem;
   letter-spacing: 0.15em;

@@ -212,10 +212,23 @@ onMounted(async () => {
     </SetupWizard>
 
     <footer class="foot">
+      <!--
+        Only promise saving where saving can actually happen. Without write access to the
+        App Builder database the connections last for this page alone, and the accounts
+        panel explains how to change that.
+      -->
       <p class="muted">
-        Your tokens live in one document in your own database, encrypted for you. This
-        builder is open source — if you would rather not use the hosted one, run it
-        yourself and point Haven at your own URL.
+        <template v-if="session.canStoreCredentials.value">
+          The tokens and keys you enter here are saved, so you do not have to create them
+          again the next time you build an app. They live in one document in your own App
+          Builder database, encrypted so that only you can read them — not even someone
+          you share that database with.
+        </template>
+        <template v-else>
+          The tokens and keys you enter here stay in this page only; nothing is saved.
+        </template>
+        The App Builder is open source. If you would rather not use the copy we host, you
+        can run your own and add that to Haven instead.
       </p>
     </footer>
   </main>

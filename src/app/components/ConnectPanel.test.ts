@@ -204,6 +204,32 @@ describe("ConnectPanel", () => {
     expect(identifyToken).not.toHaveBeenCalled();
   });
 
+  it("copies the GitHub device code to the clipboard", async () => {
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+
+    const panel = render({
+      config: config(),
+      configLoaded: true,
+      github: githubConnect({
+        status: ref("waiting"),
+        userCode: ref("3C6A-FFCE"),
+      }),
+    });
+
+    expect(panel.find(".device-code").text()).toBe("3C6A-FFCE");
+    expect(panel.findAll("button").map((button) => button.text())).toContain("Copy");
+
+    await panel.findAll("button").find((button) => button.text() === "Copy")?.trigger("click");
+    await flushPromises();
+
+    expect(writeText).toHaveBeenCalledWith("3C6A-FFCE");
+    expect(panel.findAll("button").map((button) => button.text())).toContain("Copied");
+  });
+
   it("shows why a rejected token was rejected, and leaves the owner alone", async () => {
     const panel = render({
       config: unregistered(),
