@@ -172,6 +172,37 @@ export function githubAppInstallUrl(appSlug: string): string {
   return `https://github.com/apps/${encodeURIComponent(appSlug)}/installations/new`;
 }
 
+/** Where the user changes which repositories an installation can see. */
+export function githubInstallationSettingsUrl(installationId: number): string {
+  return `https://github.com/settings/installations/${installationId}`;
+}
+
+/** Cloudflare's own GitHub App, which is what actually reads the repo to build it. */
+export const CLOUDFLARE_GITHUB_APP_SLUG = "cloudflare-workers-and-pages";
+
+interface RawInstallation {
+  id?: number;
+  app_slug?: string;
+  repository_selection?: string;
+}
+
+/**
+ * The user's installations, or `null` when the token cannot list them.
+ *
+ * The distinction matters: "no installations" is a fact about the account, while a
+ * refused lookup is a fact about the token — a pasted personal access token may simply
+ * not be allowed to ask. Collapsing the two would turn "cannot tell" into "not
+ * installed" and send people to fix something that is already fine.
+ */
+async function listUserInstallations(token: string): Promise<RawInstallation[] | null> {
+  const payload = await githubRequest<{ installations?: RawInstallation[] }>({
+    token,
+    path: "/user/installations",
+    emptyOn: [401, 403, 404],
+  });
+  return payload ? (payload.installations ?? []) : null;
+}
+
 export interface GitHubAppInstallation {
   id: number;
   /** `"all"` or `"selected"`. */
@@ -200,11 +231,8 @@ export async function findAppInstallation(options: {
 }): Promise<GitHubAppInstallation | null> {
   const { token, appSlug } = options;
 
-  const payload = await githubRequest<{
-    installations?: Array<{ id?: number; app_slug?: string; repository_selection?: string }>;
-  }>({ token, path: "/user/installations", emptyOn: [401, 403, 404] });
-
-  const installation = payload?.installations?.find((entry) => entry.app_slug === appSlug);
+  const installations = await listUserInstallations(token);
+  const installation = installations?.find((entry) => entry.app_slug === appSlug);
   if (!installation || typeof installation.id !== "number") {
     return null;
   }
@@ -212,6 +240,46 @@ export async function findAppInstallation(options: {
     id: installation.id,
     repositorySelection: installation.repository_selection ?? "selected",
   };
+}
+
+/**
+ * Can Cloudflare build a repository this builder is about to create?
+ *
+ * `"selected"` is the state worth catching, and it is a certainty rather than a guess:
+ * GitHub grants an installation automatic access only to repositories that *that* app
+ * creates, so a repository created by this builder is never in Cloudflare's hand-picked
+ * list. Push-to-deploy then fails in the quietest possible way — `PUT
+ * /builds/repos/connections` records the connection from ids alone and reports success,
+ * Cloudflare never receives the push webhook, no build runs, and the only symptom is an
+ * origin that stays silent until the wait gives up. Cloudflare's dashboard describes it
+ * after the fact as "This project is disconnected from your Git account".
+ */
+export type CloudflareRepoAccess =
+  /** Every repository, including ones that do not exist yet. */
+  | { state: "all" }
+  /** Hand-picked repositories, which cannot include the one about to be created. */
+  | { state: "selected"; settingsUrl: string }
+  /** Cloudflare's app is not installed at all. */
+  | { state: "missing"; installUrl: string }
+  /** The token could not answer, so nothing should be concluded. */
+  | { state: "unknown" };
+
+export async function checkCloudflareRepoAccess(token: string): Promise<CloudflareRepoAccess> {
+  const installations = await listUserInstallations(token);
+  if (!installations) {
+    return { state: "unknown" };
+  }
+
+  const installation = installations.find(
+    (entry) => entry.app_slug === CLOUDFLARE_GITHUB_APP_SLUG,
+  );
+  if (!installation || typeof installation.id !== "number") {
+    return { state: "missing", installUrl: githubAppInstallUrl(CLOUDFLARE_GITHUB_APP_SLUG) };
+  }
+  if (installation.repository_selection === "all") {
+    return { state: "all" };
+  }
+  return { state: "selected", settingsUrl: githubInstallationSettingsUrl(installation.id) };
 }
 
 /*

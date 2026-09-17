@@ -17,6 +17,7 @@ defineProps<{
 
 const LABELS: Record<FlowStepId, string> = {
   "check-name": "Check the repository name",
+  "check-deploy-access": "Check Cloudflare's repository access",
   "create-repo": "Create the GitHub repository",
   "create-worker": "Create the Cloudflare Worker",
   "connect-builds": "Connect push-to-deploy",

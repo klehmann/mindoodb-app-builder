@@ -119,21 +119,19 @@ describe("ConnectPanel", () => {
     expect(panel.find("#cf-token").exists()).toBe(true);
   });
 
-  it("offers the install link when the app was authorized but never installed", () => {
-    // The failure this pins cost an evening: a GitHub App user token with no
-    // installation has no repository permissions, and GitHub reports that as
-    // "Resource not accessible by integration" once a build is already underway.
+  it("leaves the missing installation to the setup list below it", () => {
+    // A GitHub App user token with no installation has no repository permissions, which
+    // GitHub reports as "Resource not accessible by integration" once a build is already
+    // underway — worth catching early, but in one place. `SetupChecklist` owns it, and a
+    // second warning here would make one install look like two chores.
     const panel = render({
       config: config(),
       configLoaded: true,
       github: githubConnect({ installation: ref("missing") }),
     });
 
-    const install = panel.find("a.button");
-    expect(install.attributes("href")).toBe(
-      "https://github.com/apps/mindoodb-app-builder/installations/new",
-    );
-    expect(panel.text()).toContain("not installed on your account");
+    expect(panel.find("a.button").exists()).toBe(false);
+    expect(panel.text()).not.toContain("not installed");
   });
 
   it("stays quiet about the installation while it is unknown", () => {

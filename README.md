@@ -98,32 +98,54 @@ Use `dev:local` instead of `dev` to resolve `mindoodb-app-sdk` from the sibling 
 
 ### One-time setup
 
-Three grants cannot be made through an API, because they are consent and every provider
-insists on collecting it in its own interface. The builder shows them as a checklist
-between connecting and building, and each is needed once per account rather than once
-per app:
+Some grants cannot be made through an API, because they are consent and every provider
+insists on collecting it in its own interface. The builder shows the whole set as a
+checklist between connecting and building — including the parts already satisfied, so
+"ready" is distinguishable from "not checked yet" — and each is needed once per account
+rather than once per app:
 
-1. **Install the builder's GitHub App.** Authorizing it and installing it are separate;
-   only the installation carries repository permissions.
-2. **Connect Cloudflare to GitHub** — dashboard → any Worker → Settings → Builds →
+1. **Connect GitHub** and **connect Cloudflare**, with the buttons above the list.
+2. **Install the builder's GitHub App.** Authorizing it and installing it are separate;
+   only the installation carries repository permissions. Any repository selection works,
+   including none, because GitHub grants access to repositories an app creates itself.
+3. **Connect Cloudflare to GitHub** — dashboard → any Worker → Settings → Builds →
    Connect. Cloudflare documents this as a prerequisite for its Builds API, so it is the
    single step of a deploy with no programmatic route. Everything after it is API.
-3. **Paste a Cursor API key**, if you want an agent to work on the app. Cursor has no
+4. **Set Cloudflare's GitHub App to "All repositories"** — see below for why this one is
+   not optional.
+5. **Paste a Cursor API key**, if you want an agent to work on the app. Cursor has no
    consent flow at all.
+
+Each item carries its own link to the page where the grant is made and a "Check again"
+button, and the header counts what is outstanding. Only items that would certainly break
+a build count: a Cursor key is marked optional, and a check that could not be answered is
+marked as such rather than as a fault. While the count is above zero, **Create app is
+disabled** — the same reasoning drives the list and the button, so the builder cannot
+offer a build it already knows will fail.
 
 The Cloudflare item is detected rather than recorded: no endpoint lists Git connections
 (`PUT /builds/repos/connections` and its `DELETE` are the whole surface), so the builder
 looks for an existing build trigger, which cannot exist without a connection. An account
 that has built from a repository before therefore reads as connected, and one that has
 not reads as "not confirmed" — which is why that item is worded as a question rather than
-an accusation, and why nothing blocks a build on it.
+an accusation, and why nothing blocks a build on it. GitHub's installation listing does
+answer definitively, so when it reports Cloudflare's app as absent the two Cloudflare
+items collapse into one: a single install fixes both, and two entries demanding one click
+read as twice the work.
 
 New repositories are **private by default**, so an unfinished app's brief in `TASK.md`
-is not public while you work on it. That has a price worth knowing about: Cloudflare and
-Cursor read the repository through their own GitHub installations, and a private
-repository is invisible to an installation that does not list it. Installing both on
-"All repositories" makes this automatic; otherwise add each new repository to them, or
-untick the box and start public.
+is not public while you work on it.
+
+Whatever you choose, **Cloudflare's GitHub App has to be set to "All repositories"** —
+not for privacy reasons, but because a repository that does not exist yet cannot be in a
+hand-picked list, and GitHub grants automatic access only to repositories an app creates
+itself. With a selected-repositories installation the failure is silent rather than
+loud: `PUT /builds/repos/connections` accepts the connection from ids alone, Cloudflare
+never receives the push, no build runs, and the only symptoms are an origin that stays
+quiet and a dashboard that later says "This project is disconnected from your Git
+account". The builder therefore checks this *before* creating anything and refuses with
+a link to the installation settings. The same applies to Cursor's GitHub access if you
+want an agent to work on a private repository.
 
 ## Deploying your own
 

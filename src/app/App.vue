@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 import AgentPanel from "@/app/components/AgentPanel.vue";
 import ConnectPanel from "@/app/components/ConnectPanel.vue";
@@ -7,6 +7,7 @@ import NewAppPanel from "@/app/components/NewAppPanel.vue";
 import ProgressPanel from "@/app/components/ProgressPanel.vue";
 import SetupChecklist from "@/app/components/SetupChecklist.vue";
 import { checkHostAlive, readHostConfig, type BuilderHostConfig } from "@/app/hostApi";
+import { buildSetupItems, countBlockers, type SetupInput } from "@/app/setupChecklist";
 import { useBuilderFlow } from "@/app/useBuilderFlow";
 import { useBuilderSession } from "@/app/useBuilderSession";
 import { useCloudflareConnect } from "@/app/useCloudflareConnect";
@@ -63,6 +64,22 @@ const cloudflare = useCloudflareConnect(hostConfig, async ({ tokens, accounts })
   });
 });
 
+/**
+ * One description of setup, read twice: the list the user works through, and the count
+ * that keeps Create app from starting something that cannot finish.
+ */
+const setup = computed<SetupInput>(() => ({
+  githubConnected: session.credentialsStatus.value.github,
+  githubInstallation: github.installation.value,
+  githubInstallUrl: github.installUrl.value,
+  cloudflareConnected: session.credentialsStatus.value.cloudflare,
+  cloudflareGit: readiness.cloudflareGit.value,
+  cloudflareDashboardUrl: readiness.cloudflareDashboardUrl.value,
+  cloudflareRepoAccess: readiness.cloudflareRepoAccess.value,
+  cursorReady: session.credentialsStatus.value.cursor,
+}));
+const setupBlockers = computed(() => countBlockers(buildSetupItems(setup.value)));
+
 onMounted(async () => {
   await session.connect();
   hostAlive.value = await checkHostAlive();
@@ -106,14 +123,11 @@ onMounted(async () => {
 
     <!-- Between connecting and building, because that is where the gap it closes is. -->
     <SetupChecklist
-      :github-installation="github.installation.value"
-      :github-install-url="github.installUrl.value"
-      :cloudflare-git="readiness.cloudflareGit.value"
+      v-bind="setup"
       :cloudflare-checking="readiness.checking.value"
-      :cloudflare-dashboard-url="readiness.cloudflareDashboardUrl.value"
-      :cursor-ready="session.credentialsStatus.value.cursor"
       @recheck-git-hub="github.checkInstallation()"
       @recheck-cloudflare="readiness.checkCloudflare()"
+      @recheck-repo-access="readiness.checkRepoAccess()"
     />
 
     <NewAppPanel
@@ -122,6 +136,7 @@ onMounted(async () => {
       :form-error="flow.formError.value"
       :can-start="flow.canStart.value"
       :running="flow.running.value"
+      :setup-blockers="setupBlockers"
       @label-input="flow.onLabelInput"
       @slug-input="flow.onSlugInput"
       @start="flow.start"

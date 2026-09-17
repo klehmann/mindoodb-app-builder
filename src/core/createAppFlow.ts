@@ -1,10 +1,15 @@
 /**
  * The build, as a sequence of named steps.
  *
- * Eight things have to happen, in an order that is not arbitrary:
+ * Nine things have to happen, in an order that is not arbitrary. The first two are
+ * precondition checks, deliberately ahead of every side effect: failing there costs
+ * nothing, while failing after the Worker exists leaves debris in the user's Cloudflare
+ * account and a repository name that is already taken.
  *
- *  1. **check-name** — is the repository name free? Failing here costs nothing; failing
- *     after the Worker exists leaves debris in the user's Cloudflare account.
+ *  1. **check-name** — is the repository name free?
+ *  1b. **check-deploy-access** — can Cloudflare's GitHub App read a repository that does
+ *     not exist yet? If it is limited to selected repositories, it cannot, and
+ *     push-to-deploy would be accepted and then silently never build.
  *  2. **create-repo** — copy the starter template.
  *  3. **create-worker** — a placeholder Worker, so the URL exists and Cloudflare has an
  *     immutable script tag. No clone, no install, no build: the real build happens in
@@ -25,11 +30,12 @@
  */
 import type { AppIdentity, TemplateSources } from "./appIdentity";
 import { buildIdentityFiles } from "./appIdentity";
-import type { GitHubRepository } from "./github";
+import type { CloudflareRepoAccess, GitHubRepository } from "./github";
 import type { OriginProbeResult } from "./originProbe";
 
 export type FlowStepId =
   | "check-name"
+  | "check-deploy-access"
   | "create-repo"
   | "create-worker"
   | "connect-builds"
@@ -49,6 +55,7 @@ export interface FlowStep {
 
 export const FLOW_STEP_IDS: FlowStepId[] = [
   "check-name",
+  "check-deploy-access",
   "create-repo",
   "create-worker",
   "connect-builds",
@@ -85,6 +92,12 @@ export interface CreateAppDependencies {
       description: string;
       private: boolean;
     }) => Promise<GitHubRepository>;
+    /**
+     * Whether Cloudflare's GitHub App will be able to read a repository that does not
+     * exist yet. Optional: a token that cannot answer leaves the check unmade rather
+     * than blocking the build.
+     */
+    checkCloudflareRepoAccess?: () => Promise<CloudflareRepoAccess>;
     readTemplateSources: (repository: GitHubRepository) => Promise<TemplateSources>;
     commitFiles: (input: {
       repository: GitHubRepository;
@@ -202,6 +215,55 @@ export async function createApp(
     return abort("check-name", readErrorMessage(error, "The repository name could not be checked."));
   }
 
+  /*
+   * 1b. Can Cloudflare read what we are about to create?
+   *
+   * Placed before the first side effect on purpose. Cloudflare accepts the connection
+   * for a repository its GitHub App cannot see, so the failure otherwise surfaces four
+   * steps later as an origin that never answers — by which time the repository exists,
+   * its name is taken, and the user has to work out which of seven steps lied.
+   */
+  if (deps.github.checkCloudflareRepoAccess) {
+    update("check-deploy-access", "running");
+    try {
+      const access = await deps.github.checkCloudflareRepoAccess();
+      if (access.state === "selected") {
+        return abort(
+          "check-deploy-access",
+          "Cloudflare's GitHub App is limited to selected repositories, so it will not " +
+            "be able to read this one — a repository that does not exist yet cannot be " +
+            `in that list. Set it to "All repositories" at ${access.settingsUrl}, then ` +
+            "start again. Nothing has been created yet.",
+        );
+      }
+      if (access.state === "missing") {
+        return abort(
+          "check-deploy-access",
+          "Cloudflare's GitHub App is not installed, so no push could ever reach " +
+            `Cloudflare. Install it at ${access.installUrl} — or in the Cloudflare ` +
+            "dashboard under any Worker, Settings, Builds, Connect — then start again.",
+        );
+      }
+      update(
+        "check-deploy-access",
+        "done",
+        access.state === "all"
+          ? "Cloudflare can read new repositories."
+          : "Could not be checked; continuing.",
+      );
+    } catch (error) {
+      // Never fatal: this is a courtesy check, and a build that would have worked must
+      // not be stopped because one extra lookup failed.
+      update(
+        "check-deploy-access",
+        "done",
+        readErrorMessage(error, "Could not be checked; continuing."),
+      );
+    }
+  } else {
+    update("check-deploy-access", "skipped", "No GitHub installation to check.");
+  }
+
   // 2. Repository.
   let repository: GitHubRepository;
   try {
@@ -265,7 +327,18 @@ export async function createApp(
     update("wait-origin", "running", "Waiting for the first Cloudflare build…");
     const probe = await deps.waitForOrigin({ url: worker.url, expectedAppId: identity.slug });
     if (probe.state !== "ready") {
-      return abort("wait-origin", probe.detail || "The app did not come live in time.");
+      // A silent origin means the build did not publish, and the reason for that lives
+      // in Cloudflare's build log — not in anything this builder can see. Saying so
+      // beats repeating that the origin is quiet, which the user already knows.
+      const hint =
+        probe.state === "mismatched"
+          ? ""
+          : " The repository and the Worker exist, so the build is what to look at:" +
+            " Cloudflare, the Worker, Settings, Builds.";
+      return abort(
+        "wait-origin",
+        `${probe.detail || "The app did not come live in time."}${hint}`,
+      );
     }
     update("wait-origin", "done", `${worker.url} is serving haven-app.json.`);
   } catch (error) {

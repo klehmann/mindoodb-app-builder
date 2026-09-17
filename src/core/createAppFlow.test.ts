@@ -96,6 +96,7 @@ describe("createInitialSteps", () => {
     const steps = createInitialSteps();
     expect(steps.map((step) => step.id)).toEqual([
       "check-name",
+      "check-deploy-access",
       "create-repo",
       "create-worker",
       "connect-builds",
@@ -117,6 +118,9 @@ describe("createApp", () => {
     expect(result.error).toBeNull();
     expect(result.steps.map((step) => step.status)).toEqual([
       "done",
+      // The default deps wire no Cloudflare access check, and an unmade check is
+      // skipped rather than failed.
+      "skipped",
       "done",
       "done",
       "done",
@@ -230,6 +234,8 @@ describe("createApp", () => {
 
     await createApp({ identity, owner: "octocat" }, deps);
 
+    // `check-deploy-access` is absent because these deps wire no checker: a skipped
+    // step never becomes the running one.
     expect(seen.map(([id]) => id)).toEqual([
       "check-name",
       "create-repo",
@@ -266,6 +272,59 @@ describe("createApp", () => {
       expect(statusOf(result.steps, "create-repo")).toBe("skipped");
       expect(generateFromTemplate).not.toHaveBeenCalled();
       expect(ensureWorker).not.toHaveBeenCalled();
+    });
+
+    it("refuses when Cloudflare's app cannot read repositories yet to exist", async () => {
+      // The bug this pins: Cloudflare's `PUT /builds/repos/connections` succeeds for a
+      // repository its GitHub App cannot see, so push-to-deploy reported success, no
+      // build ever ran, and the only symptom was `wait-origin` timing out five steps
+      // later — with the repository created and its name taken.
+      const generateFromTemplate = vi.fn();
+      const ensureWorker = vi.fn();
+      const deps = makeDeps({
+        github: {
+          getRepository: vi.fn(async () => null),
+          generateFromTemplate,
+          checkCloudflareRepoAccess: vi.fn(async () => ({
+            state: "selected" as const,
+            settingsUrl: "https://github.com/settings/installations/106039904",
+          })),
+          readTemplateSources: vi.fn(async () => templateSources),
+          commitFiles: vi.fn(async () => "sha"),
+        },
+        cloudflare: {
+          ensureWorker,
+          connectPushToDeploy: vi.fn(async () => ({ detail: "" })),
+        },
+      });
+
+      const result = await createApp({ identity, owner: "octocat" }, deps);
+
+      expect(statusOf(result.steps, "check-deploy-access")).toBe("failed");
+      expect(result.error).toContain("installations/106039904");
+      expect(generateFromTemplate).not.toHaveBeenCalled();
+      expect(ensureWorker).not.toHaveBeenCalled();
+    });
+
+    it("continues when the access check itself cannot answer", async () => {
+      // A token that may not list installations says nothing about whether the build
+      // would work, so it must not stop one.
+      const deps = makeDeps({
+        github: {
+          getRepository: vi.fn(async () => null),
+          generateFromTemplate: vi.fn(async () => repository),
+          checkCloudflareRepoAccess: vi.fn(async () => {
+            throw new Error("Bad credentials");
+          }),
+          readTemplateSources: vi.fn(async () => templateSources),
+          commitFiles: vi.fn(async () => "sha"),
+        },
+      });
+
+      const result = await createApp({ identity, owner: "octocat" }, deps);
+
+      expect(result.error).toBeNull();
+      expect(statusOf(result.steps, "check-deploy-access")).toBe("done");
     });
 
     it("keeps the repository it already created when the Worker fails", async () => {
@@ -320,7 +379,10 @@ describe("createApp", () => {
 
       const result = await createApp({ identity, owner: "octocat" }, deps);
 
-      expect(result.error).toBe("haven-app.json answered HTTP 404.");
+      // The probe's own wording comes first, then where to look: a quiet origin means
+      // the build did not publish, and only Cloudflare's build log says why.
+      expect(result.error).toContain("haven-app.json answered HTTP 404.");
+      expect(result.error).toContain("Settings, Builds");
       expect(statusOf(result.steps, "wait-origin")).toBe("failed");
       expect(statusOf(result.steps, "propose")).toBe("skipped");
     });

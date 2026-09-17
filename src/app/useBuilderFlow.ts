@@ -28,6 +28,7 @@ import {
   type FlowStep,
 } from "@/core/createAppFlow";
 import {
+  checkCloudflareRepoAccess,
   commitFiles,
   generateRepositoryFromTemplate,
   getFileText,
@@ -139,6 +140,7 @@ export function useBuilderFlow(
             description: input.description,
             private: input.private,
           }),
+        checkCloudflareRepoAccess: () => checkCloudflareRepoAccess(githubToken),
         readTemplateSources: async (repository: GitHubRepository) => {
           const read = async (path: string) => {
             const text = await getFileText({

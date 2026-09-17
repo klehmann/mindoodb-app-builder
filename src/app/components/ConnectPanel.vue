@@ -117,28 +117,9 @@ function save(): void {
         <p v-if="github.error.value" class="warn">{{ github.error.value }}</p>
         <!--
           Authorizing is not installing, and only an installation carries repository
-          permissions. Caught here rather than as a 403 halfway through a build.
+          permissions — but that, and the rest of the once-per-account grants, are the
+          setup list's job directly below. Saying it twice makes one click look like two.
         -->
-        <template v-if="github.installation.value === 'missing'">
-          <p class="warn">
-            Authorized, but the app is not installed on your account yet — without an
-            installation the token cannot create anything. "Only select repositories" is
-            enough: GitHub grants access to the repositories the app itself creates.
-          </p>
-          <div class="row">
-            <a
-              class="button"
-              :href="github.installUrl.value"
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              Install the GitHub App
-            </a>
-            <button type="button" class="ghost" @click="github.checkInstallation()">
-              I have installed it
-            </button>
-          </div>
-        </template>
         <div class="row">
           <button type="button" :disabled="github.busy.value" @click="github.start()">
             {{

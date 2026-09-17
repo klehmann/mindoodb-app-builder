@@ -4,14 +4,21 @@ import { describe, expect, it } from "vitest";
 
 import SetupChecklist from "@/app/components/SetupChecklist.vue";
 
+/**
+ * Rendering only — which item says what is `setupChecklist.test.ts`, since that logic is
+ * shared with the Create app button and is worth testing without a DOM.
+ */
 function render(overrides: Partial<InstanceType<typeof SetupChecklist>["$props"]> = {}) {
   return mount(SetupChecklist, {
     props: {
+      githubConnected: true,
       githubInstallation: "installed",
       githubInstallUrl: "https://github.com/apps/mindoodb-app-builder/installations/new",
+      cloudflareConnected: true,
       cloudflareGit: "connected",
       cloudflareChecking: false,
       cloudflareDashboardUrl: "https://dash.cloudflare.com/acct-1/workers-and-pages",
+      cloudflareRepoAccess: { state: "all" } as const,
       cursorReady: true,
       ...overrides,
     },
@@ -19,48 +26,57 @@ function render(overrides: Partial<InstanceType<typeof SetupChecklist>["$props"]
 }
 
 describe("SetupChecklist", () => {
-  it("stays out of the way when every grant is in place", () => {
-    expect(render().text()).toBe("");
+  it("stays visible and says so when nothing is outstanding", () => {
+    const panel = render();
+
+    expect(panel.text()).toContain("Ready to build");
+    expect(panel.findAll("li")).toHaveLength(6);
+    expect(panel.findAll("li.state-done")).toHaveLength(6);
   });
 
-  it("asks for the GitHub installation when it is missing", () => {
-    const panel = render({ githubInstallation: "missing" });
+  it("summarises how many items would stop a build", () => {
+    const panel = render({
+      githubInstallation: "missing",
+      cloudflareRepoAccess: {
+        state: "selected",
+        settingsUrl: "https://github.com/settings/installations/106039904",
+      },
+    });
 
-    expect(panel.text()).toContain("Install the builder's GitHub App");
-    expect(panel.find("a.button").attributes("href")).toBe(
+    expect(panel.text()).toContain("2 to do");
+    expect(panel.findAll("li.state-todo")).toHaveLength(2);
+  });
+
+  it("renders an item's action as a real link", () => {
+    // A link opens a tab without script, which matters inside Haven's sandboxed frame.
+    const panel = render({ githubInstallation: "missing" });
+    const link = panel
+      .findAll("li")
+      .find((li) => li.text().includes("GitHub App installed"))
+      ?.find("a.button");
+
+    expect(link?.attributes("href")).toBe(
       "https://github.com/apps/mindoodb-app-builder/installations/new",
     );
+    expect(link?.attributes("target")).toBe("_blank");
+    expect(link?.attributes("rel")).toBe("noreferrer noopener");
   });
 
-  it("says nothing about GitHub while the lookup is inconclusive", () => {
-    // "unknown" is both "not asked" and "the lookup failed", and a pasted personal
-    // access token has no installation to find. None of those is a missing step.
-    expect(render({ githubInstallation: "unknown" }).text()).toBe("");
+  it("emits a re-check for the item the button belongs to", async () => {
+    const panel = render({ githubInstallation: "missing" });
+
+    await panel
+      .findAll("button")
+      .find((button) => button.text().includes("Check again"))
+      ?.trigger("click");
+
+    expect(panel.emitted("recheckGitHub")).toHaveLength(1);
   });
 
-  it("points at the account's own dashboard page for the Cloudflare step", () => {
-    const panel = render({ cloudflareGit: "unconfirmed" });
-
-    expect(panel.text()).toContain("Connect Cloudflare to GitHub");
-    expect(panel.find("a.button").attributes("href")).toBe(
-      "https://dash.cloudflare.com/acct-1/workers-and-pages",
-    );
-    // The probe reads evidence, not a record, so the copy has to admit it cannot tell
-    // the difference between "not done" and "done before there were any Workers".
-    expect(panel.text()).toContain("nothing here could confirm it");
-  });
-
-  it("keeps the re-check button quiet while a probe is running", () => {
+  it("disables the re-check button while that probe runs", () => {
     const panel = render({ cloudflareGit: "unconfirmed", cloudflareChecking: true });
     const recheck = panel.findAll("button").find((button) => button.text().includes("Checking"));
 
     expect(recheck?.attributes("disabled")).toBeDefined();
-  });
-
-  it("names the Cursor key as optional, since an app is still built without it", () => {
-    const panel = render({ cursorReady: false });
-
-    expect(panel.text()).toContain("Add a Cursor API key");
-    expect(panel.text()).toContain("Optional");
   });
 });

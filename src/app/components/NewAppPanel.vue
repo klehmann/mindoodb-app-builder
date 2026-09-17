@@ -14,6 +14,8 @@ defineProps<{
   formError: string | null;
   canStart: boolean;
   running: boolean;
+  /** Outstanding items in the setup list; each one is a build that would fail. */
+  setupBlockers: number;
 }>();
 
 const emit = defineEmits<{
@@ -90,19 +92,26 @@ const emit = defineEmits<{
       Make the repository private
     </label>
     <!--
-      Private is the default, but it is not free: the two services that read the
-      repository afterwards are separate GitHub installations, and neither can see a
-      private repository that its own installation does not list.
+      Cloudflare's access is the setup list's job, and it is needed either way. What is
+      genuinely private-only is Cursor: a public repository it can read regardless.
     -->
     <p v-if="form.private" class="hint">
-      Deploys and the coding agent need their own access to a private repository. If
-      Cloudflare's and Cursor's GitHub apps are installed on "All repositories" this is
-      automatic; otherwise add this repository to them once it exists.
+      A coding agent needs its own access to a private repository — grant Cursor's GitHub
+      app access to it, or to all repositories, before starting the agent.
     </p>
 
     <p v-if="formError" class="warn">{{ formError }}</p>
+    <!--
+      Refusing here rather than five steps into a build, where the same problem costs a
+      half-created repository and an explanation.
+    -->
+    <p v-else-if="setupBlockers > 0" class="warn">
+      {{ setupBlockers }} setup
+      {{ setupBlockers === 1 ? "item is" : "items are" }} outstanding above. A build
+      would be created and then never deploy.
+    </p>
 
-    <button type="button" :disabled="!canStart" @click="emit('start')">
+    <button type="button" :disabled="!canStart || setupBlockers > 0" @click="emit('start')">
       {{ running ? "Building…" : "Create app" }}
     </button>
   </section>
