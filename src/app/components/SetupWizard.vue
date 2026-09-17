@@ -8,8 +8,12 @@
 import { computed, onMounted, ref } from "vue";
 
 import WizardBanner from "@/app/components/WizardBanner.vue";
-import WizardIcon, { type WizardIconName } from "@/app/components/WizardIcon.vue";
-import WizardStepArt, { type WizardStepArtName } from "@/app/components/WizardStepArt.vue";
+import WizardIcon, {
+  type WizardIconName,
+} from "@/app/components/WizardIcon.vue";
+import WizardStepArt, {
+  type WizardStepArtName,
+} from "@/app/components/WizardStepArt.vue";
 import type { WizardReadiness } from "@/app/wizard";
 import {
   WIZARD_STEP_IDS,
@@ -33,10 +37,19 @@ const STEP_ICONS: Record<WizardStepId, WizardStepArtName> = {
 };
 
 /**
- * The three services the user needs an account with, each linked to its own free sign-up
+ * The three services the user needs an account with, each linked to its own sign-up
  * page. Someone who has none of them should not have to go and search for them.
+ *
+ * Only two of the three are free: the AI step runs a Cursor cloud agent, which its free
+ * plan does not include. That is a cost the user has to hear about here, before they
+ * spend the setup, rather than from an error on the last page.
  */
-const ACCOUNTS: { icon: WizardIconName; name: string; url: string; role: string }[] = [
+const ACCOUNTS: {
+  icon: WizardIconName;
+  name: string;
+  url: string;
+  role: string;
+}[] = [
   {
     icon: "github",
     name: "GitHub",
@@ -56,6 +69,8 @@ const ACCOUNTS: { icon: WizardIconName; name: string; url: string; role: string 
     role: "is the AI that writes and updates the code.",
   },
 ];
+
+const CURSOR_PRICING_URL = "https://cursor.com/pricing";
 
 const props = defineProps<{
   readiness: WizardReadiness;
@@ -101,7 +116,9 @@ function back(): void {
 }
 
 const currentIndex = computed(() => WIZARD_STEP_IDS.indexOf(step.value));
-const continueEnabled = computed(() => canContinue(step.value, props.readiness));
+const continueEnabled = computed(() =>
+  canContinue(step.value, props.readiness),
+);
 const showContinue = computed(() => step.value !== "cursor");
 const nextLabel = computed(() => {
   const next = stepAfter(step.value);
@@ -156,7 +173,11 @@ function stepReachable(id: WizardStepId): boolean {
             </span>
             <span class="rail__label">{{ WIZARD_STEP_LABELS[id] }}</span>
           </button>
-          <span v-if="index < WIZARD_STEP_IDS.length - 1" class="rail__line" aria-hidden="true" />
+          <span
+            v-if="index < WIZARD_STEP_IDS.length - 1"
+            class="rail__line"
+            aria-hidden="true"
+          />
         </li>
       </ol>
     </nav>
@@ -169,9 +190,9 @@ function stepReachable(id: WizardStepId): boolean {
         <div>
           <h2>Add your own app to Haven</h2>
           <p class="lead">
-            Haven is your collaborative workspace. This builder puts <em>any</em> app you
-            can describe into it — a task board, a booking list, a shift plan, whatever
-            your team is missing.
+            Haven is your collaborative workspace. This builder puts
+            <em>any</em> app you can describe into it — a task board, a booking
+            list, a shift plan, whatever your team is missing.
           </p>
         </div>
       </header>
@@ -179,8 +200,8 @@ function stepReachable(id: WizardStepId): boolean {
       <WizardBanner name="intro" />
 
       <p>
-        You describe what the app should do in plain language. An AI coding agent writes
-        it, publishes it to the web, and Haven installs it for you.
+        You describe what the app should do in plain language. An AI coding
+        agent writes it, publishes it to the web, and Haven installs it for you.
         <strong>No programming skills are needed to get started.</strong>
       </p>
 
@@ -191,8 +212,8 @@ function stepReachable(id: WizardStepId): boolean {
           </span>
           <span>
             <strong>You describe it, AI builds it.</strong>
-            Write a few sentences about what you need. The agent turns that into a
-            working app.
+            Write a few sentences about what you need. The agent turns that into
+            a working app.
           </span>
         </li>
         <li>
@@ -201,9 +222,9 @@ function stepReachable(id: WizardStepId): boolean {
           </span>
           <span>
             <strong>It is a real app, not a one-off.</strong>
-            You own the code and the address it lives at, so you can keep changing and
-            extending it later — next week or next year. That flexibility is the whole
-            point of the slightly longer setup.
+            You own the code and the address it lives at, so you can keep
+            changing and extending it later — next week or next year. That
+            flexibility is the whole point of the slightly longer setup.
           </span>
         </li>
         <li>
@@ -212,8 +233,8 @@ function stepReachable(id: WizardStepId): boolean {
           </span>
           <span>
             <strong>Sharing is a link.</strong>
-            The finished app has its own web address. Email that link to colleagues and
-            they can add the same app to their Haven.
+            The finished app has its own web address. Email that link to
+            colleagues and they can add the same app to their Haven.
           </span>
         </li>
       </ul>
@@ -221,14 +242,15 @@ function stepReachable(id: WizardStepId): boolean {
       <div class="note">
         <p>
           <strong>Heads-up: the next few pages are a little technical.</strong>
-          Your app needs somewhere to live, so you will connect three free services and
-          click “install” a couple of times. We are actively working on making this
-          shorter — we chose flexibility over a one-click toy you could never change.
+          Your app needs somewhere to live, so you will connect three services
+          and click “install” a couple of times. We are actively working on
+          making this shorter — we chose flexibility over a one-click toy you
+          could never change.
         </p>
       </div>
 
       <div class="accounts">
-        <p class="accounts__title">You will need three free accounts:</p>
+        <p class="accounts__title">You will need three accounts:</p>
         <ul>
           <li v-for="account in ACCOUNTS" :key="account.name">
             <WizardIcon :name="account.icon" :size="17" />
@@ -244,16 +266,28 @@ function stepReachable(id: WizardStepId): boolean {
             </span>
           </li>
         </ul>
+        <p class="accounts__cost">
+          <strong>GitHub and Cloudflare are free. Cursor is not.</strong>
+          The AI step runs one of Cursor’s cloud agents, and its free Hobby plan
+          does not include those — that needs a paid plan, from $20 a month (<a
+            :href="CURSOR_PRICING_URL"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Cursor’s pricing</a
+          >). That step is also the one you can leave for later: your app gets
+          published without it.
+        </p>
         <p class="hint">
-          Do not have one yet? Each name above opens that service’s free sign-up page in
-          a new tab. A fresh GitHub account just for this is perfectly fine. Each service
-          asks you to approve access once — we can never see more than you grant.
+          Do not have one yet? Each name above opens that service’s sign-up page
+          in a new tab. A fresh GitHub account just for this is perfectly fine.
+          Each service asks you to approve access once — we can never see more
+          than you grant.
         </p>
       </div>
 
       <p class="hint">
-        Done some of this before? Every install and access step can be skipped. Use
-        Continue, or jump straight to a step above.
+        Done some of this before? Every install and access step can be skipped.
+        Use Continue, or jump straight to a step above.
       </p>
     </div>
 
@@ -263,7 +297,12 @@ function stepReachable(id: WizardStepId): boolean {
     <slot v-else-if="step === 'cursor'" name="cursor" />
 
     <div class="nav">
-      <button v-if="step !== 'welcome'" type="button" class="ghost" @click="back">
+      <button
+        v-if="step !== 'welcome'"
+        type="button"
+        class="ghost"
+        @click="back"
+      >
         Back
       </button>
       <button
@@ -531,6 +570,14 @@ function stepReachable(id: WizardStepId): boolean {
 
 .accounts li svg {
   color: var(--app-muted);
+}
+
+/* Sits between the list and the sign-up hint, so it reads as part of the same box. */
+.accounts__cost {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--app-text);
 }
 
 /* Carries the weight the plain <strong> had, so the line still reads name-first. */

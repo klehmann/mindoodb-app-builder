@@ -48,7 +48,19 @@ describe("SetupWizard", () => {
     // The two promises end users care about: it keeps growing, and sharing is a link.
     expect(panel.text()).toContain("not a one-off");
     expect(panel.text()).toContain("Email that link");
-    expect(panel.text()).toContain("three free accounts");
+    expect(panel.text()).toContain("three accounts");
+  });
+
+  it("warns up front that Cursor costs money while the other two do not", () => {
+    const panel = render();
+
+    expect(panel.text()).toContain(
+      "GitHub and Cloudflare are free. Cursor is not.",
+    );
+    expect(panel.text()).toContain("cloud agents");
+    expect(panel.findAll("a").map((link) => link.attributes("href"))).toContain(
+      "https://cursor.com/pricing",
+    );
   });
 
   it("admits the next pages are technical and says why", () => {
