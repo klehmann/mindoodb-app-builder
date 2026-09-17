@@ -7,7 +7,11 @@ import WizardCloudflarePage from "@/app/components/WizardCloudflarePage.vue";
 import WizardCursorPage from "@/app/components/WizardCursorPage.vue";
 import WizardGitHubPage from "@/app/components/WizardGitHubPage.vue";
 import { resolveGitHubOwner } from "@/app/githubOwner";
-import { checkHostAlive, readHostConfig, type BuilderHostConfig } from "@/app/hostApi";
+import {
+  checkHostAlive,
+  readHostConfig,
+  type BuilderHostConfig,
+} from "@/app/hostApi";
 import { useBuilderFlow } from "@/app/useBuilderFlow";
 import { useBuilderSession } from "@/app/useBuilderSession";
 import { useCloudflareConnect } from "@/app/useCloudflareConnect";
@@ -62,17 +66,22 @@ async function saveCredentials(next: BuilderCredentials): Promise<void> {
   });
 }
 
-const cloudflare = useCloudflareConnect(hostConfig, async ({ tokens, accounts }) => {
-  await session.storeCredentials({
-    ...session.credentials.value,
-    cloudflareToken: tokens.accessToken,
-    cloudflareRefreshToken: tokens.refreshToken,
-    cloudflareExpiresAt: tokens.expiresAt ?? 0,
-    // One account is not a choice, so it is not presented as one.
-    cloudflareAccountId:
-      accounts.length === 1 ? accounts[0].id : session.credentials.value.cloudflareAccountId,
-  });
-});
+const cloudflare = useCloudflareConnect(
+  hostConfig,
+  async ({ tokens, accounts }) => {
+    await session.storeCredentials({
+      ...session.credentials.value,
+      cloudflareToken: tokens.accessToken,
+      cloudflareRefreshToken: tokens.refreshToken,
+      cloudflareExpiresAt: tokens.expiresAt ?? 0,
+      // One account is not a choice, so it is not presented as one.
+      cloudflareAccountId:
+        accounts.length === 1
+          ? accounts[0].id
+          : session.credentials.value.cloudflareAccountId,
+    });
+  },
+);
 
 const wizardReadiness = computed<WizardReadiness>(() => ({
   githubConnected: session.credentialsStatus.value.github,
@@ -103,12 +112,14 @@ onMounted(async () => {
       <h1>App Builder</h1>
       <p class="tagline">Describe an app. Get it into Haven.</p>
       <p v-if="session.connecting.value" class="muted">Connecting to Haven…</p>
-      <p v-else-if="session.error.value" class="warn">{{ session.error.value }}</p>
+      <p v-else-if="session.error.value" class="warn">
+        {{ session.error.value }}
+      </p>
       <p v-else-if="session.connected.value" class="muted">
         Signed in as {{ session.userName.value }}.
         <span v-if="!session.canProposeApps.value">
-          This Haven install cannot add apps for you, so you will add the finished app
-          yourself — we show you the link.
+          This Haven install cannot add apps for you, so you will add the
+          finished app yourself — we show you the link.
         </span>
       </p>
     </header>
@@ -119,8 +130,9 @@ onMounted(async () => {
       someone into a build that cannot finish.
     -->
     <p v-if="!hostAlive" class="warn banner">
-      Publishing and the AI step are unavailable right now. Naming your app and creating
-      its GitHub project still work — reload this page to try publishing again.
+      Publishing and the AI step are unavailable right now. Naming your app and
+      creating its GitHub project still work — reload this page to try
+      publishing again.
       <span class="banner__note">
         Running the builder yourself? Start its helper with
         <code>npx mindoodb-app-builder</code>.
@@ -219,16 +231,38 @@ onMounted(async () => {
       -->
       <p class="muted">
         <template v-if="session.canStoreCredentials.value">
-          The tokens and keys you enter here are saved, so you do not have to create them
-          again the next time you build an app. They live in one document in your own App
-          Builder database, encrypted so that only you can read them — not even someone
-          you share that database with.
+          The tokens and keys you enter here are saved, so you do not have to
+          create them again the next time you build an app. They live in one
+          document in your own App Builder database, encrypted so that only you
+          can read them — not even someone you share that database with.
         </template>
         <template v-else>
-          The tokens and keys you enter here stay in this page only; nothing is saved.
+          The tokens and keys you enter here stay in this page only; nothing is
+          saved.
         </template>
-        The App Builder is open source. If you would rather not use the copy we host, you
-        can run your own and add that to Haven instead.
+        The App Builder is
+        <a
+          class="foot__source"
+          href="https://github.com/klehmann/mindoodb-app-builder"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <svg
+            class="foot__mark"
+            viewBox="0 0 16 16"
+            width="16"
+            height="16"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              fill="currentColor"
+              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+            />
+          </svg>
+          open source </a
+        >. If you would rather not use the copy we host, you can run your own
+        and add that to Haven instead.
       </p>
     </footer>
   </main>
@@ -246,7 +280,8 @@ onMounted(async () => {
   /* Tinted backgrounds for badges, callouts and the live-app banner. */
   --app-accent-soft: rgba(27, 95, 217, 0.09);
   --app-danger: #b42318;
-  --app-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.05);
+  --app-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.05);
 }
 
 :root[data-theme="dark"] {
@@ -269,8 +304,8 @@ body {
   /* System UI first: SF Pro / Segoe UI / Roboto are already on the machine, so the
      interface has proper type from the first paint and never fetches a font. */
   font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Inter,
-    Roboto, "Helvetica Neue", Arial, sans-serif;
+    -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI",
+    Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
@@ -483,5 +518,23 @@ button.ghost {
 
 .foot {
   margin-top: 0.5rem;
+}
+
+.foot__source {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.foot__source:hover,
+.foot__source:focus-visible {
+  text-decoration: underline;
+}
+
+.foot__mark {
+  flex: none;
+  display: block;
 }
 </style>
