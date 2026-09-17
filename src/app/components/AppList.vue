@@ -79,7 +79,11 @@ function formatDate(iso: string): string {
           Describe what you need, and it gets built, published, and added to Haven.
         </p>
       </div>
-      <button type="button" @click="emit('create')">New app</button>
+      <!--
+        Only alongside a list. With nothing built yet the empty state below carries its
+        own "Describe an app", and two buttons doing the same thing read as a choice.
+      -->
+      <button v-if="rows.length > 0" type="button" @click="emit('create')">New app</button>
     </header>
 
     <p v-if="loading" class="muted">Looking for your apps…</p>

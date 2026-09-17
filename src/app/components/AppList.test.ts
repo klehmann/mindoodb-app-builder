@@ -29,6 +29,19 @@ describe("AppList", () => {
     expect(wrapper.find(".apps__list").exists()).toBe(false);
   });
 
+  it("offers exactly one way to start, whether or not there is a list", () => {
+    const starts = (wrapper: ReturnType<typeof render>) =>
+      wrapper.findAll("button").filter((button) => button.text() !== "");
+
+    // Empty: the pitch's own button, and nothing in the header repeating it.
+    expect(starts(render()).map((button) => button.text())).toEqual(["Describe an app"]);
+
+    // With a list: the header button, plus one row per app.
+    const listed = starts(render({ records: [stored()] })).map((button) => button.text());
+    expect(listed[0]).toBe("New app");
+    expect(listed).toHaveLength(2);
+  });
+
   it("does not show the empty pitch while still looking", () => {
     // An empty list and an unanswered query look the same in the markup, and confusing
     // them tells a returning user their apps are gone.
