@@ -428,6 +428,9 @@ export async function handleApiRequest(request: ApiRequest): Promise<ApiResponse
           branch: readBodyString(body, "branch") || undefined,
           prompt: readBodyString(body, "prompt") || undefined,
           mode: mode === "plan" ? "plan" : mode === "agent" ? "agent" : undefined,
+          // Both left undefined when the caller says nothing, so `launchAgent` applies
+          // the builder's defaults — push to the branch, no pull request.
+          workOnCurrentBranch: readBodyBoolean(body, "workOnCurrentBranch"),
           autoCreatePR: readBodyBoolean(body, "autoCreatePR"),
           fetchImpl,
         });

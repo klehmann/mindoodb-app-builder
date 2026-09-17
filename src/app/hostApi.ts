@@ -221,6 +221,9 @@ export function launchCursorAgent(input: {
   branch?: string;
   prompt?: string;
   mode?: "agent" | "plan";
+  /** Omit both to get the builder's defaults: push to `branch`, open no pull request. */
+  workOnCurrentBranch?: boolean;
+  autoCreatePR?: boolean;
 }): Promise<{ agent: CursorAgent; run: CursorRun }> {
   return post("/api/cursor/agents", { ...input });
 }

@@ -200,7 +200,7 @@ export function explainCursorLaunchError(message: string, status: number): strin
  * ships with the template, so it stays correct as the SDK changes, while a prompt
  * baked into this builder would drift the moment either side moves.
  */
-export function buildLaunchPrompt(): string {
+export function buildLaunchPrompt(branch = "main"): string {
   return [
     "Read AGENTS.md in the repository root first: it states the platform rules and links",
     "the documentation that matches the pinned SDK version.",
@@ -208,6 +208,13 @@ export function buildLaunchPrompt(): string {
     "Then implement TASK.md. Keep public/haven-app.json in step with the databases the",
     "app actually opens, run `pnpm test` and `pnpm build` before you finish, and commit",
     "the pnpm lockfile that the first install produces.",
+    "",
+    // Said in the prompt as well as in the launch options because the agent can reach
+    // for `gh pr create` on its own. Cloudflare deploys this app on a push to the
+    // default branch, so work parked on a side branch never reaches the user.
+    `Commit and push to ${branch} directly. Do not create a pull request, and do not`,
+    "open a draft: this repository deploys on every push to its default branch, and the",
+    "user is waiting for the app to appear at its own address.",
   ].join("\n");
 }
 
@@ -219,7 +226,22 @@ export interface LaunchAgentInput {
   prompt?: string;
   /** `plan` makes the agent propose an approach first; useful for vague descriptions. */
   mode?: "agent" | "plan";
-  /** Open a pull request instead of pushing to the branch directly. */
+  /**
+   * Push to `branch` itself instead of a generated `cursor/...` branch.
+   *
+   * Defaults to `true` here, against Cursor's own default, because this builder has one
+   * outcome: Cloudflare Workers Builds deploys on a push to the default branch. Cursor's
+   * default parks the work on a side branch, so the build never runs and the app the
+   * user is waiting for never changes — with nothing failing anywhere to say why.
+   */
+  workOnCurrentBranch?: boolean;
+  /**
+   * Open a pull request when the run finishes.
+   *
+   * Defaults to `false` here for the same reason. A pull request is the right shape for
+   * a team reviewing a change, and the wrong shape for someone who asked for an app and
+   * is watching for its address.
+   */
   autoCreatePR?: boolean;
   fetchImpl?: typeof fetch;
 }
@@ -238,7 +260,7 @@ export async function launchAgent(input: LaunchAgentInput): Promise<LaunchAgentR
       path: "/v1/agents",
       fetchImpl: input.fetchImpl,
       body: {
-        prompt: { text: input.prompt?.trim() || buildLaunchPrompt() },
+        prompt: { text: input.prompt?.trim() || buildLaunchPrompt(input.branch) },
         repos: [
           {
             url: input.repositoryUrl,
@@ -246,7 +268,10 @@ export async function launchAgent(input: LaunchAgentInput): Promise<LaunchAgentR
           },
         ],
         ...(input.mode ? { mode: input.mode } : {}),
-        ...(input.autoCreatePR === undefined ? {} : { autoCreatePR: input.autoCreatePR }),
+        // Both sent always, never omitted: leaving either out hands the decision to
+        // Cursor's defaults, which are a `cursor/...` branch and no deployment.
+        workOnCurrentBranch: input.workOnCurrentBranch ?? true,
+        autoCreatePR: input.autoCreatePR ?? false,
       },
     });
   } catch (error) {

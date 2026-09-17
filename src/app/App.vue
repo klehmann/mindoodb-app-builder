@@ -251,6 +251,17 @@ async function forgetApp(): Promise<void> {
   showHome();
 }
 
+/**
+ * Remove a row from the list without opening it first.
+ *
+ * Stays on the list, unlike {@link forgetApp}: the user is looking at the thing they
+ * just removed disappearing, which is the confirmation. `forget` clears the active
+ * record itself if it happens to be this one.
+ */
+async function forgetListedApp(stored: StoredAppRecord): Promise<void> {
+  await records.forget(stored.documentId);
+}
+
 onMounted(async () => {
   await session.connect();
   hostConfig.value = await readHostConfig();
@@ -355,8 +366,10 @@ onMounted(async () => {
       :records="records.records.value"
       :loading="records.loading.value"
       :can-store="records.canStore.value"
+      :can-forget="records.canForget.value"
       @open="openApp"
       @create="startNewApp"
+      @forget="forgetListedApp"
     />
 
     <footer class="foot">
@@ -570,6 +583,12 @@ button.ghost {
   background: transparent;
   color: var(--app-text);
   border-color: var(--app-border);
+}
+
+/* The confirming half of a destructive pair. Never the first click of one. */
+button.danger {
+  background: var(--app-danger);
+  color: #ffffff;
 }
 
 /*

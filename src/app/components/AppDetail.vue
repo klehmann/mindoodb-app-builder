@@ -266,8 +266,9 @@ function formatDateTime(iso: string): string {
     <details v-if="canForget" class="detail__forget">
       <summary>Remove from this list</summary>
       <p class="hint">
-        This only removes the builder’s note about the app. The app keeps running, its
-        code stays on GitHub, and Haven keeps it installed.
+        This only removes the builder’s note about the app, here in its own database. The
+        code stays on GitHub, the published app keeps running on Cloudflare, any Cursor
+        agent stays where it is, and Haven keeps it installed.
       </p>
       <button type="button" class="ghost" @click="emit('forget')">
         Remove from list

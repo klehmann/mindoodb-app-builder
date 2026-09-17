@@ -11,7 +11,7 @@
  * check, so the list renders instantly and offline. An unfinished app says so and can be
  * carried on; a finished one is a link to open and share.
  */
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 import UiIcon from "@/app/components/UiIcon.vue";
 import { appStage, type BuilderAppStage, type StoredAppRecord } from "@/core/appRecords";
@@ -25,9 +25,38 @@ const props = defineProps<{
    * otherwise look like "you never built anything".
    */
   canStore: boolean;
+  /** Whether rows can be removed. False on a database this user may only read. */
+  canForget: boolean;
 }>();
 
-const emit = defineEmits<{ open: [StoredAppRecord]; create: [] }>();
+const emit = defineEmits<{
+  open: [StoredAppRecord];
+  create: [];
+  forget: [StoredAppRecord];
+}>();
+
+/**
+ * The row waiting for a yes, by document id.
+ *
+ * One at a time, and asked in the row itself rather than in a modal: what needs saying
+ * is *what removing does not touch*, and that sentence belongs next to the app it is
+ * about. A browser `confirm()` could not carry it, and an overlay would hide the list
+ * the user is deciding about.
+ */
+const pendingRemoval = ref<string | null>(null);
+
+function askToRemove(documentId: string): void {
+  pendingRemoval.value = documentId;
+}
+
+function cancelRemoval(): void {
+  pendingRemoval.value = null;
+}
+
+function confirmRemoval(stored: StoredAppRecord): void {
+  pendingRemoval.value = null;
+  emit("forget", stored);
+}
 
 /** Plain words for the five stages. No jargon: these are read at a glance. */
 const STAGE_LABELS: Record<BuilderAppStage, string> = {
@@ -103,21 +132,54 @@ function formatDate(iso: string): string {
     </div>
 
     <ul v-else class="apps__list">
-      <li v-for="row in rows" :key="row.stored.documentId">
-        <button type="button" class="apps__row" @click="emit('open', row.stored)">
-          <span class="apps__row-main">
-            <span class="apps__row-title">{{ row.label }}</span>
-            <span v-if="row.stored.record.description" class="apps__row-sub">
-              {{ row.stored.record.description }}
+      <li v-for="row in rows" :key="row.stored.documentId" class="apps__item">
+        <div class="apps__item-row">
+          <button type="button" class="apps__row" @click="emit('open', row.stored)">
+            <span class="apps__row-main">
+              <span class="apps__row-title">{{ row.label }}</span>
+              <span v-if="row.stored.record.description" class="apps__row-sub">
+                {{ row.stored.record.description }}
+              </span>
+              <span v-else-if="row.created" class="apps__row-sub">Started {{ row.created }}</span>
             </span>
-            <span v-else-if="row.created" class="apps__row-sub">Started {{ row.created }}</span>
-          </span>
-          <span class="apps__row-side">
-            <span :class="['badge', row.finished ? 'badge--live' : 'badge--soft']">
-              {{ row.stageLabel }}
+            <span class="apps__row-side">
+              <span :class="['badge', row.finished ? 'badge--live' : 'badge--soft']">
+                {{ row.stageLabel }}
+              </span>
             </span>
-          </span>
-        </button>
+          </button>
+          <!--
+            Outside the row button, because the row is itself a button and nesting one
+            inside another is invalid and unclickable.
+          -->
+          <button
+            v-if="canForget"
+            type="button"
+            class="ghost apps__remove"
+            :aria-label="`Remove ${row.label} from this list`"
+            :title="`Remove ${row.label} from this list`"
+            @click="askToRemove(row.stored.documentId)"
+          >
+            <UiIcon name="trash" :size="17" />
+          </button>
+        </div>
+
+        <div v-if="pendingRemoval === row.stored.documentId" class="apps__confirm">
+          <p class="apps__confirm-title">Remove “{{ row.label }}” from this list?</p>
+          <p class="hint">
+            This deletes only what the App Builder saved about the app, here in its own
+            database. Nothing else is touched: the project stays on GitHub, the published
+            app keeps running on Cloudflare, any Cursor agent stays where it is, and
+            Haven keeps it installed. You can add the app to this list again by building
+            a new one — but the address and description saved here will be gone.
+          </p>
+          <div class="apps__confirm-actions">
+            <button type="button" class="danger" @click="confirmRemoval(row.stored)">
+              Remove from list
+            </button>
+            <button type="button" class="ghost" @click="cancelRemoval">Keep it</button>
+          </div>
+        </div>
       </li>
     </ul>
 
@@ -177,13 +239,71 @@ function formatDate(iso: string): string {
   gap: 0.5rem;
 }
 
+.apps__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.apps__item-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+/* Icon-only, so it stays quiet next to the row it can destroy. */
+.apps__remove {
+  flex: none;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding-inline: 0.6rem;
+  color: var(--app-muted);
+}
+
+.apps__remove:hover:not(:disabled) {
+  filter: none;
+  color: var(--app-danger);
+  border-color: var(--app-danger);
+}
+
+.apps__confirm {
+  border: 1px solid var(--app-danger);
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.apps__confirm-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.apps__confirm .hint {
+  margin: 0;
+}
+
+.apps__confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+}
+
 /*
  * The row is a button so the whole card is one target for pointer and keyboard alike,
  * rather than a div with a link somewhere inside it.
  */
 .apps__row {
+  /* Takes the width the remove button leaves, and is allowed to shrink below its
+     content so a long description ellipsises instead of pushing the button out.
+     `align-self` overrides the global `flex-start` on buttons, which would otherwise
+     leave the two side by side at different heights. */
+  flex: 1 1 auto;
+  min-width: 0;
   align-self: stretch;
-  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;

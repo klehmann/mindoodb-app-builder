@@ -167,7 +167,14 @@ describe("AppDetail", () => {
   it("explains that removing an app from the list leaves the app alone", async () => {
     const wrapper = render();
 
-    expect(wrapper.text()).toContain("The app keeps running");
+    // Names every service, like the list's own confirmation does: the promise is that
+    // nothing outside the builder's database is touched.
+    const text = wrapper.find(".detail__forget").text();
+    expect(text).toContain("GitHub");
+    expect(text).toContain("Cloudflare");
+    expect(text).toContain("Cursor");
+    expect(text).toContain("Haven keeps it installed");
+
     await wrapper.find(".detail__forget button").trigger("click");
     expect(wrapper.emitted("forget")).toHaveLength(1);
   });

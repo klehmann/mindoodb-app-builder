@@ -17,7 +17,7 @@ function stored(
 
 function render(props: Partial<InstanceType<typeof AppList>["$props"]> = {}) {
   return mount(AppList, {
-    props: { records: [], loading: false, canStore: true, ...props },
+    props: { records: [], loading: false, canStore: true, canForget: true, ...props },
   });
 }
 
@@ -107,5 +107,83 @@ describe("AppList", () => {
     const wrapper = render({ canStore: false });
 
     expect(wrapper.text()).toContain("read-only");
+  });
+
+  describe("removing an app from the list", () => {
+    it("asks first, and removes nothing on the way", async () => {
+      const record = stored();
+      const wrapper = render({ records: [record] });
+
+      await wrapper.find(".apps__remove").trigger("click");
+
+      expect(wrapper.emitted("forget")).toBeUndefined();
+      expect(wrapper.find(".apps__confirm").exists()).toBe(true);
+      expect(wrapper.text()).toContain("Remove “Team Notes” from this list?");
+    });
+
+    it("says what removal does not touch, which is the point of asking", async () => {
+      // The one thing the user needs to know: this is the builder's note, not the app.
+      const wrapper = render({ records: [stored()] });
+
+      await wrapper.find(".apps__remove").trigger("click");
+
+      const text = wrapper.find(".apps__confirm").text();
+      expect(text).toContain("GitHub");
+      expect(text).toContain("Cloudflare");
+      expect(text).toContain("Cursor");
+      expect(text).toContain("Haven");
+    });
+
+    it("removes the app once the user confirms", async () => {
+      const record = stored();
+      const wrapper = render({ records: [record] });
+
+      await wrapper.find(".apps__remove").trigger("click");
+      await wrapper.find(".apps__confirm button.danger").trigger("click");
+
+      expect(wrapper.emitted("forget")).toEqual([[record]]);
+      // The question closes with the answer, so a re-rendered list is not still asking.
+      expect(wrapper.find(".apps__confirm").exists()).toBe(false);
+    });
+
+    it("keeps the app when the user backs out", async () => {
+      const wrapper = render({ records: [stored()] });
+
+      await wrapper.find(".apps__remove").trigger("click");
+      await wrapper.find(".apps__confirm button.ghost").trigger("click");
+
+      expect(wrapper.emitted("forget")).toBeUndefined();
+      expect(wrapper.find(".apps__confirm").exists()).toBe(false);
+    });
+
+    it("does not open the app it is about to remove", async () => {
+      // The row is a button and the remove button sits next to it, not inside it.
+      const wrapper = render({ records: [stored()] });
+
+      await wrapper.find(".apps__remove").trigger("click");
+
+      expect(wrapper.emitted("open")).toBeUndefined();
+    });
+
+    it("asks about the row that was clicked, and only that one", async () => {
+      const first = stored({ label: "First" }, "doc-1");
+      const second = stored({ label: "Second" }, "doc-2");
+      const wrapper = render({ records: [first, second] });
+
+      await wrapper.findAll(".apps__remove")[1]!.trigger("click");
+
+      const confirms = wrapper.findAll(".apps__confirm");
+      expect(confirms).toHaveLength(1);
+      expect(confirms[0]!.text()).toContain("Second");
+
+      await wrapper.find(".apps__confirm button.danger").trigger("click");
+      expect(wrapper.emitted("forget")).toEqual([[second]]);
+    });
+
+    it("offers no removal on a database this user may only read", () => {
+      const wrapper = render({ records: [stored()], canForget: false });
+
+      expect(wrapper.find(".apps__remove").exists()).toBe(false);
+    });
   });
 });

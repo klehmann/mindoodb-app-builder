@@ -13,6 +13,7 @@ export type UiIconName =
   | "cloudflare"
   | "cursor"
   | "share"
+  | "trash"
   | "check";
 
 defineProps<{
@@ -65,6 +66,13 @@ defineProps<{
     <template v-else-if="name === 'cursor'">
       <path d="M5.5 3.8 19 11.3l-5.9 1.6-2.2 5.7z" />
       <path d="M13.6 13.4 19 19.6" />
+    </template>
+
+    <!-- Trash: removing the builder's note about an app. -->
+    <template v-else-if="name === 'trash'">
+      <path d="M4.5 7h15M9.5 7V5.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V7" />
+      <path d="M6.5 7l.8 11.1a1.5 1.5 0 0 0 1.5 1.4h6.4a1.5 1.5 0 0 0 1.5-1.4L17.5 7" />
+      <path d="M10.5 10.5v6M13.5 10.5v6" />
     </template>
 
     <!-- Check: a completed step. Heavier stroke, because it is drawn very small. -->
