@@ -80,6 +80,15 @@ export interface BuilderAppRecord {
   /** GitHub's numeric ids, which Cloudflare's build connection needs by value. */
   repoId: number;
   repoOwnerId: number;
+  /**
+   * The app's own name, brief and id are in the repository.
+   *
+   * A repository without this is the template under a new name, so an app in that state
+   * has to be resumed at the commit — publishing it would put the starter live under the
+   * starter's identity. GitHub copies a template asynchronously, which is exactly how a
+   * run ends up here.
+   */
+  identityCommitted: boolean;
 
   /** Public `*.workers.dev` URL. Present from the moment the Worker exists. */
   workerUrl: string;
@@ -115,6 +124,7 @@ export const EMPTY_APP_RECORD: BuilderAppRecord = {
   repoBranch: "",
   repoId: 0,
   repoOwnerId: 0,
+  identityCommitted: false,
   workerUrl: "",
   workerScriptTag: "",
   cloudflareAccountId: "",
@@ -207,6 +217,7 @@ export interface FlowOutcome {
   agent?: AgentHandle | null;
   installedAppInstanceId?: string | null;
   cloudflareAccountId?: string;
+  identityCommitted?: boolean;
   wiredForBuild?: boolean;
   originReady?: boolean;
 }
@@ -247,6 +258,9 @@ export function applyFlowOutcome(
   }
   if (outcome.cloudflareAccountId) {
     next.cloudflareAccountId = outcome.cloudflareAccountId;
+  }
+  if (outcome.identityCommitted) {
+    next.identityCommitted = true;
   }
   if (outcome.wiredForBuild) {
     next.wiredForBuild = true;
@@ -303,19 +317,29 @@ export function workerFromRecord(record: BuilderAppRecord): WorkerDeployment | n
  * "publish", not at "create", because creating it again would only collide with itself.
  *
  * - `create` — nothing exists yet; run the whole sequence.
- * - `publish` — the repository is there but has no Worker; wire Cloudflare.
+ * - `commit` — the repository exists but is still the bare template; name it first.
+ * - `publish` — the repository is ready but has no Worker; wire Cloudflare.
  * - `build` — published but never seen live; start a build and wait for it.
  * - `install` — live, but Haven does not have it yet.
  * - `iterate` — finished. The remaining work is the user's, in Cursor or in the app.
  */
-export type AppNextAction = "create" | "publish" | "build" | "install" | "iterate";
+export type AppNextAction = "create" | "commit" | "publish" | "build" | "install" | "iterate";
 
 export function nextAppAction(record: BuilderAppRecord): AppNextAction {
   if (!record.repoUrl) {
     return "create";
   }
+  /*
+   * Asked before publishing, because putting a repository live while it still carries
+   * the template's name and id would deploy the starter as itself.
+   *
+   * Scoped to apps that were never published, deliberately: an app that is already
+   * running got there through a commit, whether or not a record from before this field
+   * existed says so. Re-committing an identity is harmless, but sending someone back to
+   * step two on a live app is not.
+   */
   if (!record.workerUrl) {
-    return "publish";
+    return record.identityCommitted ? "publish" : "commit";
   }
   if (!record.originReady) {
     return "build";
@@ -399,6 +423,7 @@ export function appRecordFromDocumentData(
     repoBranch: readString(body, "repoBranch"),
     repoId: readNumber(body, "repoId"),
     repoOwnerId: readNumber(body, "repoOwnerId"),
+    identityCommitted: readBoolean(body, "identityCommitted"),
     workerUrl: readUrl(body, "workerUrl"),
     workerScriptTag: readString(body, "workerScriptTag"),
     cloudflareAccountId: readString(body, "cloudflareAccountId"),
@@ -426,6 +451,7 @@ function toDocumentData(record: BuilderAppRecord, now: string): Record<string, u
     repoBranch: record.repoBranch.trim(),
     repoId: record.repoId,
     repoOwnerId: record.repoOwnerId,
+    identityCommitted: record.identityCommitted,
     workerUrl: record.workerUrl.trim(),
     workerScriptTag: record.workerScriptTag.trim(),
     cloudflareAccountId: record.cloudflareAccountId.trim(),

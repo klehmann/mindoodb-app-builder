@@ -309,6 +309,92 @@ export async function getFileText(options: {
   return await response.text();
 }
 
+/**
+ * Whether the repository has any content yet.
+ *
+ * Asks for the root listing, which is the one question with an unambiguous answer: a
+ * repository with no commit answers 404 `"This repository is empty."`, and one with a
+ * commit answers 200 with the entries. Anything else is a real failure and is thrown.
+ */
+export async function repositoryHasContent(options: {
+  token: string;
+  owner: string;
+  repo: string;
+  ref?: string;
+}): Promise<boolean> {
+  const { token, owner, repo, ref } = options;
+  const query = ref ? `?ref=${encodeURIComponent(ref)}` : "";
+  const url =
+    `${GITHUB_API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
+    + `/contents${query}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+  });
+
+  if (response.status === 404) {
+    return false;
+  }
+  if (!response.ok) {
+    throw new GitHubError(await readGitHubErrorMessage(response), response.status);
+  }
+  return true;
+}
+
+/**
+ * Wait for a freshly generated repository to actually contain the template.
+ *
+ * `POST /repos/{template}/generate` answers 201 with a complete repository object, but
+ * GitHub copies the template *afterwards*. For the next second or two the repository
+ * exists and is empty, and the Contents API says so with a 404 — which is what the
+ * identity commit used to trip over, one step later, reporting "the template is missing
+ * package.json" about a template that was fine.
+ *
+ * Polling the root listing rather than each file keeps the two cases apart: this answers
+ * "has GitHub finished?", so a file that is genuinely absent afterwards is still an
+ * error about that file, immediately, and not a timeout.
+ */
+export async function waitForRepositoryContent(options: {
+  token: string;
+  owner: string;
+  repo: string;
+  ref?: string;
+  /** Give up after this long. Generation is normally done in seconds. */
+  timeoutMs?: number;
+  intervalMs?: number;
+  /** Injected in tests, so they do not spend the timeout they are testing. */
+  wait?: (ms: number) => Promise<void>;
+  check?: typeof repositoryHasContent;
+}): Promise<boolean> {
+  const timeoutMs = options.timeoutMs ?? 30_000;
+  const intervalMs = options.intervalMs ?? 1_000;
+  const wait =
+    options.wait ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const check = options.check ?? repositoryHasContent;
+  const query = {
+    token: options.token,
+    owner: options.owner,
+    repo: options.repo,
+    ref: options.ref,
+  };
+
+  // One attempt plus retries for as long as the budget lasts, so a timeout of 0 still
+  // asks once — "do not wait" must not turn into "do not look".
+  for (let elapsed = 0; ; elapsed += intervalMs) {
+    if (await check(query)) {
+      return true;
+    }
+    if (elapsed + intervalMs > timeoutMs) {
+      return false;
+    }
+    await wait(intervalMs);
+  }
+}
+
 export interface GenerateRepositoryInput {
   token: string;
   /** Target owner. A blank value creates the repository under the token's own user. */

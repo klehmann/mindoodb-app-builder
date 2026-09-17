@@ -8,6 +8,8 @@ import {
   getFileText,
   getRepository,
   GitHubError,
+  repositoryHasContent,
+  waitForRepositoryContent,
 } from "@/core/github";
 
 const rawRepo = {
@@ -226,6 +228,117 @@ describe("getFileText", () => {
     await expect(
       getFileText({ token: "tok", owner: "octocat", repo: "team-notes", path: "nope.txt" }),
     ).resolves.toBeNull();
+  });
+});
+
+describe("repositoryHasContent", () => {
+  it("reads the root listing of the default branch", async () => {
+    const spy = mockFetch(() => json([{ name: "package.json" }]));
+
+    await expect(
+      repositoryHasContent({ token: "tok", owner: "octocat", repo: "team-notes", ref: "main" }),
+    ).resolves.toBe(true);
+
+    expect(spy.mock.calls[0]![0]).toBe(
+      "https://api.github.com/repos/octocat/team-notes/contents?ref=main",
+    );
+  });
+
+  it("reports a repository GitHub has not filled in yet", async () => {
+    // GitHub's actual answer to a repository without a commit, verbatim.
+    mockFetch(() => json({ message: "This repository is empty.", status: "404" }, 404));
+
+    await expect(
+      repositoryHasContent({ token: "tok", owner: "octocat", repo: "team-notes" }),
+    ).resolves.toBe(false);
+  });
+
+  it("throws on anything that is not an answer to the question", async () => {
+    mockFetch(() => json({ message: "Bad credentials" }, 401));
+
+    await expect(
+      repositoryHasContent({ token: "tok", owner: "octocat", repo: "team-notes" }),
+    ).rejects.toThrow(/Bad credentials/);
+  });
+});
+
+/**
+ * The bug these pin: `generate` answers 201 before the template is copied, the flow read
+ * `package.json` 200ms later, got a 404, and told the user the template was broken.
+ */
+describe("waitForRepositoryContent", () => {
+  it("returns as soon as the content appears", async () => {
+    const check = vi
+      .fn<typeof repositoryHasContent>()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValue(true);
+    const waited: number[] = [];
+
+    await expect(
+      waitForRepositoryContent({
+        token: "tok",
+        owner: "octocat",
+        repo: "team-notes",
+        ref: "main",
+        intervalMs: 1_000,
+        timeoutMs: 30_000,
+        wait: async (ms) => void waited.push(ms),
+        check,
+      }),
+    ).resolves.toBe(true);
+
+    expect(check).toHaveBeenCalledTimes(3);
+    expect(waited).toEqual([1_000, 1_000]);
+    expect(check.mock.calls[0]![0]).toMatchObject({ repo: "team-notes", ref: "main" });
+  });
+
+  it("gives up after the budget, without waiting past it", async () => {
+    const check = vi.fn<typeof repositoryHasContent>().mockResolvedValue(false);
+    const waited: number[] = [];
+
+    await expect(
+      waitForRepositoryContent({
+        token: "tok",
+        owner: "octocat",
+        repo: "team-notes",
+        intervalMs: 1_000,
+        timeoutMs: 3_000,
+        wait: async (ms) => void waited.push(ms),
+        check,
+      }),
+    ).resolves.toBe(false);
+
+    // Three seconds of budget: a look, three one-second waits, and a last look after
+    // the budget is spent rather than a wait that overruns it.
+    expect(waited).toEqual([1_000, 1_000, 1_000]);
+    expect(check).toHaveBeenCalledTimes(4);
+  });
+
+  it("still looks once when told not to wait at all", async () => {
+    const check = vi.fn<typeof repositoryHasContent>().mockResolvedValue(true);
+
+    await expect(
+      waitForRepositoryContent({
+        token: "tok",
+        owner: "octocat",
+        repo: "team-notes",
+        timeoutMs: 0,
+        check,
+      }),
+    ).resolves.toBe(true);
+
+    expect(check).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets a real failure through instead of retrying it for half a minute", async () => {
+    const check = vi
+      .fn<typeof repositoryHasContent>()
+      .mockRejectedValue(new GitHubError("Bad credentials", 401));
+
+    await expect(
+      waitForRepositoryContent({ token: "tok", owner: "octocat", repo: "team-notes", check }),
+    ).rejects.toThrow(/Bad credentials/);
   });
 });
 

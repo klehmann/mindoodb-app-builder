@@ -371,6 +371,64 @@ describe("createApp", () => {
       expect(ensureWorker).not.toHaveBeenCalled();
     });
 
+    /**
+     * The second attempt at an app whose first attempt created the repository and then
+     * failed — which is what GitHub's asynchronous template copy produces: the identity
+     * commit reads `package.json` seconds before GitHub puts it there.
+     *
+     * Without adopting that repository the app is stuck forever: creating it again
+     * collides with itself, and the name check is the thing that would collide.
+     */
+    it("adopts the repository an earlier attempt created instead of refusing its name", async () => {
+      const getRepository = vi.fn(async () => repository);
+      const generateFromTemplate = vi.fn(async () => repository);
+      const commitFiles = vi.fn(async () => "sha");
+      const deps = makeDeps({
+        github: {
+          getRepository,
+          generateFromTemplate,
+          readTemplateSources: vi.fn(async () => templateSources),
+          commitFiles,
+        },
+      });
+
+      const result = await createApp(
+        { identity, owner: "octocat", existingRepository: repository },
+        deps,
+      );
+
+      expect(result.error).toBeNull();
+      expect(statusOf(result.steps, "check-name")).toBe("skipped");
+      expect(statusOf(result.steps, "create-repo")).toBe("skipped");
+      expect(getRepository).not.toHaveBeenCalled();
+      expect(generateFromTemplate).not.toHaveBeenCalled();
+      // The point of the resume: the identity the first attempt never committed.
+      expect(commitFiles).toHaveBeenCalledOnce();
+      expect(result.repository).toEqual(repository);
+      expect(result.identityCommitted).toBe(true);
+      expect(result.worker).toEqual(worker);
+    });
+
+    it("reports an unnamed repository as unnamed, so a resume starts at the commit", async () => {
+      const deps = makeDeps({
+        github: {
+          getRepository: vi.fn(async () => null),
+          generateFromTemplate: vi.fn(async () => repository),
+          // GitHub answering for a repository it has not filled in yet.
+          readTemplateSources: vi.fn(async () => {
+            throw new Error("GitHub has not finished copying the template.");
+          }),
+          commitFiles: vi.fn(async () => "sha"),
+        },
+      });
+
+      const result = await createApp({ identity, owner: "octocat" }, deps);
+
+      expect(statusOf(result.steps, "commit-identity")).toBe("failed");
+      expect(result.repository).toEqual(repository);
+      expect(result.identityCommitted).toBe(false);
+    });
+
     it("reports a repository Cloudflare cannot read, and wires the rest anyway", async () => {
       // The failure with no other symptom: `PUT /builds/repos/connections` accepts a
       // repository Cloudflare's GitHub App cannot see, so the push reaches nobody and

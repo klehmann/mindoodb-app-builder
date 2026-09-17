@@ -71,9 +71,17 @@ describe("AppDetail", () => {
         repoUrl: "https://github.com/octocat/code-only",
         repoName: "code-only",
         repoOwner: "octocat",
+        identityCommitted: true,
       },
     });
     expect(repoOnly.find(".detail__continue button").text()).toBe("Publish it");
+
+    // A project GitHub created but had not filled in when the first attempt looked: the
+    // button resumes at the commit rather than publishing the bare starter.
+    const unnamed = render({
+      record: { ...EMPTY_APP_RECORD, label: "Bare", repoUrl: "https://github.com/o/bare" },
+    });
+    expect(unnamed.find(".detail__continue button").text()).toBe("Pick up where it stopped");
 
     const notInHaven = render({ record: liveRecord });
     expect(notInHaven.find(".detail__continue button").text()).toBe("Add it to Haven");

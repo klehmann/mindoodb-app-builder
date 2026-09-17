@@ -32,6 +32,7 @@ vi.mock("@/core/createAppFlow", async (importOriginal) => {
     worker: null,
     agent: null,
     installedAppInstanceId: null,
+    identityCommitted: false,
     warnings: [],
     error: null,
   });
@@ -184,11 +185,34 @@ describe("continueApp", () => {
     expect(phases.createApp).toHaveBeenCalledTimes(1);
   });
 
-  it("publishes an app whose repository exists", async () => {
-    await continueWith(applyFlowOutcome(planned(), { repository }));
+  it("publishes an app whose repository is created and named", async () => {
+    await continueWith(applyFlowOutcome(planned(), { repository, identityCommitted: true }));
 
     expect(phases.deployToCloudflare).toHaveBeenCalledTimes(1);
     expect(phases.createApp).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The state GitHub's asynchronous template copy leaves behind: the repository exists,
+   * the identity commit never happened. Re-running the sequence is right, but only if it
+   * is handed the repository — otherwise the name check finds it and refuses.
+   */
+  it("hands the existing repository back to the sequence when the app was never named", async () => {
+    await continueWith(applyFlowOutcome(planned(), { repository }));
+
+    expect(phases.createApp).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(phases.createApp).mock.calls[0]![0]).toMatchObject({
+      existingRepository: repository,
+    });
+    expect(phases.deployToCloudflare).not.toHaveBeenCalled();
+  });
+
+  it("asks GitHub for nothing on a fresh app, so a new name is still checked", async () => {
+    await continueWith(planned());
+
+    expect(vi.mocked(phases.createApp).mock.calls[0]![0]).not.toHaveProperty(
+      "existingRepository",
+    );
   });
 
   it("starts a build for a published app that has a trigger", async () => {

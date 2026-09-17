@@ -65,6 +65,7 @@ const dashboardUrl = computed(() => workerDashboardUrl(props.record));
 /** What "Continue" is about to do, said plainly so the button is never a surprise. */
 const CONTINUE_LABELS: Record<ReturnType<typeof nextAppAction>, string> = {
   create: "Build it now",
+  commit: "Pick up where it stopped",
   publish: "Publish it",
   build: "Publish it",
   install: "Add it to Haven",
@@ -73,6 +74,9 @@ const CONTINUE_LABELS: Record<ReturnType<typeof nextAppAction>, string> = {
 
 const CONTINUE_HINTS: Record<ReturnType<typeof nextAppAction>, string> = {
   create: "Nothing has been created yet — this runs the whole thing.",
+  commit:
+    "The GitHub project exists but the starter code was not named for your app yet. "
+    + "This carries on from there.",
   publish: "The code is on GitHub. This puts it on the web and adds it to Haven.",
   build: "The web address is reserved but the app never went live. This builds it.",
   install: "The app is live. This asks Haven to install it.",

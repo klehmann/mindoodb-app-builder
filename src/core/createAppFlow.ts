@@ -204,6 +204,15 @@ export interface CreateAppInput {
   /** GitHub owner to create under. Blank means the token's own user. */
   owner: string;
   private?: boolean;
+  /**
+   * A repository this run already owns, from an earlier attempt that got this far and no
+   * further.
+   *
+   * Without it a second attempt is impossible: the name check would find the project
+   * from the first attempt and refuse, and the user would be left with a repository
+   * carrying the template's name and no way to finish it.
+   */
+  existingRepository?: GitHubRepository;
 }
 
 export interface CreateAppResult {
@@ -212,6 +221,15 @@ export interface CreateAppResult {
   worker: WorkerDeployment | null;
   agent: AgentHandle | null;
   installedAppInstanceId: string | null;
+  /**
+   * Whether the app's own name, brief and id made it into the repository.
+   *
+   * Tracked separately from `repository` because the two can come apart — GitHub copies
+   * the template asynchronously, so a repository can exist while this commit has not
+   * happened. An app in that state must be resumed *here*, not at publishing, or it goes
+   * live under the template's identity.
+   */
+  identityCommitted: boolean;
   /** Non-fatal problems worth showing: a skipped agent, a declined install, warnings. */
   warnings: string[];
   /** Set when the flow stopped early. The step list says where. */
@@ -262,6 +280,7 @@ function createRunner(steps: FlowStep[], onStep?: (steps: FlowStep[]) => void): 
     worker: null,
     agent: null,
     installedAppInstanceId: null,
+    identityCommitted: false,
     warnings: [],
     error: null,
   };
@@ -410,31 +429,45 @@ async function runGitHubPhase(
   const { identity, owner } = input;
   const { result, update, abort } = run;
 
-  update("check-name", "running");
-  try {
-    const existing = await deps.github.getRepository(owner, identity.slug);
-    if (existing) {
-      abort("check-name", `${existing.fullName} already exists. Choose a different repository name.`);
+  /*
+   * Resuming an app whose project exists: the name is taken by that project, which is
+   * the good case, so neither checking nor creating applies. Both steps are marked
+   * skipped rather than done — the user is looking at a list of what this run did.
+   */
+  if (input.existingRepository) {
+    result.repository = input.existingRepository;
+    update("check-name", "skipped", `${input.existingRepository.fullName} is yours already.`);
+    update("create-repo", "skipped", "The project was created in an earlier attempt.");
+  } else {
+    update("check-name", "running");
+    try {
+      const existing = await deps.github.getRepository(owner, identity.slug);
+      if (existing) {
+        abort(
+          "check-name",
+          `${existing.fullName} already exists. Choose a different repository name.`,
+        );
+        return false;
+      }
+      update("check-name", "done", `${identity.slug} is available.`);
+    } catch (error) {
+      abort("check-name", readErrorMessage(error, "The repository name could not be checked."));
       return false;
     }
-    update("check-name", "done", `${identity.slug} is available.`);
-  } catch (error) {
-    abort("check-name", readErrorMessage(error, "The repository name could not be checked."));
-    return false;
-  }
 
-  try {
-    update("create-repo", "running");
-    const repository = await deps.github.generateFromTemplate({
-      name: identity.slug,
-      description: identity.description,
-      private: input.private ?? false,
-    });
-    result.repository = repository;
-    update("create-repo", "done", repository.fullName);
-  } catch (error) {
-    abort("create-repo", readErrorMessage(error, "The repository could not be created."));
-    return false;
+    try {
+      update("create-repo", "running");
+      const repository = await deps.github.generateFromTemplate({
+        name: identity.slug,
+        description: identity.description,
+        private: input.private ?? false,
+      });
+      result.repository = repository;
+      update("create-repo", "done", repository.fullName);
+    } catch (error) {
+      abort("create-repo", readErrorMessage(error, "The repository could not be created."));
+      return false;
+    }
   }
 
   try {
@@ -447,6 +480,7 @@ async function runGitHubPhase(
       message: `chore: set up ${identity.label}`,
       files,
     });
+    result.identityCommitted = true;
     update("commit-identity", "done", `${files.length} files named for ${identity.label}.`);
   } catch (error) {
     abort("commit-identity", readErrorMessage(error, "The app identity could not be committed."));

@@ -12,6 +12,7 @@ function result(overrides: Partial<CreateAppResult> = {}): CreateAppResult {
     worker: null,
     agent: null,
     installedAppInstanceId: null,
+    identityCommitted: false,
     warnings: [],
     error: null,
     ...overrides,

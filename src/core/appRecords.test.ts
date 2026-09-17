@@ -370,9 +370,12 @@ describe("nextAppAction", () => {
     expect(nextAppAction(EMPTY_APP_RECORD)).toBe("create");
 
     const withRepo = applyFlowOutcome(EMPTY_APP_RECORD, { repository });
-    expect(nextAppAction(withRepo)).toBe("publish");
+    expect(nextAppAction(withRepo)).toBe("commit");
 
-    const withWorker = applyFlowOutcome(withRepo, { worker });
+    const named = applyFlowOutcome(withRepo, { identityCommitted: true });
+    expect(nextAppAction(named)).toBe("publish");
+
+    const withWorker = applyFlowOutcome(named, { worker });
     expect(nextAppAction(withWorker)).toBe("build");
 
     const live = applyFlowOutcome(withWorker, { originReady: true });
@@ -393,7 +396,25 @@ describe("nextAppAction", () => {
       { repository },
     );
 
-    expect(nextAppAction(halfCreated)).toBe("publish");
+    expect(nextAppAction(halfCreated)).toBe("commit");
+  });
+
+  it("finishes naming the app before publishing it", () => {
+    // What GitHub's asynchronous template copy leaves behind: the repository exists and
+    // is still the plain starter. Publishing it here would put the starter live under
+    // the starter's id.
+    const bareTemplate = applyFlowOutcome(EMPTY_APP_RECORD, { repository });
+
+    expect(nextAppAction(bareTemplate)).toBe("commit");
+  });
+
+  it("does not send a running app back to step two", () => {
+    // Records written before `identityCommitted` existed read as false. An app that is
+    // already published got there through the commit, so the flag must not outrank it.
+    const published = { ...applyFlowOutcome(EMPTY_APP_RECORD, { repository, worker }) };
+    expect(published.identityCommitted).toBe(false);
+
+    expect(nextAppAction(published)).toBe("build");
   });
 });
 

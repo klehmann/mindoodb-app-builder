@@ -53,6 +53,7 @@ import {
   generateRepositoryFromTemplate,
   getFileText,
   getRepository,
+  waitForRepositoryContent,
   type GitHubRepository,
 } from "@/core/github";
 import { waitForOrigin } from "@/core/originProbe";
@@ -253,6 +254,26 @@ export function useBuilderFlow(
             private: input.private,
           }),
         readTemplateSources: async (repository: GitHubRepository) => {
+          /*
+           * GitHub copies the template *after* answering the create call, so for a second
+           * or two the new repository exists and is empty. Reading a file in that window
+           * returns 404 "This repository is empty.", which used to surface as "the
+           * template is missing package.json" — about a template that was fine.
+           */
+          const filled = await waitForRepositoryContent({
+            token: githubToken,
+            owner: repository.owner,
+            repo: repository.name,
+            ref: repository.defaultBranch,
+          });
+          if (!filled) {
+            throw new Error(
+              `GitHub has not finished copying the template into ${repository.fullName}. `
+                + "The project is there and empty — press Continue on it in a moment to "
+                + "pick up from here.",
+            );
+          }
+
           const read = async (path: string) => {
             const text = await getFileText({
               token: githubToken,
@@ -382,6 +403,7 @@ export function useBuilderFlow(
           agent: next.agent,
           installedAppInstanceId: next.installedAppInstanceId,
           cloudflareAccountId: credentials.cloudflareAccountId,
+          identityCommitted: next.identityCommitted,
           wiredForBuild: next.steps.some(
             (step) => step.id === "connect-builds" && step.status === "done",
           ),
@@ -544,7 +566,7 @@ export function useBuilderFlow(
    * drive them. Nothing here is fatal past the repository: a Cursor key that fails
    * leaves a live, installed app behind, and the record says so.
    */
-  async function runSequence(): Promise<void> {
+  async function runSequence(existingRepository?: GitHubRepository): Promise<void> {
     await refreshCloudflareIfStale();
     running.value = true;
     steps.value = createInitialSteps();
@@ -556,6 +578,7 @@ export function useBuilderFlow(
             identity: identity.value,
             owner: session.credentials.value.githubOwner,
             private: form.value.private,
+            ...(existingRepository ? { existingRepository } : {}),
           },
           buildDependencies(),
         ),
@@ -610,6 +633,7 @@ export function useBuilderFlow(
       worker: workerFromRecord(record),
       agent: storedAgent,
       installedAppInstanceId: record.havenInstanceId || null,
+      identityCommitted: record.identityCommitted,
       warnings: [],
       error: null,
     };
@@ -636,6 +660,13 @@ export function useBuilderFlow(
         // The name was reserved in the list but nothing was built. Run the sequence on
         // the existing record rather than beginning a second one for the same app.
         await runSequence();
+        return;
+      case "commit":
+        // The project exists and is still the plain template — usually because GitHub
+        // had not finished copying it when the first attempt looked. Re-run from here
+        // with that project handed in, so the sequence adopts it instead of tripping
+        // over the name it took.
+        await runSequence(repositoryFromRecord(record) ?? undefined);
         return;
       case "publish":
         await deployCloudflare();
