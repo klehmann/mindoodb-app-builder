@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { GITHUB_INSTALLATIONS_URL, cursorGitHubInstallUrl } from "@/app/wizard";
+import { computed } from "vue";
+
+import { cursorGitHubInstallUrl } from "@/app/wizard";
 import type { BuilderHostConfig } from "@/app/hostApi";
 import type { UseCloudflareConnectReturn } from "@/app/useCloudflareConnect";
 import type { UseGitHubConnectReturn } from "@/app/useGitHubConnect";
@@ -13,7 +15,7 @@ import ProgressPanel from "@/app/components/ProgressPanel.vue";
 import WizardPageHeader from "@/app/components/WizardPageHeader.vue";
 import WizardTask from "@/app/components/WizardTask.vue";
 
-defineProps<{
+const props = defineProps<{
   credentials: BuilderCredentials;
   status: CredentialsStatus;
   canStore: boolean;
@@ -39,6 +41,14 @@ const emit = defineEmits<{
 
 const installUrl = cursorGitHubInstallUrl();
 const cursorUiUrl = "https://cursor.com/agents";
+
+/** Same one-button reasoning as the Cloudflare page: GitHub owns the scope choice. */
+const accessHint = computed(
+  () =>
+    "Cursor works through its own GitHub App, which cannot see " +
+    `${props.repositoryName || "your new project"} until you allow it. ` +
+    "On GitHub, “All repositories” is the one-and-done choice; picking just this one works too.",
+);
 </script>
 
 <template>
@@ -73,15 +83,13 @@ const cursorUiUrl = "https://cursor.com/agents";
     <WizardTask
       :index="2"
       title="Let Cursor read your project"
-      hint="The AI needs access to the same GitHub project in order to change it."
+      :hint="accessHint"
       skippable
     >
+      <!-- Still a row: it keeps the link at its own width rather than the panel's. -->
       <div class="row">
         <a class="button" :href="installUrl" target="_blank" rel="noreferrer noopener">
           Allow Cursor on GitHub
-        </a>
-        <a class="button button--ghost" :href="GITHUB_INSTALLATIONS_URL" target="_blank" rel="noreferrer noopener">
-          {{ repositoryName ? `Add ${repositoryName} only` : "Add just this project" }}
         </a>
       </div>
     </WizardTask>

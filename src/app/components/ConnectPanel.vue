@@ -308,8 +308,10 @@ function save(): void {
             Configuration&nbsp;→&nbsp;Edit. Then copy the token into the field above.
           </p>
           <p class="hint">
-            Use the <strong>My Profile</strong> page linked above rather than a token made
-            under an account — publishing rejects account-owned tokens.
+            Create it on the page that link opens — <strong>My Profile → API Tokens</strong>.
+            Cloudflare offers tokens under <strong>Manage Account</strong> too, but those
+            cannot switch on automatic publishing, so the next page would stop with an
+            error.
           </p>
         </div>
       </template>

@@ -120,9 +120,13 @@ const installHint = computed(() =>
       <button type="button" :disabled="!canCreateRepo" @click="emit('initialize')">
         {{ running ? "Creating your project…" : "Create my project" }}
       </button>
+      <!-- The name is only set in monospace when it is a real one, never the placeholder. -->
       <p class="hint">
-        Already created <code>{{ repositoryName || "this project" }}</code> earlier? Skip
-        this and continue — the next page picks up where you left off.
+        <template v-if="repositoryName">
+          Already created <code>{{ repositoryName }}</code> earlier?
+        </template>
+        <template v-else>Already created this project earlier?</template>
+        Skip this and continue — the next page picks up where you left off.
       </p>
     </WizardTask>
   </section>

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { GITHUB_INSTALLATIONS_URL, cloudflareGitHubInstallUrl } from "@/app/wizard";
+import { computed } from "vue";
+
+import { cloudflareGitHubInstallUrl } from "@/app/wizard";
 import type { BuilderHostConfig } from "@/app/hostApi";
 import type { UseCloudflareConnectReturn } from "@/app/useCloudflareConnect";
 import type { UseGitHubConnectReturn } from "@/app/useGitHubConnect";
@@ -12,7 +14,7 @@ import ProgressPanel from "@/app/components/ProgressPanel.vue";
 import WizardPageHeader from "@/app/components/WizardPageHeader.vue";
 import WizardTask from "@/app/components/WizardTask.vue";
 
-defineProps<{
+const props = defineProps<{
   credentials: BuilderCredentials;
   status: CredentialsStatus;
   canStore: boolean;
@@ -40,6 +42,18 @@ const emit = defineEmits<{
 }>();
 
 const installUrl = cloudflareGitHubInstallUrl();
+
+/**
+ * One button, not two: "All repositories" and hand-picking this one are the same radio
+ * group on GitHub's own page, and no URL can pre-select either. So the choice is
+ * explained here and made there.
+ */
+const accessHint = computed(
+  () =>
+    "Cloudflare's GitHub App only reaches the repositories you point it at, and " +
+    `${props.repositoryName || "your new project"} is not one of them yet. ` +
+    "On GitHub, “All repositories” is the one-and-done choice; picking just this one works too.",
+);
 </script>
 
 <template>
@@ -74,15 +88,13 @@ const installUrl = cloudflareGitHubInstallUrl();
     <WizardTask
       :index="2"
       title="Let Cloudflare read your project"
-      hint="Cloudflare needs permission on GitHub to see the project it is going to publish. “All repositories” is the one-and-done choice."
+      :hint="accessHint"
       skippable
     >
+      <!-- Still a row: it keeps the link at its own width rather than the panel's. -->
       <div class="row">
         <a class="button" :href="installUrl" target="_blank" rel="noreferrer noopener">
           Allow Cloudflare on GitHub
-        </a>
-        <a class="button button--ghost" :href="GITHUB_INSTALLATIONS_URL" target="_blank" rel="noreferrer noopener">
-          {{ repositoryName ? `Add ${repositoryName} only` : "Add just this project" }}
         </a>
       </div>
     </WizardTask>

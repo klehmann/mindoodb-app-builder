@@ -468,7 +468,7 @@ async function resolveBuildToken(input: {
   });
   if (!verified?.id) {
     throw new CloudflareApiError(
-      "Cloudflare did not identify this token, so no build token could be registered. The Builds API needs a user token, not an account token.",
+      "Cloudflare did not recognise this token, so automatic publishing could not be switched on. Create the token on Cloudflare's My Profile → API Tokens page — one made under Manage Account cannot be used here — then reconnect Cloudflare and try again.",
       401,
     );
   }

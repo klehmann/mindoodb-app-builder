@@ -105,8 +105,23 @@ export function useBuilderFlow(
     task: form.value.task,
   }));
 
-  /** Shown live under the repository field: this is the URL the app will get. */
-  const plannedRepositoryName = computed(() => identity.value.slug);
+  /**
+   * Shown live under the repository field: this is the URL the app will get. Empty until
+   * the user has actually named something.
+   *
+   * `identity.slug` is never empty — `slugifyAppName` falls back to a usable name so that
+   * an emoji-only label still produces a valid Worker name. That safety net belongs in
+   * the name the app is created with, but not in copy: presenting it before the user has
+   * typed anything reads as though they had already chosen it.
+   */
+  const plannedRepositoryName = computed(() => {
+    const typedLabel = form.value.label.trim() !== "";
+    // A slug the user edited counts on its own. One that is still following the label
+    // cannot be trusted: `onLabelInput` keeps it in step by writing `slugifyAppName`'s
+    // output, so clearing the name leaves the fallback behind in the field.
+    const typedSlug = !form.value.slugFollowsLabel && form.value.slug.trim() !== "";
+    return typedLabel || typedSlug ? identity.value.slug : "";
+  });
 
   const formError = computed(() => {
     if (!identity.value.label) {
