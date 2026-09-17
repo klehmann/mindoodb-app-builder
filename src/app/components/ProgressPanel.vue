@@ -17,7 +17,7 @@
  */
 import { computed } from "vue";
 
-import WizardIcon from "@/app/components/WizardIcon.vue";
+import UiIcon from "@/app/components/UiIcon.vue";
 import type { CreateAppResult, FlowStep, FlowStepId } from "@/core/createAppFlow";
 
 const props = defineProps<{
@@ -100,7 +100,7 @@ const shareLink = computed(() => {
 
       <div v-if="serving && result.worker" class="share">
         <span class="share__icon" aria-hidden="true">
-          <WizardIcon name="share" :size="18" />
+          <UiIcon name="share" :size="18" />
         </span>
         <div class="share__body">
           <p class="share__title">Your app is live</p>

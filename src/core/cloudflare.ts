@@ -559,6 +559,63 @@ export async function startBuild(input: {
   return { buildUuid: build.build_uuid };
 }
 
+export interface WorkerBuild {
+  buildUuid: string;
+  /** Cloudflare's own word for it: `running`, `success`, `failed`, `canceled`, … */
+  status: string;
+  branch: string;
+  /** ISO timestamp, or empty when Cloudflare sent none. */
+  createdAt: string;
+}
+
+/**
+ * The builds of one Worker, newest first.
+ *
+ * Read-only, and the one Cloudflare fact the app list shows: whether the last build
+ * worked. That is the question a user actually has about a deployed app, and answering
+ * it here saves a dashboard trip.
+ *
+ * The endpoint is per-Worker (`/builds/workers/{tag}/builds`) rather than the
+ * account-wide `/builds/builds`, which needs `version_ids` and so cannot answer "what
+ * happened with this app". Cloudflare orders newest first; the sort is repeated locally
+ * because an ordering nobody documented is not one to depend on.
+ */
+export async function listBuilds(input: {
+  token: string;
+  accountId: string;
+  scriptTag: string;
+  /** How many to report. The list shows one; more is for a history view. */
+  limit?: number;
+  fetchImpl?: typeof fetch;
+}): Promise<WorkerBuild[]> {
+  const { token, accountId, scriptTag, limit = 5, fetchImpl } = input;
+
+  const builds = await callCloudflare<Array<{
+    build_uuid?: string;
+    status?: string;
+    branch?: string;
+    created_on?: string;
+    created_at?: string;
+  }>>({
+    token,
+    path: `/accounts/${encodeURIComponent(accountId)}/builds/workers/${encodeURIComponent(scriptTag)}/builds`,
+    fetchImpl,
+  });
+
+  return (builds ?? [])
+    .filter((entry) => Boolean(entry?.build_uuid))
+    .map((entry) => ({
+      buildUuid: entry.build_uuid!,
+      status: entry.status ?? "unknown",
+      branch: entry.branch ?? "",
+      // Cloudflare's build payloads have used both spellings across its APIs; taking
+      // either costs one line and avoids a blank timestamp in the list.
+      createdAt: entry.created_on ?? entry.created_at ?? "",
+    }))
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .slice(0, limit);
+}
+
 /**
  * Connect the repository to the Worker so pushes deploy themselves.
  *

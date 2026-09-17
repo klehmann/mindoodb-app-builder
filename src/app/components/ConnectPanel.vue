@@ -108,6 +108,12 @@ const cloudflareFieldsVisible = computed(
 const githubTokenUrl =
   "https://github.com/settings/tokens/new?scopes=repo&description=MindooDB%20App%20Builder";
 const cloudflareTokenUrl = "https://dash.cloudflare.com/profile/api-tokens";
+/**
+ * Where the account id can be read off by hand. Deliberately the bare dashboard: it
+ * redirects to `/<account-id>/…`, so the id is in the address bar — which survives
+ * Cloudflare moving the "Account ID" box around the page, as it has before.
+ */
+const cloudflareDashboardUrl = "https://dash.cloudflare.com/";
 const cursorKeysUrl = "https://cursor.com/dashboard?tab=api-keys";
 
 /**
@@ -129,6 +135,36 @@ async function identifyGitHubToken(): Promise<void> {
     draft.githubOwner = login;
   }
 }
+
+/**
+ * Read the account id out of the pasted Cloudflare token, the same way the owner is read
+ * out of the GitHub one.
+ *
+ * Unlike the GitHub owner this overwrites what is there, on purpose: the id belongs to
+ * the token, so a stale id from a previous token is wrong rather than a preference. With
+ * several accounts the first is pre-selected and the select below lets the user change
+ * it; with none the lookup failed, and the id field appears so the run is not blocked.
+ */
+async function identifyCloudflareToken(): Promise<void> {
+  const found = await props.cloudflare.identifyToken(draft.cloudflareToken);
+  if (found.length === 0) {
+    return;
+  }
+  const known = found.some((account) => account.id === draft.cloudflareAccountId);
+  if (!known) {
+    draft.cloudflareAccountId = found[0].id;
+  }
+}
+
+/**
+ * The id field is a fallback, not a step: it shows up when nothing else can supply the
+ * id — no token pasted yet, or a token that could not be asked.
+ */
+const showAccountIdField = computed(
+  () =>
+    Boolean(props.cloudflare.identifyError.value)
+    || (props.cloudflareAccounts.length === 0 && draft.cloudflareAccountId.trim() === ""),
+);
 
 function save(): void {
   emit("save", { ...draft });
@@ -292,23 +328,31 @@ onUnmounted(() => {
         </div>
       </template>
 
-      <!-- Always shown: filled in automatically on save, but an organization is a choice
-           only the user can make. -->
-      <div class="field">
-        <label for="github-owner">GitHub owner</label>
-        <input
-          id="github-owner"
-          v-model="draft.githubOwner"
-          type="text"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="your-user-or-org"
-        />
-        <p class="hint">
-          Read from your token, so there is nothing to look up. Change it only
-          to put the app under an organization you belong to instead.
-        </p>
-      </div>
+      <!--
+        Folded away, because for almost everyone it is not a decision: apps are created
+        under the account the token belongs to, which is read from the token itself. It
+        stays reachable because an organization is a choice only the user can make — and
+        one that needs its own installs, which is why it is not the default.
+      -->
+      <details class="owner">
+        <summary>Create apps under an organization instead</summary>
+        <div class="field owner__field">
+          <label for="github-owner">GitHub owner</label>
+          <input
+            id="github-owner"
+            v-model="draft.githubOwner"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="your-user-or-org"
+          />
+          <p class="hint">
+            Leave this alone and your apps are created under your own account. An
+            organization works too, but the installs you approved for yourself do not
+            cover it — you have to approve them there as well.
+          </p>
+        </div>
+      </details>
     </div>
 
     <!-- Cloudflare -->
@@ -373,7 +417,11 @@ onUnmounted(() => {
             type="password"
             autocomplete="off"
             spellcheck="false"
+            @blur="identifyCloudflareToken"
           />
+          <p v-if="cloudflare.identifying.value" class="hint">
+            Checking the token with Cloudflare…
+          </p>
           <p class="hint">
             <a
               :href="cloudflareTokenUrl"
@@ -396,7 +444,11 @@ onUnmounted(() => {
         </div>
       </template>
 
-      <!-- A list once a token can produce one, a field until then. -->
+      <!--
+        The account comes from the token, so there is nothing to type here in the normal
+        case: a choice when the token can act on several accounts, a name when there is
+        one, and the raw id only when Cloudflare could not be asked.
+      -->
       <div v-if="cloudflareAccounts.length > 1" class="field">
         <label for="cf-account-select">Account</label>
         <select id="cf-account-select" v-model="draft.cloudflareAccountId">
@@ -408,21 +460,58 @@ onUnmounted(() => {
             {{ account.name }}
           </option>
         </select>
+        <p class="hint">Your token can act on several — this is the one your apps go in.</p>
       </div>
       <p v-else-if="cloudflareAccounts.length === 1" class="hint">
-        Account: {{ cloudflareAccounts[0].name }}
+        Account: <strong>{{ cloudflareAccounts[0].name }}</strong>
       </p>
-      <div v-else class="field">
-        <label for="cf-account">Cloudflare account ID</label>
-        <input
-          id="cf-account"
-          v-model="draft.cloudflareAccountId"
-          type="text"
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <p class="hint">Workers &amp; Pages overview, right-hand column.</p>
-      </div>
+      <template v-else>
+        <p v-if="cloudflare.identifyError.value" class="warn">
+          {{ cloudflare.identifyError.value }} You can enter it below instead: open
+          <a :href="cloudflareDashboardUrl" target="_blank" rel="noreferrer noopener"
+            >your Cloudflare dashboard</a
+          >
+          and copy the long code out of the address bar — the part right after
+          <code>dash.cloudflare.com/</code>.
+        </p>
+        <div v-if="showAccountIdField" class="field">
+          <label for="cf-account">Cloudflare account ID</label>
+          <input
+            id="cf-account"
+            v-model="draft.cloudflareAccountId"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="read from your token"
+          />
+          <p v-if="!cloudflare.identifyError.value" class="hint">
+            Normally there is nothing to fill in here — pasting the token above reads the
+            account from it.
+          </p>
+        </div>
+        <!--
+          An id that is already stored needs no field — but it does need to be visible and
+          replaceable, because switching Cloudflare account is exactly the kind of thing
+          that brings someone back to this page.
+        -->
+        <details v-else class="owner">
+          <summary>Account: {{ draft.cloudflareAccountId }}</summary>
+          <div class="field owner__field">
+            <label for="cf-account-manual">Cloudflare account ID</label>
+            <input
+              id="cf-account-manual"
+              v-model="draft.cloudflareAccountId"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <p class="hint">
+              Pasting a token again reads this from the token. Change it by hand only if
+              you know which account you want.
+            </p>
+          </div>
+        </details>
+      </template>
     </div>
 
     <!-- Cursor: no connect flow exists, so this one is typed. -->
@@ -451,6 +540,11 @@ onUnmounted(() => {
           key is sent to the builder host for that single call. It is never
           given to the agent itself.
         </p>
+        <p class="hint">
+          Leave it empty if you would rather write the code yourself, or use another tool
+          on the repository — Claude Code, Codex, your editor. Nothing else here depends
+          on it.
+        </p>
       </div>
     </div>
 
@@ -461,6 +555,16 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.owner summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--app-muted);
+}
+
+.owner__field {
+  padding-top: 0.6rem;
+}
+
 .panel--bare {
   background: transparent;
   border: none;

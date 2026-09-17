@@ -13,6 +13,7 @@ import {
   connectPushToDeploy,
   ensureWorker,
   listAccounts,
+  listBuilds,
   startBuild,
   probeGitIntegration,
   CloudflareApiError,
@@ -337,6 +338,29 @@ export async function handleApiRequest(request: ApiRequest): Promise<ApiResponse
           fetchImpl,
         });
         return { status: 200, payload: build };
+      } catch (error) {
+        return toErrorResponse(error);
+      }
+    }
+
+    // Read-only: how the app list answers "did the last build work?" without sending
+    // the user to the dashboard.
+    case "/api/cloudflare/builds": {
+      const scriptTag = readBodyString(body, "scriptTag");
+      if (!cloudflareToken || !accountId) {
+        return badRequest("A Cloudflare token and account ID are required.");
+      }
+      if (!scriptTag) {
+        return badRequest("A Worker script tag is required.");
+      }
+      try {
+        const builds = await listBuilds({
+          token: cloudflareToken,
+          accountId,
+          scriptTag,
+          fetchImpl,
+        });
+        return { status: 200, payload: { builds } };
       } catch (error) {
         return toErrorResponse(error);
       }

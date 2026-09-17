@@ -172,6 +172,17 @@ export interface CreateAppDependencies {
   };
   /** Called after every step transition so the UI can follow along. */
   onStep?: (steps: FlowStep[]) => void;
+  /**
+   * Called once per finished phase with everything known so far, so the caller can
+   * write it down before the next phase can fail.
+   *
+   * This is what makes a run resumable. A Cursor token that expires mid-build must not
+   * cost the user the repository and the live URL the earlier phases produced — after
+   * this fires, those are on disk and the app shows up in the list with a "carry on"
+   * action. Awaited, so a phase boundary is a real checkpoint rather than a race with
+   * the next API call.
+   */
+  onPhase?: (result: CreateAppResult) => void | Promise<void>;
 }
 
 /**
@@ -209,6 +220,24 @@ export interface CreateAppResult {
 
 function readErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
+}
+
+/**
+ * Hand the caller what is known so far, at a phase boundary.
+ *
+ * Swallows its own failures. Writing the app down is bookkeeping the user benefits from;
+ * a database that refuses the write is no reason to abandon a repository that exists and
+ * a build that is running.
+ */
+async function checkpoint(deps: CreateAppDependencies, result: CreateAppResult): Promise<void> {
+  if (!deps.onPhase) {
+    return;
+  }
+  try {
+    await deps.onPhase(result);
+  } catch (error) {
+    console.error("[app-builder] The app record could not be written:", error);
+  }
 }
 
 /**
@@ -573,6 +602,7 @@ export async function createGitHubProject(
 ): Promise<CreateAppResult> {
   const run = createRunner(createGitHubPhaseSteps(), deps.onStep);
   await runGitHubPhase(run, input, deps);
+  await checkpoint(deps, run.result);
   return run.result;
 }
 
@@ -593,6 +623,7 @@ export async function deployToCloudflare(
   run.result.repository = input.repository;
   run.result.worker = input.worker ?? null;
   await runCloudflarePhase(run, input, deps);
+  await checkpoint(deps, run.result);
   return run.result;
 }
 
@@ -604,6 +635,7 @@ export async function launchCursorWork(
   run.result.repository = input.repository;
   run.result.agent = input.agent ?? null;
   await runCursorPhase(run, input.repository, deps);
+  await checkpoint(deps, run.result);
   return run.result;
 }
 
@@ -616,6 +648,7 @@ export async function registerInHaven(
   run.result.worker = input.worker;
   run.result.repository = input.repository ?? null;
   await proposeToHaven(run, deps, input.worker);
+  await checkpoint(deps, run.result);
   return run.result;
 }
 
@@ -634,7 +667,12 @@ export async function createApp(
 ): Promise<CreateAppResult> {
   const run = createRunner(createInitialSteps(), deps.onStep);
 
-  if (!(await runGitHubPhase(run, input, deps))) {
+  const created = await runGitHubPhase(run, input, deps);
+  // Checkpointed even on failure: a run that died after `create-repo` but before the
+  // identity commit leaves a real repository behind, and the user has to be able to see
+  // it — either to carry on or to delete it.
+  await checkpoint(deps, run.result);
+  if (!created) {
     return run.result;
   }
 
@@ -642,9 +680,11 @@ export async function createApp(
   await runCloudflarePhase(run, { identity: input.identity, repository }, deps, [
     "launch-agent",
   ]);
+  await checkpoint(deps, run.result);
 
   if (repository) {
     await runCursorPhase(run, repository, deps);
+    await checkpoint(deps, run.result);
   }
 
   return run.result;
@@ -706,10 +746,12 @@ export async function deployNow(
   }
 
   if (!(await awaitOrigin(run, deps, worker, input.appId))) {
+    await checkpoint(deps, result);
     return result;
   }
 
   await proposeToHaven(run, deps, worker);
+  await checkpoint(deps, result);
 
   return result;
 }

@@ -71,6 +71,35 @@ export interface BuilderCredentials {
   cloudflareAccountId: string;
   /** Cursor API key (`crsr_…`) used to launch cloud agents. */
   cursorToken: string;
+
+  /*
+   * The two fields below are not secrets. They live in this document anyway, and
+   * deliberately at its *top level* rather than inside `secrets`: the setup state is
+   * per-person just like the tokens are, so it belongs to the same per-user document —
+   * and putting it in a second document would mean a second query on every launch to
+   * answer "has this user finished setting up?".
+   */
+
+  /**
+   * When the user last said their one-time setup is done. Empty means never.
+   *
+   * This is a *claim*, not a check. Whether Cloudflare's GitHub App can read a
+   * repository, or whether Cursor was pointed at one, cannot be read back from any token
+   * we hold — so the builder records that the user went through the setup and then
+   * trusts it. A run that fails because a grant is missing reports that and offers the
+   * setup again, which is cheaper for everyone than a detection that cannot work.
+   */
+  setupCompletedAt: string;
+  /**
+   * Whether the user chose to grant Cloudflare and Cursor access to all repositories.
+   *
+   * `all` is the one that makes every later app a single button: a repository created
+   * next month is covered by an installation that already says "all". `selected` means
+   * the user keeps that choice per repository, so each new app needs two grants added by
+   * hand — the builder still supports it, it just cannot be quiet about it. Empty means
+   * they have not been asked yet.
+   */
+  repoAccess: "all" | "selected" | "";
 }
 
 export const EMPTY_CREDENTIALS: BuilderCredentials = {
@@ -81,6 +110,8 @@ export const EMPTY_CREDENTIALS: BuilderCredentials = {
   cloudflareExpiresAt: 0,
   cloudflareAccountId: "",
   cursorToken: "",
+  setupCompletedAt: "",
+  repoAccess: "",
 };
 
 /** Which credentials are present, for a UI that shows what still needs connecting. */
@@ -97,6 +128,20 @@ export function readCredentialsStatus(credentials: BuilderCredentials): Credenti
       credentials.cloudflareToken.trim() !== "" && credentials.cloudflareAccountId.trim() !== "",
     cursor: credentials.cursorToken.trim() !== "",
   };
+}
+
+/**
+ * Whether the builder can go straight to building apps.
+ *
+ * Both tokens *and* the user's own "I am done" are required. The tokens alone are not
+ * enough: the grants that make a new repository buildable — Cloudflare's GitHub App,
+ * Cursor's — are invisible from here, so a user who pasted a token but never installed
+ * anything would get a run that dies at the first build with no idea why. The claim is
+ * what closes that gap.
+ */
+export function isSetupComplete(credentials: BuilderCredentials): boolean {
+  const status = readCredentialsStatus(credentials);
+  return status.github && status.cloudflare && credentials.setupCompletedAt !== "";
 }
 
 function readString(data: Record<string, unknown>, key: string): string {
@@ -136,7 +181,12 @@ export function credentialsFromDocumentData(
   const nested = body[SECRETS_FIELD];
   const data =
     nested !== null && typeof nested === "object" ? (nested as Record<string, unknown>) : body;
+  const repoAccess = readString(body, "repoAccess");
   return {
+    setupCompletedAt: readString(body, "setupCompletedAt"),
+    // Anything unexpected reads as "not asked yet", which only means the setup page
+    // asks again — the safe direction.
+    repoAccess: repoAccess === "all" || repoAccess === "selected" ? repoAccess : "",
     githubToken: readString(data, "githubToken"),
     githubOwner: readString(data, "githubOwner"),
     cloudflareToken: readString(data, "cloudflareToken"),
@@ -215,6 +265,8 @@ export async function saveCredentials(
   const set: Record<string, unknown> = {
     type: CREDENTIALS_DOCUMENT_TYPE,
     updatedAt: new Date().toISOString(),
+    setupCompletedAt: credentials.setupCompletedAt.trim(),
+    repoAccess: credentials.repoAccess,
     [SECRETS_FIELD]: {
       githubToken: credentials.githubToken.trim(),
       githubOwner: credentials.githubOwner.trim(),

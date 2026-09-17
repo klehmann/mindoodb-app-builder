@@ -5,6 +5,7 @@ import type { MindooDBAppDatabase } from "mindoodb-app-sdk";
 import {
   clearCredentials,
   credentialsFromDocumentData,
+  isSetupComplete,
   loadCredentials,
   readCredentialsStatus,
   saveCredentials,
@@ -92,6 +93,8 @@ const filled = {
   cloudflareExpiresAt: 0,
   cloudflareAccountId: "acct-1",
   cursorToken: "crsr_key",
+  setupCompletedAt: "2026-09-16T00:00:00.000Z",
+  repoAccess: "all" as const,
 };
 
 describe("readCredentialsStatus", () => {
@@ -113,6 +116,21 @@ describe("readCredentialsStatus", () => {
     expect(readCredentialsStatus({ ...EMPTY_CREDENTIALS, githubToken: "   " })).toMatchObject({
       github: false,
     });
+  });
+});
+
+describe("isSetupComplete", () => {
+  it("needs both connections and the user's own word for it", () => {
+    // Tokens alone would let a run start that dies at the first build, because the
+    // grants that make a new repository buildable cannot be checked from here.
+    expect(isSetupComplete(filled)).toBe(true);
+    expect(isSetupComplete({ ...filled, setupCompletedAt: "" })).toBe(false);
+    expect(isSetupComplete({ ...filled, githubToken: "" })).toBe(false);
+    expect(isSetupComplete({ ...filled, cloudflareAccountId: "" })).toBe(false);
+  });
+
+  it("does not require Cursor, which is the step a user can skip", () => {
+    expect(isSetupComplete({ ...filled, cursorToken: "" })).toBe(true);
   });
 });
 
@@ -139,12 +157,26 @@ describe("credentialsFromDocumentData", () => {
       credentialsFromDocumentData({ githubToken: { evil: true }, cursorToken: 42 }),
     ).toEqual(EMPTY_CREDENTIALS);
   });
+
+  it("reads an unknown repository-access value as not-yet-asked", () => {
+    expect(credentialsFromDocumentData({ repoAccess: "everything" }).repoAccess).toBe("");
+    expect(credentialsFromDocumentData({ repoAccess: "all" }).repoAccess).toBe("all");
+  });
 });
 
 describe("loadCredentials", () => {
   it("finds the document by type", async () => {
     const { database } = fakeDatabase({
-      seed: { cred_1: { type: CREDENTIALS_DOCUMENT_TYPE, secrets: filled } },
+      // Seeded the way the document is really written: tokens nested, setup state at
+      // the top level where the summary buffer can see it.
+      seed: {
+        cred_1: {
+          type: CREDENTIALS_DOCUMENT_TYPE,
+          secrets: filled,
+          setupCompletedAt: filled.setupCompletedAt,
+          repoAccess: filled.repoAccess,
+        },
+      },
     });
 
     await expect(loadCredentials(database)).resolves.toEqual({
@@ -226,7 +258,15 @@ describe("saveCredentials", () => {
     await saveCredentials(database, filled);
 
     const { set } = create.mock.calls[0]![0] as { set: Record<string, unknown> };
-    expect(Object.keys(set).sort()).toEqual(["secrets", "type", "updatedAt"]);
+    // The setup state is up here on purpose — it is not a secret, and the launch path
+    // reads it. Everything that *is* a secret stays under `secrets`.
+    expect(Object.keys(set).sort()).toEqual([
+      "repoAccess",
+      "secrets",
+      "setupCompletedAt",
+      "type",
+      "updatedAt",
+    ]);
     expect(set.secrets).toMatchObject({ githubToken: "ghp_token" });
   });
 

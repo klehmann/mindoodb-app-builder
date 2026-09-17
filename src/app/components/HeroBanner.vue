@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The wide illustration that opens a setup page.
+ * The wide illustration that opens a page.
  *
  * Every banner is decorative: whatever it depicts is spelled out in the text right below
  * it, so a reader who never sees the image loses nothing. Hence the empty alt throughout.
@@ -10,28 +10,22 @@
  */
 import { computed } from "vue";
 
-import cloudflareBanner from "@/app/assets/banner-cloudflare.jpg";
-import cursorBanner from "@/app/assets/banner-cursor.jpg";
 import detailsBanner from "@/app/assets/banner-details.jpg";
-import githubBanner from "@/app/assets/banner-github.jpg";
 import introBanner from "@/app/assets/banner-intro.jpg";
-import type { WizardStepArtName } from "@/app/components/WizardStepArt.vue";
+import type { StepArtName } from "@/app/components/StepArt.vue";
 
-/** Same keys as the rail tiles, so a new step cannot get art in one place and not the other. */
-const BANNERS: Record<WizardStepArtName, string> = {
+/** Same keys as the heading badges, so a page cannot get art in one place and not the other. */
+const BANNERS: Record<StepArtName, string> = {
   intro: introBanner,
   details: detailsBanner,
-  github: githubBanner,
-  cloudflare: cloudflareBanner,
-  cursor: cursorBanner,
 };
 
 const props = defineProps<{
-  name: WizardStepArtName;
+  name: StepArtName;
   /**
-   * Hold the artwork to a smaller width. Task pages want the reader at the first control
-   * quickly, so they trade size for height. The art fills its frame, so this scales it
-   * down rather than cropping, which would cut the subject.
+   * Hold the artwork to a smaller width, for pages that want the reader at the first
+   * control quickly. The art fills its frame, so this scales it down rather than
+   * cropping, which would cut the subject.
    */
   compact?: boolean;
 }>();

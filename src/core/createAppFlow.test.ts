@@ -91,6 +91,7 @@ function makeDeps(overrides: Partial<CreateAppDependencies> = {}): CreateAppDepe
           })),
         },
     onStep: overrides.onStep,
+    onPhase: overrides.onPhase,
   };
 }
 
@@ -114,6 +115,90 @@ describe("createInitialSteps", () => {
       "launch-agent",
     ]);
     expect(steps.every((step) => step.status === "pending")).toBe(true);
+  });
+});
+
+/**
+ * The phase checkpoints are what make a run resumable: whatever the run learned is
+ * handed out before the next phase can fail, so an app that died halfway is in the list
+ * rather than lost with the page.
+ */
+describe("onPhase", () => {
+  it("reports each phase with everything known so far", async () => {
+    const seen: Array<{ repository: string | null; worker: string | null; agent: string | null }> =
+      [];
+    const deps = makeDeps({
+      onPhase: (result) => {
+        seen.push({
+          repository: result.repository?.fullName ?? null,
+          worker: result.worker?.url ?? null,
+          agent: result.agent?.id ?? null,
+        });
+      },
+    });
+
+    await createApp({ identity, owner: "octocat" }, deps);
+
+    expect(seen).toEqual([
+      // GitHub: the repository exists, nothing else does.
+      { repository: "octocat/team-notes", worker: null, agent: null },
+      // Cloudflare: the live URL is known, so the app is recoverable from here on.
+      {
+        repository: "octocat/team-notes",
+        worker: "https://team-notes.acme.workers.dev",
+        agent: null,
+      },
+      // Cursor.
+      {
+        repository: "octocat/team-notes",
+        worker: "https://team-notes.acme.workers.dev",
+        agent: "bc-1",
+      },
+    ]);
+  });
+
+  it("reports the repository even when the run died right after creating it", async () => {
+    // The worst case for losing a record: a real repository exists, and the user has to
+    // be able to see it — to carry on, or to delete it.
+    const onPhase = vi.fn();
+    const deps = makeDeps({
+      github: {
+        commitFiles: vi.fn(async () => {
+          throw new Error("token expired");
+        }),
+      } as unknown as CreateAppDependencies["github"],
+      onPhase,
+    });
+
+    const result = await createApp({ identity, owner: "octocat" }, deps);
+
+    expect(result.error).toMatch(/token expired/);
+    expect(onPhase).toHaveBeenCalledTimes(1);
+    expect(onPhase.mock.calls[0]![0].repository).toMatchObject({
+      fullName: "octocat/team-notes",
+    });
+  });
+
+  it("finishes the run even when writing the record fails", async () => {
+    // Bookkeeping must not be able to abandon a repository that exists and a build that
+    // is already running.
+    const deps = makeDeps({
+      onPhase: () => {
+        throw new Error("database is read-only");
+      },
+    });
+
+    const result = await createApp({ identity, owner: "octocat" }, deps);
+
+    expect(result.error).toBeNull();
+    expect(statusOf(result.steps, "wait-origin")).toBe("done");
+    expect(statusOf(result.steps, "propose")).toBe("done");
+  });
+
+  it("is optional — a caller that stores nothing still runs", async () => {
+    const result = await createApp({ identity, owner: "octocat" }, makeDeps());
+
+    expect(result.error).toBeNull();
   });
 });
 

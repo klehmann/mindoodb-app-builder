@@ -15,6 +15,7 @@ import type {
   EnsureWorkerResult,
   GitIntegrationState,
   RepoReadableResult,
+  WorkerBuild,
 } from "@/core/cloudflare";
 import type { CloudflareOAuthTokens } from "@/core/cloudflareOAuth";
 import type { CursorAgent, CursorRun } from "@/core/cursorAgents";
@@ -203,6 +204,15 @@ export function startCloudflareBuild(input: {
   branch: string;
 }): Promise<{ buildUuid: string }> {
   return post("/api/cloudflare/build", { ...input });
+}
+
+/** The Worker's recent builds, newest first, for the "last build" line in the app list. */
+export function listCloudflareBuilds(input: {
+  cloudflareToken: string;
+  accountId: string;
+  scriptTag: string;
+}): Promise<{ builds: WorkerBuild[] }> {
+  return post("/api/cloudflare/builds", { ...input });
 }
 
 export function launchCursorAgent(input: {

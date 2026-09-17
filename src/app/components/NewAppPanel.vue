@@ -8,7 +8,7 @@
  */
 import type { NewAppForm } from "@/app/useBuilderFlow";
 
-import WizardPageHeader from "@/app/components/WizardPageHeader.vue";
+import PageHeader from "@/app/components/PageHeader.vue";
 
 defineProps<{
   form: NewAppForm;
@@ -24,7 +24,7 @@ const emit = defineEmits<{
 
 <template>
   <section class="panel">
-    <WizardPageHeader
+    <PageHeader
       icon="details"
       title="What do you want to build?"
       purpose="Describe your app the way you would explain it to a colleague. The AI turns this into working software — no technical wording needed."

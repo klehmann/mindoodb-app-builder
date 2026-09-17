@@ -6,6 +6,7 @@ import {
   connectPushToDeploy,
   ensureWorker,
   getAccountSubdomain,
+  listBuilds,
   listWorkerScripts,
   probeGitIntegration,
   CloudflareApiError,
@@ -442,6 +443,67 @@ describe("checkRepoReadable", () => {
     }) as unknown as typeof fetch;
 
     await expect(ask(fetchImpl)).resolves.toMatchObject({ state: "unknown" });
+  });
+});
+
+describe("listBuilds", () => {
+  const BUILDS = `GET /accounts/${ACCOUNT}/builds/workers/tag-1/builds`;
+
+  function ask(fetchImpl: typeof fetch, limit?: number) {
+    return listBuilds({
+      token: "cf-token",
+      accountId: ACCOUNT,
+      scriptTag: "tag-1",
+      limit,
+      fetchImpl,
+    });
+  }
+
+  it("reports the newest build first, whatever order Cloudflare sent", async () => {
+    const { fetchImpl } = stubFetch({
+      [BUILDS]: {
+        body: [
+          { build_uuid: "older", status: "success", branch: "main", created_on: "2026-09-01T10:00:00Z" },
+          { build_uuid: "newest", status: "running", branch: "main", created_on: "2026-09-02T10:00:00Z" },
+        ],
+      },
+    });
+
+    const builds = await ask(fetchImpl);
+    expect(builds.map((entry) => entry.buildUuid)).toEqual(["newest", "older"]);
+    expect(builds[0]).toMatchObject({ status: "running", branch: "main" });
+  });
+
+  it("caps the list at the requested limit", async () => {
+    const { fetchImpl } = stubFetch({
+      [BUILDS]: {
+        body: [
+          { build_uuid: "a", created_on: "2026-09-03T10:00:00Z" },
+          { build_uuid: "b", created_on: "2026-09-02T10:00:00Z" },
+          { build_uuid: "c", created_on: "2026-09-01T10:00:00Z" },
+        ],
+      },
+    });
+
+    await expect(ask(fetchImpl, 1)).resolves.toHaveLength(1);
+  });
+
+  it("drops entries with no build id and survives missing fields", async () => {
+    // The status line is decoration. A payload shaped slightly differently must not be
+    // able to break the app list that renders around it.
+    const { fetchImpl } = stubFetch({
+      [BUILDS]: { body: [{ status: "success" }, { build_uuid: "only-id" }] },
+    });
+
+    await expect(ask(fetchImpl)).resolves.toEqual([
+      { buildUuid: "only-id", status: "unknown", branch: "", createdAt: "" },
+    ]);
+  });
+
+  it("reports an empty list for a Worker that never built", async () => {
+    const { fetchImpl } = stubFetch({ [BUILDS]: { body: [] } });
+
+    await expect(ask(fetchImpl)).resolves.toEqual([]);
   });
 });
 

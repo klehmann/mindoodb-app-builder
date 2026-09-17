@@ -23,6 +23,7 @@ import {
   CLOUDFLARE_PHASE_STEP_IDS,
   CURSOR_PHASE_STEP_IDS,
   GITHUB_PHASE_STEP_IDS,
+  createApp as runCreateApp,
   createCloudflarePhaseSteps,
   createCursorPhaseSteps,
   createDeployNowSteps,
@@ -40,6 +41,13 @@ import {
   type FlowStep,
   type FlowStepId,
 } from "@/core/createAppFlow";
+import {
+  nextAppAction,
+  repositoryFromRecord,
+  workerFromRecord,
+  type StoredAppRecord,
+} from "@/core/appRecords";
+import type { useAppRecords } from "@/app/useAppRecords";
 import {
   commitFiles,
   generateRepositoryFromTemplate,
@@ -84,10 +92,16 @@ export function createEmptyForm(): NewAppForm {
 }
 
 type BuilderSession = ReturnType<typeof useBuilderSession>;
+type AppRecords = ReturnType<typeof useAppRecords>;
 
 export function useBuilderFlow(
   session: BuilderSession,
   hostConfig?: Ref<BuilderHostConfig | null>,
+  /**
+   * Where a run writes itself down. Optional so the flow stays testable on its own, and
+   * so a builder database without write access still builds apps — it just forgets them.
+   */
+  records?: AppRecords,
 ) {
   const form = ref<NewAppForm>(createEmptyForm());
   const steps = ref<FlowStep[]>(createInitialSteps());
@@ -167,6 +181,26 @@ export function useBuilderFlow(
     }
     return null;
   });
+
+  /**
+   * What stops the one button from working. Cursor is deliberately absent: the app is
+   * created, published and installed without it, and the agent step is the one a user
+   * can skip or come back to.
+   */
+  const createAppError = computed(() => {
+    if (formError.value) {
+      return formError.value;
+    }
+    if (!session.credentialsStatus.value.github) {
+      return "GitHub is not connected yet — open Setup to connect it.";
+    }
+    if (!session.credentialsStatus.value.cloudflare) {
+      return "Cloudflare is not connected yet — open Setup to connect it.";
+    }
+    return null;
+  });
+
+  const canCreateApp = computed(() => createAppError.value === null && !running.value);
 
   const canCreateRepo = computed(() => githubError.value === null && !running.value);
   const canDeploy = computed(() => cloudflareError.value === null && !running.value);
@@ -335,6 +369,27 @@ export function useBuilderFlow(
       onStep: (next) => {
         steps.value = next;
       },
+      /*
+       * Save at every phase boundary. The two booleans are read off the steps rather
+       * than tracked separately, because the step list is what actually happened: a
+       * finished `connect-builds` means a trigger exists, and a finished `wait-origin`
+       * means the app really answered on its own URL.
+       */
+      onPhase: async (next) => {
+        await records?.recordPhase({
+          repository: next.repository,
+          worker: next.worker,
+          agent: next.agent,
+          installedAppInstanceId: next.installedAppInstanceId,
+          cloudflareAccountId: credentials.cloudflareAccountId,
+          wiredForBuild: next.steps.some(
+            (step) => step.id === "connect-builds" && step.status === "done",
+          ),
+          originReady: next.steps.some(
+            (step) => step.id === "wait-origin" && step.status === "done",
+          ),
+        });
+      },
     };
   }
 
@@ -408,6 +463,13 @@ export function useBuilderFlow(
     }
   }
 
+  /**
+   * Publish an app whose repository exists.
+   *
+   * Hands the live URL to Haven at the end rather than waiting for a second button:
+   * "publish it, then install it" is one intention, and splitting it into two presses
+   * only created a state where the app was live and Haven did not know.
+   */
   async function deployCloudflare(): Promise<void> {
     const repository = result.value?.repository;
     if (!canDeploy.value || !repository) {
@@ -424,7 +486,6 @@ export function useBuilderFlow(
             identity: identity.value,
             repository,
             worker: result.value?.worker,
-            skipPropose: true,
           },
           buildDependencies(),
         ),
@@ -471,6 +532,129 @@ export function useBuilderFlow(
       );
     } finally {
       running.value = false;
+    }
+  }
+
+  /**
+   * The whole app, in one press: repository, identity commit, Worker, push-to-deploy,
+   * first build, wait for the URL, hand it to Haven, and start the agent if a Cursor key
+   * is connected.
+   *
+   * The phases still exist and still report themselves — the user just does not have to
+   * drive them. Nothing here is fatal past the repository: a Cursor key that fails
+   * leaves a live, installed app behind, and the record says so.
+   */
+  async function runSequence(): Promise<void> {
+    await refreshCloudflareIfStale();
+    running.value = true;
+    steps.value = createInitialSteps();
+
+    try {
+      mergeOutcome(
+        await runCreateApp(
+          {
+            identity: identity.value,
+            owner: session.credentials.value.githubOwner,
+            private: form.value.private,
+          },
+          buildDependencies(),
+        ),
+      );
+    } finally {
+      running.value = false;
+    }
+  }
+
+  /** Start a brand-new app from the form. */
+  async function createApp(): Promise<void> {
+    if (!canCreateApp.value) {
+      return;
+    }
+    result.value = null;
+    agent.value = null;
+    originReady.value = false;
+    wiredForBuild.value = false;
+    // Written down before the first API call, so a run that dies in the middle leaves
+    // the name and the brief in the list rather than only in this page's memory.
+    await records?.begin(identity.value, { private: form.value.private });
+    await runSequence();
+  }
+
+  /**
+   * Load a stored app into the flow without touching the network.
+   *
+   * Everything the phases need was written down the first time — both GitHub ids, the
+   * branch, the Worker's script tag — so continuing an app is a local operation until
+   * the user asks for actual work.
+   */
+  function openRecord(stored: StoredAppRecord): void {
+    const record = stored.record;
+    records?.resume(stored);
+
+    form.value = {
+      label: record.label,
+      slug: record.appId,
+      // The name is settled: it is in the repository, the Worker, and haven-app.json.
+      slugFollowsLabel: false,
+      description: record.description,
+      task: record.task,
+      private: record.private,
+    };
+
+    const storedAgent = record.cursorAgentId
+      ? { id: record.cursorAgentId, url: record.cursorAgentUrl, runId: record.cursorRunId }
+      : null;
+    result.value = {
+      steps: [],
+      repository: repositoryFromRecord(record),
+      worker: workerFromRecord(record),
+      agent: storedAgent,
+      installedAppInstanceId: record.havenInstanceId || null,
+      warnings: [],
+      error: null,
+    };
+    agent.value = storedAgent;
+    originReady.value = record.originReady;
+    wiredForBuild.value = record.wiredForBuild;
+    steps.value = createInitialSteps();
+  }
+
+  /**
+   * Carry on with the app that is open, doing whatever it still needs.
+   *
+   * The record decides, not the user: it knows what exists, so "continue" can be one
+   * button instead of a menu of phases the user would have to pick from correctly.
+   */
+  async function continueApp(): Promise<void> {
+    const record = records?.active.value;
+    if (!record || running.value) {
+      return;
+    }
+
+    switch (nextAppAction(record)) {
+      case "create":
+        // The name was reserved in the list but nothing was built. Run the sequence on
+        // the existing record rather than beginning a second one for the same app.
+        await runSequence();
+        return;
+      case "publish":
+        await deployCloudflare();
+        return;
+      case "build":
+        // With a trigger already in place a build is all that is missing; without one,
+        // the Cloudflare phase has to wire it first. Both end at the live URL.
+        if (wiredForBuild.value) {
+          await buildNow();
+        } else {
+          await deployCloudflare();
+        }
+        return;
+      case "install":
+        await registerHaven();
+        return;
+      case "iterate":
+        await launchCursor();
+        return;
     }
   }
 
@@ -538,15 +722,20 @@ export function useBuilderFlow(
     agent,
     buildNow,
     canBuildNow,
+    canCreateApp,
     canCreateRepo,
     canDeploy,
     canLaunchCursor,
     canRegisterHaven,
     cloudflareError,
     cloudflareSteps,
+    continueApp,
+    createApp,
+    createAppError,
     createGitHubProject,
     cursorError,
     cursorSteps,
+    openRecord,
     githubSteps,
     deployCloudflare,
     form,

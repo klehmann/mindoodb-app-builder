@@ -1,17 +1,17 @@
 <script setup lang="ts">
 /**
- * The opening every setup page shares: an icon, what this page is for, why it is needed
- * at all, and the step's banner. The "why" is the part end users are missing, so it is
- * not optional.
+ * The opening a full page gets: a badge, what the page is for, why it is needed at all,
+ * and the illustration. The "why" is the part end users are missing, so it is not
+ * optional.
  *
  * The banner lives here rather than in each page so that it cannot drift from the badge
  * beside the title — both are picked by the same `icon` name.
  */
-import WizardBanner from "@/app/components/WizardBanner.vue";
-import WizardStepArt, { type WizardStepArtName } from "@/app/components/WizardStepArt.vue";
+import HeroBanner from "@/app/components/HeroBanner.vue";
+import StepArt, { type StepArtName } from "@/app/components/StepArt.vue";
 
 defineProps<{
-  icon: WizardStepArtName;
+  icon: StepArtName;
   title: string;
   /** One sentence, in plain language, on what this service does for the user. */
   purpose: string;
@@ -21,7 +21,7 @@ defineProps<{
 <template>
   <header class="page-head">
     <span class="page-head__badge">
-      <WizardStepArt :name="icon" :size="44" />
+      <StepArt :name="icon" :size="44" />
     </span>
     <div class="page-head__text">
       <h2>{{ title }}</h2>
@@ -30,7 +30,7 @@ defineProps<{
   </header>
 
   <!-- A second root, so the banner sits in the panel's own column flow like any section. -->
-  <WizardBanner :name="icon" compact />
+  <HeroBanner :name="icon" compact />
 </template>
 
 <style scoped>

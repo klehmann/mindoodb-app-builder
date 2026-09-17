@@ -50,6 +50,11 @@ export interface UseCloudflareConnectReturn {
   busy: ComputedRef<boolean>;
   connect: () => Promise<void>;
   cancel: () => void;
+  /** Ask a pasted token which accounts it can act on. Resolves to them, or to none. */
+  identifyToken: (token: string) => Promise<CloudflareAccount[]>;
+  identifying: Ref<boolean>;
+  /** Why the lookup came back empty, for the one case the user has to type the id. */
+  identifyError: Ref<string | null>;
 }
 
 interface CallbackMessage {
@@ -84,6 +89,8 @@ export function useCloudflareConnect(
   const status = ref<CloudflareConnectStatus>("idle");
   const error = ref<string | null>(null);
   const accounts = ref<CloudflareAccount[]>([]);
+  const identifying = ref(false);
+  const identifyError = ref<string | null>(null);
 
   let popup: Window | null = null;
 
@@ -287,6 +294,43 @@ export function useCloudflareConnect(
   }
 
   /**
+   * The same question the OAuth flow asks after the exchange, asked for a token the user
+   * pasted: which accounts can this act on?
+   *
+   * Every Cloudflare call the builder makes needs an account id, and that id is a
+   * 32-character hex string nobody knows by heart. The token already knows it, so
+   * reading it here is the difference between one paste and a trip to the dashboard.
+   * It is also the first thing that can confirm the token works at all.
+   */
+  async function identifyToken(token: string): Promise<CloudflareAccount[]> {
+    const value = token.trim();
+    if (!value) {
+      return [];
+    }
+    identifying.value = true;
+    identifyError.value = null;
+    try {
+      const listed = await listCloudflareAccounts(value);
+      accounts.value = listed.accounts;
+      if (listed.accounts.length === 0) {
+        // A token that can edit Workers but cannot list accounts is possible, so this is
+        // a reason to show the id field again — not a reason to refuse the token.
+        identifyError.value = "This token did not report any Cloudflare account.";
+      }
+      return listed.accounts;
+    } catch (lookupError) {
+      accounts.value = [];
+      identifyError.value =
+        lookupError instanceof Error
+          ? lookupError.message
+          : "Cloudflare could not be asked which account this token belongs to.";
+      return [];
+    } finally {
+      identifying.value = false;
+    }
+  }
+
+  /**
    * Same-tab fallback. When the popup was replaced by a full-page redirect the callback
    * page sends the user back with the payload in the fragment, which never reaches a
    * server. Reading it here and clearing it keeps it out of the history entry.
@@ -319,5 +363,15 @@ export function useCloudflareConnect(
     popup?.close();
   });
 
-  return { status, error, accounts, busy, connect, cancel };
+  return {
+    status,
+    error,
+    accounts,
+    busy,
+    connect,
+    cancel,
+    identifyToken,
+    identifying,
+    identifyError,
+  };
 }

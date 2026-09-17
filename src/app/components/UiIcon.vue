@@ -6,7 +6,7 @@
  * progress rail (small, on a coloured disc) and in a page heading (large, in text
  * colour).
  */
-export type WizardIconName =
+export type UiIconName =
   | "intro"
   | "details"
   | "github"
@@ -16,7 +16,7 @@ export type WizardIconName =
   | "check";
 
 defineProps<{
-  name: WizardIconName;
+  name: UiIconName;
   /** Pixel size of the square box. Defaults to the rail size. */
   size?: number;
 }>();

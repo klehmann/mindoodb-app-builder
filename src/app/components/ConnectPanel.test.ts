@@ -7,7 +7,12 @@ import ConnectPanel from "@/app/components/ConnectPanel.vue";
 import type { BuilderHostConfig } from "@/app/hostApi";
 import type { UseCloudflareConnectReturn } from "@/app/useCloudflareConnect";
 import type { UseGitHubConnectReturn } from "@/app/useGitHubConnect";
-import { EMPTY_CREDENTIALS, readCredentialsStatus } from "@/core/credentials";
+import type { CloudflareAccount } from "@/core/cloudflare";
+import {
+  EMPTY_CREDENTIALS,
+  readCredentialsStatus,
+  type BuilderCredentials,
+} from "@/core/credentials";
 
 function githubConnect(
   overrides: Partial<UseGitHubConnectReturn> = {},
@@ -43,7 +48,9 @@ function unregistered(): BuilderHostConfig {
   });
 }
 
-function cloudflareConnect(): UseCloudflareConnectReturn {
+function cloudflareConnect(
+  overrides: Partial<UseCloudflareConnectReturn> = {},
+): UseCloudflareConnectReturn {
   return {
     status: ref("idle"),
     error: ref(null),
@@ -51,6 +58,10 @@ function cloudflareConnect(): UseCloudflareConnectReturn {
     busy: computed(() => false),
     connect: async () => {},
     cancel: () => {},
+    identifyToken: async () => [],
+    identifying: ref(false),
+    identifyError: ref(null),
+    ...overrides,
   };
 }
 
@@ -72,16 +83,20 @@ function render(props: {
   config: BuilderHostConfig | null;
   configLoaded: boolean;
   github?: UseGitHubConnectReturn;
+  cloudflare?: UseCloudflareConnectReturn;
+  cloudflareAccounts?: CloudflareAccount[];
+  credentials?: BuilderCredentials;
 }) {
+  const credentials = props.credentials ?? { ...EMPTY_CREDENTIALS };
   return mount(ConnectPanel, {
     props: {
-      credentials: { ...EMPTY_CREDENTIALS },
-      status: readCredentialsStatus(EMPTY_CREDENTIALS),
+      credentials,
+      status: readCredentialsStatus(credentials),
       canStore: true,
       saving: false,
       github: props.github ?? githubConnect(),
-      cloudflare: cloudflareConnect(),
-      cloudflareAccounts: [],
+      cloudflare: props.cloudflare ?? cloudflareConnect(),
+      cloudflareAccounts: props.cloudflareAccounts ?? [],
       ...props,
     },
   });
@@ -246,5 +261,128 @@ describe("ConnectPanel", () => {
 
     expect(panel.text()).toContain("GitHub did not accept this token.");
     expect((panel.find("#github-owner").element as HTMLInputElement).value).toBe("");
+  });
+
+  /**
+   * The account id is a 32-character hex string nobody types from memory, and the token
+   * already knows it. These pin that the field is a fallback, not a step.
+   */
+  describe("the Cloudflare account", () => {
+    it("reads the account from the pasted token", async () => {
+      const accounts = ref<CloudflareAccount[]>([]);
+      const identifyToken = vi.fn(async () => {
+        accounts.value = [{ id: "acct-1", name: "Acme" }];
+        return accounts.value;
+      });
+      const panel = render({
+        config: unregistered(),
+        configLoaded: true,
+        cloudflare: cloudflareConnect({ accounts, identifyToken }),
+      });
+
+      await panel.find("#cf-token").setValue("cf_token");
+      await panel.find("#cf-token").trigger("blur");
+      await flushPromises();
+
+      expect(identifyToken).toHaveBeenCalledWith("cf_token");
+      // Named, not typed — and the field is gone.
+      await panel.setProps({ cloudflareAccounts: accounts.value });
+      expect(panel.text()).toContain("Acme");
+      expect(panel.find("#cf-account").exists()).toBe(false);
+    });
+
+    it("saves the id it read, not an empty one", async () => {
+      const panel = render({
+        config: unregistered(),
+        configLoaded: true,
+        cloudflare: cloudflareConnect({
+          identifyToken: async () => [{ id: "acct-1", name: "Acme" }],
+        }),
+      });
+
+      await panel.find("#cf-token").setValue("cf_token");
+      await panel.find("#cf-token").trigger("blur");
+      await flushPromises();
+      await panel.findAll("button").find((button) => button.text() === "Save accounts")!
+        .trigger("click");
+
+      expect(panel.emitted("save")![0]![0]).toMatchObject({ cloudflareAccountId: "acct-1" });
+    });
+
+    it("pre-selects one account when the token can act on several", async () => {
+      const listed = [
+        { id: "acct-1", name: "Acme" },
+        { id: "acct-2", name: "Other" },
+      ];
+      const panel = render({
+        config: unregistered(),
+        configLoaded: true,
+        cloudflare: cloudflareConnect({
+          accounts: ref(listed),
+          identifyToken: async () => listed,
+        }),
+      });
+
+      await panel.find("#cf-token").trigger("blur");
+      await flushPromises();
+      await panel.setProps({ cloudflareAccounts: listed });
+
+      const select = panel.find("#cf-account-select");
+      expect(select.exists()).toBe(true);
+      expect((select.element as HTMLSelectElement).value).toBe("acct-1");
+    });
+
+    it("does not overrule an account the user picked from the list", async () => {
+      const listed = [
+        { id: "acct-1", name: "Acme" },
+        { id: "acct-2", name: "Other" },
+      ];
+      const panel = render({
+        config: unregistered(),
+        configLoaded: true,
+        cloudflareAccounts: listed,
+        credentials: { ...EMPTY_CREDENTIALS, cloudflareAccountId: "acct-2" },
+        cloudflare: cloudflareConnect({
+          accounts: ref(listed),
+          identifyToken: async () => listed,
+        }),
+      });
+
+      await panel.find("#cf-token").trigger("blur");
+      await flushPromises();
+
+      expect((panel.find("#cf-account-select").element as HTMLSelectElement).value).toBe(
+        "acct-2",
+      );
+    });
+
+    it("asks for the id by hand when the token cannot be asked", async () => {
+      const panel = render({
+        config: unregistered(),
+        configLoaded: true,
+        cloudflare: cloudflareConnect({
+          identifyToken: async () => [],
+          identifyError: ref("This token did not report any Cloudflare account."),
+        }),
+      });
+
+      await panel.find("#cf-token").trigger("blur");
+      await flushPromises();
+
+      expect(panel.text()).toContain("did not report any Cloudflare account");
+      expect(panel.find("#cf-account").exists()).toBe(true);
+    });
+
+    it("shows a stored id without a field, and lets it be changed", () => {
+      const panel = render({
+        config: unregistered(),
+        configLoaded: true,
+        credentials: { ...EMPTY_CREDENTIALS, cloudflareAccountId: "acct-1" },
+      });
+
+      expect(panel.find("#cf-account").exists()).toBe(false);
+      expect(panel.text()).toContain("acct-1");
+      expect(panel.find("#cf-account-manual").exists()).toBe(true);
+    });
   });
 });

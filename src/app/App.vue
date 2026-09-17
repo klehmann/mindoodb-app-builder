@@ -1,28 +1,56 @@
 <script setup lang="ts">
+/**
+ * The builder's shell: four views, and the wiring between them.
+ *
+ * The shape of this file is the redesign. It used to hand a five-page wizard everything
+ * it knew; now it opens on the list of apps the user already built, and the technical
+ * pages are one link in the footer. What changed is not the work — the same phases run —
+ * but who has to press the buttons.
+ *
+ * - `home` — the apps you built. Opening one is the normal case.
+ * - `new` — a name, a brief, one button.
+ * - `app` — one app afterwards: its address, publishing, the code, the AI.
+ * - `setup` — the one-time connections. Shown unasked on a first launch, and reachable
+ *   from the footer forever after, because a token that expires is the one thing that
+ *   sends a user back.
+ */
 import { computed, onMounted, ref } from "vue";
 
-import NewAppPanel from "@/app/components/NewAppPanel.vue";
-import SetupWizard from "@/app/components/SetupWizard.vue";
-import WizardCloudflarePage from "@/app/components/WizardCloudflarePage.vue";
-import WizardCursorPage from "@/app/components/WizardCursorPage.vue";
-import WizardGitHubPage from "@/app/components/WizardGitHubPage.vue";
+import AppDetail from "@/app/components/AppDetail.vue";
+import AppList from "@/app/components/AppList.vue";
+import NewAppView from "@/app/components/NewAppView.vue";
+import SetupView from "@/app/components/SetupView.vue";
 import { resolveGitHubOwner } from "@/app/githubOwner";
-import { readHostConfig, type BuilderHostConfig } from "@/app/hostApi";
+import { listCloudflareBuilds, readHostConfig, type BuilderHostConfig } from "@/app/hostApi";
+import { saveAppDefinition } from "@/app/saveDefinition";
+import { useAppRecords } from "@/app/useAppRecords";
 import { useBuilderFlow } from "@/app/useBuilderFlow";
 import { useBuilderSession } from "@/app/useBuilderSession";
 import { useCloudflareConnect } from "@/app/useCloudflareConnect";
 import { useGitHubConnect } from "@/app/useGitHubConnect";
-import { useSetupReadiness } from "@/app/useSetupReadiness";
-import type { WizardReadiness } from "@/app/wizard";
-import type { BuilderCredentials } from "@/core/credentials";
+import { appDefinitionUrl, type StoredAppRecord } from "@/core/appRecords";
+import type { WorkerBuild } from "@/core/cloudflare";
+import { isSetupComplete, type BuilderCredentials } from "@/core/credentials";
 import { getAuthenticatedUser } from "@/core/github";
 
+type BuilderViewId = "home" | "new" | "app" | "setup";
+
 const session = useBuilderSession();
-const readiness = useSetupReadiness(session.credentials);
+const records = useAppRecords(session);
 const hostConfig = ref<BuilderHostConfig | null>(null);
-const flow = useBuilderFlow(session, hostConfig);
+const flow = useBuilderFlow(session, hostConfig, records);
 /** Distinguishes "still asking" from "asked, and there is nothing to connect to". */
 const hostConfigLoaded = ref(false);
+
+const view = ref<BuilderViewId>("home");
+const setupComplete = computed(() => isSetupComplete(session.credentials.value));
+
+/** Cloudflare's builds for the open app, fetched when asked rather than polled. */
+const builds = ref<WorkerBuild[] | null>(null);
+const buildsError = ref<string | null>(null);
+/** One line of feedback for actions that otherwise leave no trace, like a download. */
+const statusMessage = ref<string | null>(null);
+const copied = ref(false);
 
 /**
  * A completed connect flow saves immediately rather than waiting for "Save accounts".
@@ -78,25 +106,162 @@ const cloudflare = useCloudflareConnect(
   },
 );
 
-const wizardReadiness = computed<WizardReadiness>(() => ({
-  githubConnected: session.credentialsStatus.value.github,
-  githubInstallation: github.installation.value,
-  cloudflareConnected: session.credentialsStatus.value.cloudflare,
-  cloudflareGit: readiness.cloudflareGit.value,
-  cursorReady: session.credentialsStatus.value.cursor,
-  identityValid: flow.identityValid.value,
-  hasRepository: Boolean(flow.result.value?.repository),
-  hasLiveOrigin: flow.originReady.value,
-}));
+const activeRecord = computed(() => records.active.value);
 
-const repositoryName = computed(
-  () => flow.result.value?.repository?.name || flow.plannedRepositoryName.value,
-);
+function clearTransient(): void {
+  statusMessage.value = null;
+  buildsError.value = null;
+  builds.value = null;
+  copied.value = false;
+}
+
+function showHome(): void {
+  clearTransient();
+  view.value = "home";
+}
+
+function startNewApp(): void {
+  clearTransient();
+  flow.reset();
+  records.clearActive();
+  view.value = "new";
+}
+
+function openApp(stored: StoredAppRecord): void {
+  clearTransient();
+  flow.openRecord(stored);
+  view.value = "app";
+  void loadBuilds();
+}
+
+/** After a run finishes on the new-app page, the app gets its own page. */
+function openBuiltApp(): void {
+  const documentId = records.activeDocumentId.value;
+  const stored = records.records.value.find((entry) => entry.documentId === documentId);
+  if (stored) {
+    openApp(stored);
+    return;
+  }
+  // No record to open — a builder database without write access. The finished run is
+  // still on screen, so staying put is better than an empty page.
+  view.value = "new";
+}
+
+function openSetup(): void {
+  clearTransient();
+  view.value = "setup";
+}
+
+async function setRepoAccess(mode: "all" | "selected"): Promise<void> {
+  await session.storeCredentials({ ...session.credentials.value, repoAccess: mode });
+}
+
+/**
+ * Record that setup is done and get out of the way.
+ *
+ * The timestamp is the user's claim, not a verification — see `credentials.ts`. Storing
+ * it is what stops this page from greeting them on every launch.
+ */
+async function finishSetup(): Promise<void> {
+  await session.storeCredentials({
+    ...session.credentials.value,
+    setupCompletedAt: new Date().toISOString(),
+    // Answered implicitly by finishing with the default selected.
+    repoAccess: session.credentials.value.repoAccess || "all",
+  });
+  showHome();
+}
+
+async function loadBuilds(): Promise<void> {
+  const record = activeRecord.value;
+  const credentials = session.credentials.value;
+  if (!record?.workerScriptTag || !credentials.cloudflareToken || !credentials.cloudflareAccountId) {
+    return;
+  }
+  buildsError.value = null;
+  try {
+    const result = await listCloudflareBuilds({
+      cloudflareToken: credentials.cloudflareToken,
+      accountId: credentials.cloudflareAccountId,
+      scriptTag: record.workerScriptTag,
+    });
+    builds.value = result.builds;
+  } catch (error) {
+    builds.value = null;
+    // Decoration, not a failure: the app works whether or not its build history loads.
+    buildsError.value =
+      error instanceof Error
+        ? `Cloudflare did not report the build status: ${error.message}`
+        : "Cloudflare did not report the build status.";
+  }
+}
+
+async function copyAppUrl(): Promise<void> {
+  const url = activeRecord.value?.workerUrl;
+  if (!url) {
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    copied.value = true;
+    window.setTimeout(() => {
+      copied.value = false;
+    }, 2000);
+  } catch {
+    statusMessage.value = `Copying failed. The address is ${url}`;
+  }
+}
+
+async function saveDefinition(): Promise<void> {
+  const record = activeRecord.value;
+  if (!record) {
+    return;
+  }
+  statusMessage.value = null;
+  try {
+    const outcome = await saveAppDefinition(
+      appDefinitionUrl(record),
+      `${record.appId || "haven-app"}.haven-app.json`,
+    );
+    statusMessage.value =
+      outcome === "saved"
+        ? "Saved the app definition to your downloads."
+        : "Opened the app definition in a new tab — save it from there.";
+  } catch (error) {
+    statusMessage.value =
+      error instanceof Error ? error.message : "The app definition could not be saved.";
+  }
+}
+
+async function addToHaven(): Promise<void> {
+  await flow.registerHaven();
+}
+
+async function buildNow(): Promise<void> {
+  await flow.continueApp();
+  await loadBuilds();
+}
+
+async function forgetApp(): Promise<void> {
+  const documentId = records.activeDocumentId.value;
+  if (!documentId) {
+    return;
+  }
+  await records.forget(documentId);
+  showHome();
+}
 
 onMounted(async () => {
   await session.connect();
   hostConfig.value = await readHostConfig();
   hostConfigLoaded.value = true;
+  await records.refresh();
+  // A first launch has nothing to list and nothing connected, so the setup is the page.
+  // Every later launch opens on the apps, even if a token has since expired — the run
+  // that fails is a better place to say so than a page that blocks the way in.
+  if (!setupComplete.value) {
+    view.value = "setup";
+  }
 });
 </script>
 
@@ -118,105 +283,95 @@ onMounted(async () => {
       </p>
     </header>
 
-    <SetupWizard :readiness="wizardReadiness">
-      <template #details>
-        <NewAppPanel
-          :form="flow.form.value"
-          :planned-repository-name="flow.plannedRepositoryName.value"
-          :form-error="flow.formError.value"
-          @label-input="flow.onLabelInput"
-          @slug-input="flow.onSlugInput"
-        />
-      </template>
+    <SetupView
+      v-if="view === 'setup'"
+      :credentials="session.credentials.value"
+      :status="session.credentialsStatus.value"
+      :can-store="session.canStoreCredentials.value"
+      :saving="session.savingCredentials.value"
+      :config="hostConfig"
+      :config-loaded="hostConfigLoaded"
+      :github="github"
+      :cloudflare="cloudflare"
+      :cloudflare-accounts="cloudflare.accounts.value"
+      :install-url="github.installUrl.value"
+      :already-done="setupComplete"
+      :can-finish="
+        session.credentialsStatus.value.github &&
+        session.credentialsStatus.value.cloudflare
+      "
+      @save="saveCredentials"
+      @repo-access="setRepoAccess"
+      @finish="finishSetup"
+      @back="showHome"
+    />
 
-      <template #github>
-        <WizardGitHubPage
-          :credentials="session.credentials.value"
-          :status="session.credentialsStatus.value"
-          :can-store="session.canStoreCredentials.value"
-          :saving="session.savingCredentials.value"
-          :config="hostConfig"
-          :config-loaded="hostConfigLoaded"
-          :github="github"
-          :cloudflare="cloudflare"
-          :cloudflare-accounts="cloudflare.accounts.value"
-          :install-url="github.installUrl.value"
-          :repository-name="repositoryName"
-          :github-error="flow.githubError.value"
-          :can-create-repo="flow.canCreateRepo.value"
-          :running="flow.running.value"
-          :steps="flow.githubSteps.value"
-          :result="flow.result.value"
-          @save="saveCredentials"
-          @initialize="flow.createGitHubProject"
-        />
-      </template>
+    <NewAppView
+      v-else-if="view === 'new'"
+      :form="flow.form.value"
+      :planned-repository-name="flow.plannedRepositoryName.value"
+      :form-error="flow.formError.value"
+      :create-error="flow.createAppError.value"
+      :can-create="flow.canCreateApp.value"
+      :running="flow.running.value"
+      :steps="flow.steps.value"
+      :result="flow.result.value"
+      :cursor-ready="session.credentialsStatus.value.cursor"
+      :narrow-access="session.credentials.value.repoAccess === 'selected'"
+      @label-input="flow.onLabelInput"
+      @slug-input="flow.onSlugInput"
+      @create="flow.createApp"
+      @back="showHome"
+      @open-app="openBuiltApp"
+    />
 
-      <template #cloudflare>
-        <WizardCloudflarePage
-          :credentials="session.credentials.value"
-          :status="session.credentialsStatus.value"
-          :can-store="session.canStoreCredentials.value"
-          :saving="session.savingCredentials.value"
-          :config="hostConfig"
-          :config-loaded="hostConfigLoaded"
-          :github="github"
-          :cloudflare="cloudflare"
-          :cloudflare-accounts="cloudflare.accounts.value"
-          :repository-name="repositoryName"
-          :cloudflare-error="flow.cloudflareError.value"
-          :can-deploy="flow.canDeploy.value"
-          :can-register-haven="flow.canRegisterHaven.value"
-          :can-build-now="flow.canBuildNow.value"
-          :running="flow.running.value"
-          :steps="flow.cloudflareSteps.value"
-          :result="flow.result.value"
-          @save="saveCredentials"
-          @deploy="flow.deployCloudflare"
-          @register="flow.registerHaven"
-          @build-now="flow.buildNow"
-        />
-      </template>
+    <AppDetail
+      v-else-if="view === 'app' && activeRecord"
+      :record="activeRecord"
+      :steps="flow.steps.value"
+      :result="flow.result.value"
+      :running="flow.running.value"
+      :can-propose="session.canProposeApps.value"
+      :can-forget="records.canForget.value"
+      :agent="flow.agent.value"
+      :cursor-token="session.credentials.value.cursorToken"
+      :builds="builds"
+      :builds-error="buildsError"
+      :copied="copied"
+      :status-message="statusMessage"
+      @back="showHome"
+      @continue-app="buildNow"
+      @copy-url="copyAppUrl"
+      @add-to-haven="addToHaven"
+      @save-definition="saveDefinition"
+      @build-now="buildNow"
+      @refresh-builds="loadBuilds"
+      @launch-cursor="flow.launchCursor"
+      @forget="forgetApp"
+    />
 
-      <template #cursor>
-        <WizardCursorPage
-          :credentials="session.credentials.value"
-          :status="session.credentialsStatus.value"
-          :can-store="session.canStoreCredentials.value"
-          :saving="session.savingCredentials.value"
-          :config="hostConfig"
-          :config-loaded="hostConfigLoaded"
-          :github="github"
-          :cloudflare="cloudflare"
-          :cloudflare-accounts="cloudflare.accounts.value"
-          :repository-name="repositoryName"
-          :cursor-error="flow.cursorError.value"
-          :can-launch-cursor="flow.canLaunchCursor.value"
-          :running="flow.running.value"
-          :steps="flow.cursorSteps.value"
-          :result="flow.result.value"
-          :agent="flow.agent.value"
-          @save="saveCredentials"
-          @launch="flow.launchCursor"
-        />
-      </template>
-    </SetupWizard>
+    <AppList
+      v-else
+      :records="records.records.value"
+      :loading="records.loading.value"
+      :can-store="records.canStore.value"
+      @open="openApp"
+      @create="startNewApp"
+    />
 
     <footer class="foot">
-      <!--
-        Only promise saving where saving can actually happen. Without write access to the
-        App Builder database the connections last for this page alone, and the accounts
-        panel explains how to change that.
-      -->
       <p class="muted">
+        <button type="button" class="ghost foot__setup" @click="openSetup">
+          Connections and setup
+        </button>
         <template v-if="session.canStoreCredentials.value">
-          The tokens and keys you enter here are saved, so you do not have to
+          The tokens and keys you enter there are saved, so you do not have to
           create them again the next time you build an app. They live in one
           document in your own App Builder database, encrypted so that only you
           can read them — not even someone you share that database with.
         </template>
         <template v-else>
-          The tokens and keys you enter here stay in this page only; nothing is
+          The tokens and keys you enter there stay in this page only; nothing is
           saved.
         </template>
         The App Builder is
@@ -483,6 +638,29 @@ button.ghost {
 
 .foot {
   margin-top: 0.5rem;
+}
+
+/*
+ * The way back into the technical pages. A button rather than a link because it switches
+ * a view, and styled as inline text because it is a footnote, not an action the page is
+ * asking for.
+ */
+.foot__setup {
+  align-self: auto;
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--app-accent);
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.foot__setup::after {
+  content: " · ";
+  color: var(--app-muted);
+  font-weight: 400;
 }
 
 .foot__source {
