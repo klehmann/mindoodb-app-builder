@@ -8,7 +8,8 @@
  * Its reason to exist is the relay. Cloudflare requires a pre-registered redirect URI
  * and offers no device grant, so a builder on `http://127.0.0.1:4400` cannot be the
  * redirect target — it registers nothing. Instead the deployed builder's callback is
- * registered once and passes the code back to whichever builder opened the popup.
+ * registered once and passes the code back to whichever builder started the flow
+ * (popup, same tab, or a new tab whose opener was stripped).
  *
  * Why that is safe: PKCE. The code verifier stays in the builder that generated it, so
  * a code seen in transit cannot be exchanged by the page that relayed it. The `state`
@@ -105,16 +106,14 @@ export function renderCloudflareCallbackPage(config: BuilderOAuthConfig): string
     return;
   }
 
-  // Opened in the same tab (or the opener is gone). Go back to the builder and carry the
-  // code in the fragment, which is not sent to any server.
-  if (state.origin === window.location.origin) {
-    window.location.replace(
-      state.origin + "/#cloudflare-oauth=" + encodeURIComponent(JSON.stringify(message)),
-    );
-    return;
-  }
-
-  status.textContent = "Return to the builder window to finish connecting.";
+  // Same tab, or a new tab whose opener was stripped (Cursor Simple Browser,
+  // some iframe popup policies). The origin in state was already allowlisted
+  // above — including loopback, so a local builder gets the code even though
+  // this page itself lives on the deployed origin. The fragment is not sent
+  // to any server.
+  window.location.replace(
+    state.origin + "/#cloudflare-oauth=" + encodeURIComponent(JSON.stringify(message)),
+  );
 })();
 </script>
 </body>

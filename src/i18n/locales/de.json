@@ -56,7 +56,7 @@
     }
   },
   "detail": {
-    "back": "Alle Anwendungen",
+    "back": "Zurück",
     "address": {
       "open": "Die App öffnen",
       "copy": "Adresse kopieren",
@@ -112,11 +112,6 @@
     "agent": {
       "launch": "An die KI übergeben",
       "needsKey": "Dafür ist ein Cursor-Schlüssel nötig — hinterlege einen unter „Verbindungen und Einrichtung“. Oder klone das Repository und ändere es selbst, mit welchem Werkzeug du möchtest."
-    },
-    "forget": {
-      "summary": "Aus dieser Liste entfernen",
-      "hint": "Damit wird nur der Vermerk des Builders zu dieser Anwendung entfernt, hier in seiner eigenen Datenbank. Der Code bleibt auf GitHub, die veröffentlichte Anwendung läuft auf Cloudflare weiter, ein Cursor-Agent bleibt, wo er ist, und Haven behält sie installiert.",
-      "button": "Aus der Liste entfernen"
     }
   },
   "newApp": {
@@ -253,6 +248,10 @@
     "cloudflare": {
       "consentHint": "Öffnet den Zustimmungsdialog von Cloudflare. Er fragt nach den Workers-Berechtigungen, die der Builder braucht, und nach nichts weiter; das Zugriffstoken wird in dieser Seite eingetauscht, wo Cloudflare das zulässt.",
       "waiting": "Warten auf Cloudflare…",
+      "waitingHint": "Melde dich im Cloudflare-Tab an. Wenn der Tab sagt, du sollst hierher zurückkehren, kopiere seine Adresse und füge sie unten ein.",
+      "callbackUrlLabel": "Adresse des Cloudflare-Tabs",
+      "callbackUrlPlaceholder": "https://app-builder.mindoodb.com/oauth/cloudflare/callback?code=…",
+      "callbackUrlApply": "Weiter",
       "finishing": "Wird abgeschlossen…",
       "reconnect": "Cloudflare neu verbinden",
       "connect": "Cloudflare verbinden",
@@ -437,6 +436,8 @@
     "noClient": "Für diesen Builder ist kein Cloudflare-OAuth-Client konfiguriert.",
     "urlBuildFailed": "Die Autorisierungs-URL für Cloudflare konnte nicht erstellt werden.",
     "popupBlocked": "Das Cloudflare-Fenster wurde blockiert. Erlaube Pop-ups für den Builder und versuche es erneut.",
+    "badCallbackUrl": "Das ist keine Cloudflare-Callback-Adresse.",
+    "noPending": "Es läuft keine Cloudflare-Anmeldung. Verbinde erneut.",
     "noAccounts": "Dieses Token hat kein Cloudflare-Konto gemeldet.",
     "accountLookupFailed": "Cloudflare konnte nicht gefragt werden, zu welchem Konto dieses Token gehört."
   },

@@ -10,6 +10,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { readOAuthAvailability, readOAuthConfig } from "../core/oauthConfig";
 import { BUILDER_DEFAULT_PORT, BUILDER_DEV_PORT } from "../core/ports";
 import { startBuilderHost } from "./server";
 
@@ -53,12 +54,16 @@ const host = await startBuilderHost({
 });
 
 const pasteUrl = staticDir ? host.url : `http://127.0.0.1:${BUILDER_DEV_PORT}`;
+const oauth = readOAuthAvailability(readOAuthConfig(process.env));
 
 console.log("");
 console.log("  MindooDB App Builder");
 console.log("");
 console.log(`  Host        ${host.url}`);
 console.log(`  Mode        ${staticDir ? "serving the built app" : "API only (run `pnpm dev`)"}`);
+console.log(
+  `  Connect     GitHub ${oauth.github ? "yes" : "paste a token"} · Cloudflare ${oauth.cloudflare ? "yes" : "paste a token"}`,
+);
 console.log("");
 console.log("  Paste this URL into Haven → Applications → add an app:");
 console.log("");

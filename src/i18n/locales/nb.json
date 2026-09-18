@@ -56,7 +56,7 @@
     }
   },
   "detail": {
-    "back": "Alle apper",
+    "back": "Tilbake",
     "address": {
       "open": "Åpne appen",
       "copy": "Kopier adresse",
@@ -112,11 +112,6 @@
     "agent": {
       "launch": "Gi den til KI-en",
       "needsKey": "Krever en Cursor-nøkkel — legg inn en under «Tilkoblinger og oppsett». Eller klon repositoriet og endre det selv, med det verktøyet du vil."
-    },
-    "forget": {
-      "summary": "Fjern fra denne listen",
-      "hint": "Dette fjerner bare notatet builderen har om appen, her i sin egen database. Koden blir liggende på GitHub, den publiserte appen fortsetter å kjøre på Cloudflare, en eventuell Cursor-agent blir stående der den er, og Haven har den fortsatt installert.",
-      "button": "Fjern fra listen"
     }
   },
   "newApp": {
@@ -253,6 +248,10 @@
     "cloudflare": {
       "consentHint": "Åpner Cloudflares egen samtykkeskjerm. Den ber om de Workers-tillatelsene builderen trenger og ingenting mer, og tilgangstokenet byttes inn på denne siden der Cloudflare tillater det.",
       "waiting": "Venter på Cloudflare…",
+      "waitingHint": "Fullfør innloggingen i Cloudflare-fanen. Hvis fanen ber deg komme tilbake hit, kopier adressen og lim den inn under.",
+      "callbackUrlLabel": "Adressen til Cloudflare-fanen",
+      "callbackUrlPlaceholder": "https://app-builder.mindoodb.com/oauth/cloudflare/callback?code=…",
+      "callbackUrlApply": "Fortsett",
       "finishing": "Fullfører…",
       "reconnect": "Koble til Cloudflare på nytt",
       "connect": "Koble til Cloudflare",
@@ -437,6 +436,8 @@
     "noClient": "Denne builderen har ingen Cloudflare-OAuth-klient satt opp.",
     "urlBuildFailed": "Autorisasjons-URL-en til Cloudflare kunne ikke bygges.",
     "popupBlocked": "Cloudflare-vinduet ble blokkert. Tillat forgrunnsvinduer for builderen og prøv igjen.",
+    "badCallbackUrl": "Det er ikke Cloudflare-returadressen.",
+    "noPending": "Ingen Cloudflare-innlogging pågår. Koble til på nytt.",
     "noAccounts": "Dette tokenet meldte ikke om noen Cloudflare-konto.",
     "accountLookupFailed": "Cloudflare kunne ikke spørres om hvilken konto dette tokenet hører til."
   },

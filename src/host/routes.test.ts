@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { readOAuthConfig } from "@/core/oauthConfig";
+import { readOAuthConfig, UNREGISTERED_OAUTH_ENV } from "@/core/oauthConfig";
 import { handleApiRequest } from "@/host/routes";
 
 /** A builder registered for both connect flows, as the deployed copy is. */
@@ -68,7 +68,7 @@ describe("handleApiRequest", () => {
         method: "GET",
         pathname: "/api/config",
         body: {},
-        config: readOAuthConfig({}),
+        config: readOAuthConfig(UNREGISTERED_OAUTH_ENV),
       });
 
       expect(result.payload).toMatchObject({ oauth: { github: false, cloudflare: false } });
@@ -177,7 +177,7 @@ describe("handleApiRequest", () => {
         method: "POST",
         pathname: "/api/cloudflare/oauth/token",
         body: { code: "code-1", codeVerifier: "v" },
-        config: readOAuthConfig({}),
+        config: readOAuthConfig(UNREGISTERED_OAUTH_ENV),
       });
       expect(result.status).toBe(400);
     });

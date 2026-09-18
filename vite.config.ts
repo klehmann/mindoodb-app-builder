@@ -2,9 +2,41 @@ import { fileURLToPath, URL } from "node:url";
 import vue from "@vitejs/plugin-vue";
 import { havenBundle } from "mindoodb-app-sdk/vite";
 import wasm from "vite-plugin-wasm";
-import { defineConfig } from "vitest/config";
+import { defineConfig, type Plugin } from "vitest/config";
 
 import { BUILDER_DEFAULT_PORT, BUILDER_DEV_PORT } from "./src/core/ports.ts";
+import { startBuilderHost } from "./src/host/server.ts";
+
+/**
+ * Vite only serves the SPA. Connect (GitHub device flow, Cloudflare PKCE, Cursor)
+ * lives on the Node host. Starting it here means `pnpm run dev:local` is enough —
+ * `/api` is still proxied, so the browser keeps seeing one origin.
+ */
+function embedBuilderHost(): Plugin {
+  return {
+    name: "embed-builder-host",
+    apply: (_config, { command }) => command === "serve" && !process.env.VITEST,
+    async configureServer(server) {
+      try {
+        const handle = await startBuilderHost({
+          port: BUILDER_DEFAULT_PORT,
+          host: "127.0.0.1",
+        });
+        console.log(`  Builder host  ${handle.url}  (Connect GitHub + Cloudflare)`);
+        server.httpServer?.once("close", () => {
+          void handle.close().catch(() => {});
+        });
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code === "EADDRINUSE") {
+          console.log(`  Builder host  already on 127.0.0.1:${BUILDER_DEFAULT_PORT}`);
+          return;
+        }
+        throw error;
+      }
+    },
+  };
+}
 
 function createResolveAliases(): Record<string, string> {
   const aliases: Record<string, string> = {
@@ -28,7 +60,7 @@ function createResolveAliases(): Record<string, string> {
 
 export default defineConfig({
   base: "./",
-  plugins: [wasm(), vue(), havenBundle()],
+  plugins: [wasm(), vue(), havenBundle(), embedBuilderHost()],
   resolve: {
     alias: createResolveAliases(),
   },
@@ -42,6 +74,10 @@ export default defineConfig({
     // what keeps the host's origin check meaningful in both modes.
     proxy: {
       "/api": {
+        target: `http://127.0.0.1:${BUILDER_DEFAULT_PORT}`,
+        changeOrigin: false,
+      },
+      "/oauth": {
         target: `http://127.0.0.1:${BUILDER_DEFAULT_PORT}`,
         changeOrigin: false,
       },

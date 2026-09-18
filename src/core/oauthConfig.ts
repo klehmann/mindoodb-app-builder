@@ -31,6 +31,16 @@
  */
 export const BUILDER_PUBLIC_ORIGIN = "https://app-builder.mindoodb.com";
 
+/**
+ * The Mindoo registrations. Public identifiers, same values as `wrangler.jsonc`.
+ * Unset env vars fall back here so a local host (`pnpm run dev:host`) offers the same
+ * Connect buttons as https://app-builder.mindoodb.com. An explicitly empty variable
+ * still means "no Connect — ask for a pasted token".
+ */
+export const BUILDER_GITHUB_CLIENT_ID = "Iv23liIfHNZXYhzumB4y";
+export const BUILDER_GITHUB_APP_SLUG = "mindoodb-app-builder";
+export const BUILDER_CLOUDFLARE_CLIENT_ID = "6e399ed2f55dc2d874c334048145370e";
+
 /** Registered on both OAuth clients. Changing it means re-registering. */
 export const CLOUDFLARE_CALLBACK_PATH = "/oauth/cloudflare/callback";
 
@@ -80,10 +90,19 @@ export interface BuilderOAuthAvailability {
 
 export type EnvLike = Record<string, string | undefined>;
 
-function readEnv(env: EnvLike | undefined, key: string): string {
+function readEnv(env: EnvLike | undefined, key: string, whenUnset = ""): string {
   const value = env?.[key];
+  if (value === undefined) {
+    return whenUnset;
+  }
   return typeof value === "string" ? value.trim() : "";
 }
+
+/** Env that turns Connect off — used by tests for a builder with no OAuth clients. */
+export const UNREGISTERED_OAUTH_ENV: EnvLike = {
+  BUILDER_GITHUB_CLIENT_ID: "",
+  BUILDER_CLOUDFLARE_CLIENT_ID: "",
+};
 
 export function readOAuthConfig(env?: EnvLike): BuilderOAuthConfig {
   // An empty variable falls back to the defaults rather than meaning "no scopes":
@@ -95,11 +114,11 @@ export function readOAuthConfig(env?: EnvLike): BuilderOAuthConfig {
     configuredScopes.length > 0 ? configuredScopes : [...CLOUDFLARE_DEFAULT_SCOPES];
 
   return {
-    githubClientId: readEnv(env, "BUILDER_GITHUB_CLIENT_ID"),
-    githubAppSlug: readEnv(env, "BUILDER_GITHUB_APP_SLUG") || "mindoodb-app-builder",
-    cloudflareClientId: readEnv(env, "BUILDER_CLOUDFLARE_CLIENT_ID"),
+    githubClientId: readEnv(env, "BUILDER_GITHUB_CLIENT_ID", BUILDER_GITHUB_CLIENT_ID),
+    githubAppSlug: readEnv(env, "BUILDER_GITHUB_APP_SLUG", BUILDER_GITHUB_APP_SLUG),
+    cloudflareClientId: readEnv(env, "BUILDER_CLOUDFLARE_CLIENT_ID", BUILDER_CLOUDFLARE_CLIENT_ID),
     cloudflareScopes: scopes,
-    publicOrigin: readEnv(env, "BUILDER_PUBLIC_ORIGIN") || BUILDER_PUBLIC_ORIGIN,
+    publicOrigin: readEnv(env, "BUILDER_PUBLIC_ORIGIN", BUILDER_PUBLIC_ORIGIN),
   };
 }
 

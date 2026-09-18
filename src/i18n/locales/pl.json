@@ -56,7 +56,7 @@
     }
   },
   "detail": {
-    "back": "Wszystkie aplikacje",
+    "back": "Wstecz",
     "address": {
       "open": "Otwórz aplikację",
       "copy": "Kopiuj adres",
@@ -112,11 +112,6 @@
     "agent": {
       "launch": "Przekaż do AI",
       "needsKey": "Potrzebny jest klucz Cursora — dodaj go w „Połączenia i konfiguracja”. Albo sklonuj repozytorium i zmień aplikację samodzielnie, dowolnym narzędziem."
-    },
-    "forget": {
-      "summary": "Usuń z tej listy",
-      "hint": "Usuwa to tylko notatkę buildera o aplikacji, tutaj w jego własnej bazie. Kod zostaje na GitHubie, opublikowana aplikacja nadal działa na Cloudflare, agent Cursora pozostaje tam, gdzie jest, a Haven ma ją dalej zainstalowaną.",
-      "button": "Usuń z listy"
     }
   },
   "newApp": {
@@ -253,6 +248,10 @@
     "cloudflare": {
       "consentHint": "Otwiera własny ekran zgody Cloudflare. Prosi o uprawnienia do Workers, których potrzebuje builder, i o nic więcej, a token dostępu jest wymieniany na tej stronie wszędzie tam, gdzie Cloudflare na to pozwala.",
       "waiting": "Oczekiwanie na Cloudflare…",
+      "waitingHint": "Dokończ logowanie w karcie Cloudflare. Jeśli ta karta każe wrócić tutaj, skopiuj jej adres i wklej poniżej.",
+      "callbackUrlLabel": "Adres karty Cloudflare",
+      "callbackUrlPlaceholder": "https://app-builder.mindoodb.com/oauth/cloudflare/callback?code=…",
+      "callbackUrlApply": "Kontynuuj",
       "finishing": "Kończenie…",
       "reconnect": "Połącz Cloudflare ponownie",
       "connect": "Połącz Cloudflare",
@@ -437,6 +436,8 @@
     "noClient": "Ten builder nie ma skonfigurowanego klienta OAuth Cloudflare.",
     "urlBuildFailed": "Nie udało się zbudować adresu autoryzacji Cloudflare.",
     "popupBlocked": "Okno Cloudflare zostało zablokowane. Zezwól builderowi na wyskakujące okna i spróbuj ponownie.",
+    "badCallbackUrl": "To nie jest adres powrotu Cloudflare.",
+    "noPending": "Nie trwa żadne logowanie do Cloudflare. Połącz ponownie.",
     "noAccounts": "Ten token nie zgłosił żadnego konta Cloudflare.",
     "accountLookupFailed": "Nie udało się zapytać Cloudflare, do którego konta należy ten token."
   },

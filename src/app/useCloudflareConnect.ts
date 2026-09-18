@@ -34,6 +34,16 @@ import {
   exchangeAuthorizationCode,
   type CloudflareOAuthTokens,
 } from "@/core/cloudflareOAuth";
+import {
+  parseCloudflareCallbackUrl,
+  parseCloudflareFragment,
+  publishCloudflareRelay,
+  readCloudflarePending,
+  readCloudflareRelay,
+  writeCloudflarePending,
+  CLOUDFLARE_RELAY_KEY,
+  type CloudflarePendingFlow,
+} from "@/app/cloudflareConnectRelay";
 import { CLOUDFLARE_OAUTH_MESSAGE } from "@/host/oauthCallback";
 import { t } from "@/i18n";
 
@@ -51,6 +61,11 @@ export interface UseCloudflareConnectReturn {
   busy: ComputedRef<boolean>;
   connect: () => Promise<void>;
   cancel: () => void;
+  /**
+   * Finish a flow whose callback tab could not talk to this page. The address of
+   * that tab already holds the authorization code.
+   */
+  completeFromCallbackUrl: (raw: string) => Promise<void>;
   /** Ask a pasted token which accounts it can act on. Resolves to them, or to none. */
   identifyToken: (token: string) => Promise<CloudflareAccount[]>;
   identifying: Ref<boolean>;
@@ -100,57 +115,16 @@ export function useCloudflareConnect(
    * `sessionStorage` rather than anywhere durable — same origin only, gone when the tab
    * closes, and deleted the moment it is spent.
    *
-   * It has to survive a reload at all because of the same-tab fallback: if the popup was
-   * blocked and Cloudflare sent the user through a full-page redirect, the tab that
-   * generated the verifier is the tab that comes back, but its JavaScript state is not.
+   * It has to survive a reload because some shells open Cloudflare in a new tab (or
+   * navigate this one) and the JavaScript state of the starter tab is not the state
+   * that comes back. See `cloudflareConnectRelay.ts`.
    */
-  const PENDING_KEY = "mindoodb-app-builder/cloudflare-oauth-pending";
-
-  interface PendingFlow {
-    verifier: string;
-    state: string;
-    redirectUri: string;
+  function readPending(): CloudflarePendingFlow | null {
+    return readCloudflarePending(window.sessionStorage);
   }
 
-  function readPending(): PendingFlow | null {
-    try {
-      const raw = window.sessionStorage.getItem(PENDING_KEY);
-      if (!raw) {
-        return null;
-      }
-      const parsed: unknown = JSON.parse(raw);
-      if (typeof parsed !== "object" || parsed === null) {
-        return null;
-      }
-      const record = parsed as Record<string, unknown>;
-      if (
-        typeof record.verifier !== "string" ||
-        typeof record.state !== "string" ||
-        typeof record.redirectUri !== "string"
-      ) {
-        return null;
-      }
-      return {
-        verifier: record.verifier,
-        state: record.state,
-        redirectUri: record.redirectUri,
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  function writePending(flow: PendingFlow | null): void {
-    try {
-      if (flow) {
-        window.sessionStorage.setItem(PENDING_KEY, JSON.stringify(flow));
-      } else {
-        window.sessionStorage.removeItem(PENDING_KEY);
-      }
-    } catch {
-      // Private-mode storage failures are survivable: the popup path still works within
-      // this page's lifetime, it just cannot outlive a reload.
-    }
+  function writePending(flow: CloudflarePendingFlow | null): void {
+    writeCloudflarePending(window.sessionStorage, flow);
   }
 
   const busy = computed(() => status.value === "waiting" || status.value === "exchanging");
@@ -288,10 +262,32 @@ export function useCloudflareConnect(
     }
 
     status.value = "waiting";
-    popup = window.open(url, "cloudflare-oauth", "width=620,height=780,noopener=no");
-    if (!popup) {
-      fail(t("cloudflareConnect.popupBlocked"));
+    // No window features: `noopener=no` is parsed as enabling `noopener` (the token
+    // is present), which makes `window.open` return null. Cursor's Simple Browser
+    // also refuses feature strings and opens a tab while still returning null.
+    // Keep the verifier either way — the callback can still postMessage, or land
+    // back via the fragment / localStorage relay.
+    popup = window.open(url, "cloudflare-oauth");
+  }
+
+  async function completeFromCallbackUrl(raw: string): Promise<void> {
+    const current = readPending();
+    if (!current) {
+      fail(t("cloudflareConnect.noPending"));
+      return;
     }
+    const parsed = parseCloudflareCallbackUrl(raw, current.redirectUri);
+    if (!parsed) {
+      fail(t("cloudflareConnect.badCallbackUrl"));
+      return;
+    }
+    await finish({
+      type: CLOUDFLARE_OAUTH_MESSAGE,
+      code: parsed.code,
+      state: parsed.state,
+      error: parsed.error,
+      errorDescription: parsed.errorDescription,
+    });
   }
 
   /**
@@ -332,35 +328,48 @@ export function useCloudflareConnect(
   }
 
   /**
-   * Same-tab fallback. When the popup was replaced by a full-page redirect the callback
-   * page sends the user back with the payload in the fragment, which never reaches a
-   * server. Reading it here and clearing it keeps it out of the history entry.
+   * Same-tab / new-tab fallback. The callback page sends the user back with the
+   * payload in the fragment, which never reaches a server. If this tab started
+   * the flow, finish here. If it is the extra tab a shell opened, publish the
+   * payload for the original tab (Haven iframe included) and stop.
    */
   function readFragmentCallback(): void {
-    const marker = "#cloudflare-oauth=";
-    const hash = window.location.hash;
-    if (!hash.startsWith(marker)) {
+    const parsed = parseCloudflareFragment(window.location.hash);
+    if (!parsed) {
       return;
     }
     window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    const raw = decodeURIComponent(hash.slice(marker.length));
-    try {
-      const message = readCallbackMessage(JSON.parse(raw));
-      if (message && decodeRelayState(message.state)) {
-        void finish(message);
-      }
-    } catch {
-      // A fragment we cannot parse is not worth an error: the user can just connect again.
+    const message = readCallbackMessage(parsed);
+    if (!message || !decodeRelayState(message.state)) {
+      return;
+    }
+    if (readPending()) {
+      void finish(message);
+      return;
+    }
+    publishCloudflareRelay(window.localStorage, message);
+  }
+
+  function onStorage(event: StorageEvent): void {
+    if (event.key !== CLOUDFLARE_RELAY_KEY) {
+      return;
+    }
+    const payload = readCloudflareRelay(event.newValue);
+    const message = readCallbackMessage(payload);
+    if (message) {
+      void finish(message);
     }
   }
 
   onMounted(() => {
     window.addEventListener("message", onMessage);
+    window.addEventListener("storage", onStorage);
     readFragmentCallback();
   });
 
   onBeforeUnmount(() => {
     window.removeEventListener("message", onMessage);
+    window.removeEventListener("storage", onStorage);
     popup?.close();
   });
 
@@ -371,6 +380,7 @@ export function useCloudflareConnect(
     busy,
     connect,
     cancel,
+    completeFromCallbackUrl,
     identifyToken,
     identifying,
     identifyError,

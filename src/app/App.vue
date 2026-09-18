@@ -243,19 +243,8 @@ async function buildNow(): Promise<void> {
   await loadBuilds();
 }
 
-async function forgetApp(): Promise<void> {
-  const documentId = records.activeDocumentId.value;
-  if (!documentId) {
-    return;
-  }
-  await records.forget(documentId);
-  showHome();
-}
-
 /**
- * Remove a row from the list without opening it first.
- *
- * Stays on the list, unlike {@link forgetApp}: the user is looking at the thing they
+ * Remove a row from the list. Stays on the list: the user is looking at the thing they
  * just removed disappearing, which is the confirmation. `forget` clears the active
  * record itself if it happens to be this one.
  */
@@ -345,7 +334,6 @@ onMounted(async () => {
       :result="flow.result.value"
       :running="flow.running.value"
       :can-propose="session.canProposeApps.value"
-      :can-forget="records.canForget.value"
       :agent="flow.agent.value"
       :cursor-token="session.credentials.value.cursorToken"
       :builds="builds"
@@ -360,7 +348,6 @@ onMounted(async () => {
       @build-now="buildNow"
       @refresh-builds="loadBuilds"
       @launch-cursor="flow.launchCursor"
-      @forget="forgetApp"
     />
 
     <AppList

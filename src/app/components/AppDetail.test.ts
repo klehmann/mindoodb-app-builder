@@ -29,7 +29,6 @@ function render(props: Partial<InstanceType<typeof AppDetail>["$props"]> = {}) {
       result: null,
       running: false,
       canPropose: true,
-      canForget: true,
       agent: null,
       cursorToken: "",
       builds: null,
@@ -49,7 +48,8 @@ describe("AppDetail", () => {
     expect(wrapper.find(".detail__url").attributes("href")).toBe(
       "https://team-notes.acme.workers.dev",
     );
-    expect(wrapper.text()).toContain("Copy address");
+    expect(wrapper.find(".detail__copy").attributes("aria-label")).toBe("Copy address");
+    expect(wrapper.text()).not.toContain("Copy address");
   });
 
   it("offers no address for an app that never went live", () => {
@@ -107,10 +107,21 @@ describe("AppDetail", () => {
     expect(wrapper.find(".detail__url").exists()).toBe(true);
   });
 
-  it("confirms the copy on the button itself", () => {
+  it("confirms the copy on the icon itself", () => {
     const wrapper = render({ copied: true });
 
-    expect(wrapper.text()).toContain("Copied");
+    expect(wrapper.find(".detail__copy").attributes("aria-label")).toBe("Copied");
+  });
+
+  it("puts the live-app actions next to Back, not under the address", () => {
+    const wrapper = render();
+    const actions = wrapper.find(".detail__actions").text();
+
+    expect(actions).toContain("Open the app");
+    expect(actions).toContain("Add to Haven");
+    expect(actions).toContain("Save as file");
+    expect(wrapper.find(".detail__back").text()).toContain("Back");
+    expect(wrapper.find(".detail__address").text()).not.toContain("Open the app");
   });
 
   it("turns Cloudflare's build status into a sentence", () => {
@@ -162,27 +173,6 @@ describe("AppDetail", () => {
     const wrapper = render({ cursorToken: "" });
 
     expect(wrapper.text()).toContain("Needs a Cursor key");
-  });
-
-  it("explains that removing an app from the list leaves the app alone", async () => {
-    const wrapper = render();
-
-    // Names every service, like the list's own confirmation does: the promise is that
-    // nothing outside the builder's database is touched.
-    const text = wrapper.find(".detail__forget").text();
-    expect(text).toContain("GitHub");
-    expect(text).toContain("Cloudflare");
-    expect(text).toContain("Cursor");
-    expect(text).toContain("Haven keeps it installed");
-
-    await wrapper.find(".detail__forget button").trigger("click");
-    expect(wrapper.emitted("forget")).toHaveLength(1);
-  });
-
-  it("hides removal when the database does not allow it", () => {
-    const wrapper = render({ canForget: false });
-
-    expect(wrapper.find(".detail__forget").exists()).toBe(false);
   });
 
   it("locks the buttons that start work while a run is going", () => {

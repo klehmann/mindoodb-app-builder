@@ -90,6 +90,11 @@ const canConnectCloudflare = computed(
  */
 const githubManual = ref(false);
 const cloudflareManual = ref(false);
+const cloudflareCallbackUrl = ref("");
+
+async function submitCloudflareCallbackUrl(): Promise<void> {
+  await props.cloudflare.completeFromCallbackUrl(cloudflareCallbackUrl.value);
+}
 const githubFieldsVisible = computed(
   () => (props.configLoaded && !canConnectGitHub.value) || githubManual.value,
 );
@@ -359,6 +364,26 @@ onUnmounted(() => {
 
       <template v-if="canConnectCloudflare">
         <p class="hint">{{ t("connect.cloudflare.consentHint") }}</p>
+        <p v-if="cloudflare.status.value === 'waiting'" class="hint">
+          {{ t("connect.cloudflare.waitingHint") }}
+        </p>
+        <form
+          v-if="cloudflare.status.value === 'waiting'"
+          class="callback-url"
+          @submit.prevent="submitCloudflareCallbackUrl"
+        >
+          <label for="cf-callback-url">{{ t("connect.cloudflare.callbackUrlLabel") }}</label>
+          <div class="row">
+            <input
+              id="cf-callback-url"
+              v-model="cloudflareCallbackUrl"
+              type="url"
+              autocomplete="off"
+              :placeholder="t('connect.cloudflare.callbackUrlPlaceholder')"
+            />
+            <button type="submit">{{ t("connect.cloudflare.callbackUrlApply") }}</button>
+          </div>
+        </form>
         <p v-if="cloudflare.error.value" class="warn">
           {{ cloudflare.error.value }}
         </p>
@@ -605,6 +630,16 @@ onUnmounted(() => {
   gap: 0.5rem;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.callback-url {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.callback-url input {
+  flex: 1;
+  min-width: 12rem;
 }
 
 /*

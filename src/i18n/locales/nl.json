@@ -56,7 +56,7 @@
     }
   },
   "detail": {
-    "back": "Alle applicaties",
+    "back": "Terug",
     "address": {
       "open": "De applicatie openen",
       "copy": "Adres kopiëren",
@@ -112,11 +112,6 @@
     "agent": {
       "launch": "Aan de AI geven",
       "needsKey": "Hiervoor is een Cursor-sleutel nodig — voeg er een toe bij ‘Verbindingen en instellingen’. Of kloon de repository en wijzig hem zelf, met welk hulpmiddel je maar wilt."
-    },
-    "forget": {
-      "summary": "Uit deze lijst verwijderen",
-      "hint": "Hiermee verdwijnt alleen de aantekening die de builder over de applicatie bijhoudt, hier in zijn eigen database. De code blijft op GitHub staan, de gepubliceerde applicatie blijft draaien op Cloudflare, een eventuele Cursor-agent blijft waar hij is, en Haven houdt hem geïnstalleerd.",
-      "button": "Uit lijst verwijderen"
     }
   },
   "newApp": {
@@ -253,6 +248,10 @@
     "cloudflare": {
       "consentHint": "Opent het eigen toestemmingsscherm van Cloudflare. Daar wordt gevraagd om de Workers-rechten die de builder nodig heeft en niets meer, en het toegangstoken wordt in deze pagina uitgewisseld waar Cloudflare dat toestaat.",
       "waiting": "Wachten op Cloudflare…",
+      "waitingHint": "Rond het aanmelden af in het Cloudflare-tabblad. Als dat tabblad zegt hierheen terug te keren, kopieer dan het adres en plak het hieronder.",
+      "callbackUrlLabel": "Adres van het Cloudflare-tabblad",
+      "callbackUrlPlaceholder": "https://app-builder.mindoodb.com/oauth/cloudflare/callback?code=…",
+      "callbackUrlApply": "Doorgaan",
       "finishing": "Afronden…",
       "reconnect": "Cloudflare opnieuw verbinden",
       "connect": "Cloudflare verbinden",
@@ -437,6 +436,8 @@
     "noClient": "Voor deze builder is geen Cloudflare-OAuth-client ingesteld.",
     "urlBuildFailed": "De autorisatie-URL van Cloudflare kon niet worden opgebouwd.",
     "popupBlocked": "Het venster van Cloudflare is geblokkeerd. Sta pop-ups voor de builder toe en probeer het opnieuw.",
+    "badCallbackUrl": "Dat is niet het Cloudflare-terugkeeradres.",
+    "noPending": "Er loopt geen Cloudflare-aanmelding. Verbind opnieuw.",
     "noAccounts": "Dit token meldde geen enkel Cloudflare-account.",
     "accountLookupFailed": "Aan Cloudflare kon niet worden gevraagd bij welk account dit token hoort."
   },

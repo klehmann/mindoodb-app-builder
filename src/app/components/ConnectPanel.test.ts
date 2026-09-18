@@ -58,6 +58,7 @@ function cloudflareConnect(
     busy: computed(() => false),
     connect: async () => {},
     cancel: () => {},
+    completeFromCallbackUrl: async () => {},
     identifyToken: async () => [],
     identifying: ref(false),
     identifyError: ref(null),
@@ -217,6 +218,30 @@ describe("ConnectPanel", () => {
     await flushPromises();
 
     expect(identifyToken).not.toHaveBeenCalled();
+  });
+
+  it("takes the Cloudflare callback address while waiting, so a tab without opener can finish", async () => {
+    const completeFromCallbackUrl = vi.fn(async () => {});
+    const panel = render({
+      config: config(),
+      configLoaded: true,
+      cloudflare: cloudflareConnect({
+        status: ref("waiting"),
+        busy: computed(() => true),
+        completeFromCallbackUrl,
+      }),
+    });
+
+    expect(panel.find("#cf-callback-url").exists()).toBe(true);
+    await panel.find("#cf-callback-url").setValue(
+      "https://app-builder.mindoodb.com/oauth/cloudflare/callback?code=c&state=s",
+    );
+    await panel.find("form.callback-url").trigger("submit");
+    await flushPromises();
+
+    expect(completeFromCallbackUrl).toHaveBeenCalledWith(
+      "https://app-builder.mindoodb.com/oauth/cloudflare/callback?code=c&state=s",
+    );
   });
 
   it("copies the GitHub device code to the clipboard", async () => {

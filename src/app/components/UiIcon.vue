@@ -14,6 +14,7 @@ export type UiIconName =
   | "cursor"
   | "share"
   | "trash"
+  | "copy"
   | "check";
 
 defineProps<{
@@ -66,6 +67,12 @@ defineProps<{
     <template v-else-if="name === 'cursor'">
       <path d="M5.5 3.8 19 11.3l-5.9 1.6-2.2 5.7z" />
       <path d="M13.6 13.4 19 19.6" />
+    </template>
+
+    <!-- Copy: two overlapping pages, for putting a URL on the clipboard. -->
+    <template v-else-if="name === 'copy'">
+      <rect x="8" y="8" width="11" height="13" rx="1.5" />
+      <path d="M6.5 16H5.5A1.5 1.5 0 0 1 4 14.5v-10A1.5 1.5 0 0 1 5.5 3h8A1.5 1.5 0 0 1 15 4.5V6" />
     </template>
 
     <!-- Trash: removing the builder's note about an app. -->

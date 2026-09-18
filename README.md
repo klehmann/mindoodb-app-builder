@@ -80,14 +80,19 @@ That serves the app and the API on `http://127.0.0.1:4400`. Add that URL in Have
 Applications, and Haven reads `haven-app.json` from it to register the app. A loopback
 address is a secure origin, so an HTTPS Haven can embed it.
 
-For development, two processes:
+For development, two processes — or just the Vite one, which starts the API host on
+4400 when that port is free:
 
 ```bash
-pnpm run dev:host   # API on 4400
+pnpm run dev:host   # API on 4400 (optional if Vite is already running)
 pnpm run dev        # UI on 4401, proxying /api to 4400
 ```
 
 Use `dev:local` instead of `dev` to resolve `mindoodb-app-sdk` from the sibling checkout.
+Paste `http://127.0.0.1:4401` into Haven. Connect GitHub / Cloudflare uses the same
+public client IDs as https://app-builder.mindoodb.com; Cloudflare still returns the
+code via that origin's callback page (PKCE). Without the host, `/api/config` fails and
+the page falls back to pasted tokens.
 
 ## What it needs from you
 

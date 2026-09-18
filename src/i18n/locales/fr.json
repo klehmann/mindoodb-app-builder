@@ -56,7 +56,7 @@
     }
   },
   "detail": {
-    "back": "Toutes les applications",
+    "back": "Retour",
     "address": {
       "open": "Ouvrir l’application",
       "copy": "Copier l’adresse",
@@ -112,11 +112,6 @@
     "agent": {
       "launch": "Confier à l’IA",
       "needsKey": "Nécessite une clé Cursor — ajoutez-en une sous « Connexions et configuration ». Ou clonez le dépôt et modifiez-le vous-même, avec l’outil de votre choix."
-    },
-    "forget": {
-      "summary": "Retirer de cette liste",
-      "hint": "Cela ne retire que la fiche que le builder conserve sur l’application, ici dans sa propre base. Le code reste sur GitHub, l’application publiée continue de tourner sur Cloudflare, l’agent Cursor éventuel reste où il est, et Haven la garde installée.",
-      "button": "Retirer de la liste"
     }
   },
   "newApp": {
@@ -253,6 +248,10 @@
     "cloudflare": {
       "consentHint": "Ouvre l’écran de consentement de Cloudflare. Il demande les autorisations Workers dont le builder a besoin, et rien d’autre ; le jeton d’accès est échangé dans cette page partout où Cloudflare le permet.",
       "waiting": "En attente de Cloudflare…",
+      "waitingHint": "Termine la connexion dans l’onglet Cloudflare. S’il indique de revenir ici, copie son adresse et colle-la ci-dessous.",
+      "callbackUrlLabel": "Adresse de l’onglet Cloudflare",
+      "callbackUrlPlaceholder": "https://app-builder.mindoodb.com/oauth/cloudflare/callback?code=…",
+      "callbackUrlApply": "Continuer",
       "finishing": "Finalisation…",
       "reconnect": "Reconnecter Cloudflare",
       "connect": "Connecter Cloudflare",
@@ -437,6 +436,8 @@
     "noClient": "Ce builder n’a aucun client OAuth Cloudflare configuré.",
     "urlBuildFailed": "L’URL d’autorisation Cloudflare n’a pas pu être construite.",
     "popupBlocked": "La fenêtre Cloudflare a été bloquée. Autorisez les fenêtres pop-up pour le builder, puis réessayez.",
+    "badCallbackUrl": "Ce n’est pas l’adresse de retour Cloudflare.",
+    "noPending": "Aucune connexion Cloudflare n’est en cours. Connecte-toi à nouveau.",
     "noAccounts": "Ce jeton n’a indiqué aucun compte Cloudflare.",
     "accountLookupFailed": "Impossible de demander à Cloudflare à quel compte ce jeton appartient."
   },

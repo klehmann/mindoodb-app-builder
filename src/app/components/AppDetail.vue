@@ -16,6 +16,7 @@ import { useI18n } from "vue-i18n";
 
 import AgentPanel from "@/app/components/AgentPanel.vue";
 import ProgressPanel from "@/app/components/ProgressPanel.vue";
+import UiIcon from "@/app/components/UiIcon.vue";
 import {
   appDefinitionUrl,
   appStage,
@@ -35,7 +36,6 @@ const props = defineProps<{
   result: CreateAppResult | null;
   running: boolean;
   canPropose: boolean;
-  canForget: boolean;
   /** The Cursor agent working on this app, and the key to ask it for more. */
   agent: AgentHandle | null;
   cursorToken: string;
@@ -56,7 +56,6 @@ const emit = defineEmits<{
   buildNow: [];
   refreshBuilds: [];
   launchCursor: [];
-  forget: [];
 }>();
 
 const stage = computed(() => appStage(props.record));
@@ -111,23 +110,7 @@ function formatDateTime(iso: string): string {
       <button type="button" class="ghost detail__back" @click="emit('back')">
         ← {{ t("detail.back") }}
       </button>
-    </header>
-
-    <div>
-      <h2 class="detail__title">{{ record.label || record.appId }}</h2>
-      <p v-if="record.description" class="muted">{{ record.description }}</p>
-    </div>
-
-    <!--
-      The address first: it is what the user came for, and what they send to colleagues.
-      A live app shows it as a link; one that is not live yet says so instead of offering
-      a link that would answer "deploying".
-    -->
-    <div v-if="live" class="detail__address">
-      <a class="detail__url" :href="record.workerUrl" target="_blank" rel="noopener noreferrer">
-        {{ record.workerUrl }}
-      </a>
-      <div class="detail__row">
+      <div v-if="live" class="detail__actions">
         <a
           class="button"
           :href="record.workerUrl"
@@ -136,9 +119,6 @@ function formatDateTime(iso: string): string {
         >
           {{ t("detail.address.open") }}
         </a>
-        <button type="button" class="ghost" @click="emit('copyUrl')">
-          {{ copied ? t("detail.address.copied") : t("detail.address.copy") }}
-        </button>
         <button
           v-if="canPropose"
           type="button"
@@ -159,6 +139,33 @@ function formatDateTime(iso: string): string {
           @click="emit('saveDefinition')"
         >
           {{ t("detail.address.saveAsFile") }}
+        </button>
+      </div>
+    </header>
+
+    <div>
+      <h2 class="detail__title">{{ record.label || record.appId }}</h2>
+      <p v-if="record.description" class="muted">{{ record.description }}</p>
+    </div>
+
+    <!--
+      The address first: it is what the user came for, and what they send to colleagues.
+      Copy sits on the URL itself — a second labelled button next to Open was the same
+      action twice.
+    -->
+    <div v-if="live" class="detail__address">
+      <div class="detail__url-row">
+        <a class="detail__url" :href="record.workerUrl" target="_blank" rel="noopener noreferrer">
+          {{ record.workerUrl }}
+        </a>
+        <button
+          type="button"
+          class="ghost detail__copy"
+          :aria-label="copied ? t('detail.address.copied') : t('detail.address.copy')"
+          :title="copied ? t('detail.address.copied') : t('detail.address.copy')"
+          @click="emit('copyUrl')"
+        >
+          <UiIcon :name="copied ? 'check' : 'copy'" :size="16" />
         </button>
       </div>
       <p class="hint">{{ t("detail.address.hint") }}</p>
@@ -241,29 +248,34 @@ function formatDateTime(iso: string): string {
       </button>
       <span v-if="!cursorToken" class="hint">{{ t("detail.agent.needsKey") }}</span>
     </div>
-
-    <!--
-      Forgetting is not deleting. Said here rather than in a confirmation dialog, because
-      the sentence is the whole reassurance.
-    -->
-    <details v-if="canForget" class="detail__forget">
-      <summary>{{ t("detail.forget.summary") }}</summary>
-      <p class="hint">{{ t("detail.forget.hint") }}</p>
-      <button type="button" class="ghost" @click="emit('forget')">
-        {{ t("detail.forget.button") }}
-      </button>
-    </details>
   </section>
 </template>
 
 <style scoped>
 .detail__head {
   flex-direction: row !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .detail__back {
+  flex: none;
   padding-inline: 0.5rem;
   font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.detail__actions .button,
+.detail__actions button {
+  align-self: auto;
 }
 
 .detail__title {
@@ -281,9 +293,24 @@ function formatDateTime(iso: string): string {
   gap: 0.5rem;
 }
 
+.detail__url-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 .detail__url {
   font-weight: 600;
   word-break: break-all;
+}
+
+.detail__copy {
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  padding: 0.3rem;
+  color: var(--app-muted);
 }
 
 .detail__row {
@@ -320,20 +347,5 @@ function formatDateTime(iso: string): string {
 .detail__link-list li {
   display: flex;
   flex-direction: column;
-}
-
-.detail__forget {
-  border-top: 1px solid var(--app-border);
-  padding-top: 0.75rem;
-}
-
-.detail__forget summary {
-  cursor: pointer;
-  font-size: 0.82rem;
-  color: var(--app-muted);
-}
-
-.detail__forget button {
-  margin-top: 0.5rem;
 }
 </style>
