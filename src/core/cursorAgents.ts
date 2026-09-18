@@ -19,6 +19,19 @@
 
 const CURSOR_API_BASE = "https://api.cursor.com";
 
+/**
+ * Sent on every launch. Omitting `model` lets Cursor pick the account default, which
+ * is currently Grok 4.5 — this builder wants 4.6. Override per call via
+ * {@link LaunchAgentInput.model}. The id is the Cloud Agents catalog value
+ * (`GET /v1/models`), not the IDE slug.
+ */
+export const CURSOR_DEFAULT_MODEL_ID = "grok-4.6";
+
+export interface CursorModelSelection {
+  id: string;
+  params?: Array<{ id: string; value: string }>;
+}
+
 /** Terminal states: polling can stop. */
 export const CURSOR_RUN_TERMINAL_STATUSES = ["FINISHED", "ERROR", "CANCELLED", "EXPIRED"] as const;
 
@@ -243,6 +256,8 @@ export interface LaunchAgentInput {
    * is watching for its address.
    */
   autoCreatePR?: boolean;
+  /** Defaults to {@link CURSOR_DEFAULT_MODEL_ID}. */
+  model?: CursorModelSelection;
   fetchImpl?: typeof fetch;
 }
 
@@ -272,6 +287,7 @@ export async function launchAgent(input: LaunchAgentInput): Promise<LaunchAgentR
         // Cursor's defaults, which are a `cursor/...` branch and no deployment.
         workOnCurrentBranch: input.workOnCurrentBranch ?? true,
         autoCreatePR: input.autoCreatePR ?? false,
+        model: input.model ?? { id: CURSOR_DEFAULT_MODEL_ID },
       },
     });
   } catch (error) {

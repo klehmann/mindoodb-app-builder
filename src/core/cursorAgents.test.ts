@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { buildLaunchPrompt, explainCursorLaunchError, launchAgent } from "./cursorAgents";
+import {
+  buildLaunchPrompt,
+  CURSOR_DEFAULT_MODEL_ID,
+  explainCursorLaunchError,
+  launchAgent,
+} from "./cursorAgents";
 
 describe("explainCursorLaunchError", () => {
   it("leaves an unrelated failure alone", () => {
@@ -57,6 +62,8 @@ describe("launchAgent", () => {
     const body = bodyOf(fetchImpl);
     expect(body.workOnCurrentBranch).toBe(true);
     expect(body.autoCreatePR).toBe(false);
+    expect(body.model).toEqual({ id: CURSOR_DEFAULT_MODEL_ID });
+    expect(CURSOR_DEFAULT_MODEL_ID).toBe("grok-4.6");
     expect(body.repos).toEqual([
       { url: "https://github.com/octocat/team-notes", startingRef: "main" },
     ]);
@@ -120,6 +127,19 @@ describe("launchAgent", () => {
 
     const body = bodyOf(fetchImpl);
     expect((body.prompt as { text: string }).text).toBe("Add a health check");
+  });
+
+  it("lets a caller pick a different model without dropping the default for everyone else", async () => {
+    const fetchImpl = fakeFetch();
+
+    await launchAgent({
+      apiKey: "key",
+      repositoryUrl: "https://github.com/o/r",
+      model: { id: "composer-2.5" },
+      fetchImpl,
+    });
+
+    expect(bodyOf(fetchImpl).model).toEqual({ id: "composer-2.5" });
   });
 });
 
