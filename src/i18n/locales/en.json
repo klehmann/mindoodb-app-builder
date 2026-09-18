@@ -50,7 +50,7 @@
     },
     "confirm": {
       "title": "Remove “{label}” from this list?",
-      "hint": "This deletes only what the App Builder saved about the app, here in its own database. Nothing else is touched: the project stays on GitHub, the published app keeps running on Cloudflare, any Cursor agent stays where it is, and Haven keeps it installed. You can add the app to this list again by building a new one — but the address and description saved here will be gone.",
+      "hint": "This deletes only what the App Builder saved about the app, here in its own database. Nothing else is touched: the project stays on GitHub, the published app keeps running on Cloudflare, any Cursor agent stays where it is, and Haven keeps it installed. Building a new app with the same name will not bring this row back — the builder stops when it sees that GitHub project already exists. The published app stays reachable at its address. To get the row back, restore the deleted document in Haven’s App Builder database.",
       "remove": "Remove from list",
       "keep": "Keep it"
     }

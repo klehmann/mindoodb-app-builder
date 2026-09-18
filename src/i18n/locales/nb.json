@@ -50,7 +50,7 @@
     },
     "confirm": {
       "title": "Fjerne «{label}» fra denne listen?",
-      "hint": "Dette sletter bare det App Builder har lagret om appen, her i sin egen database. Ingenting annet berøres: prosjektet blir liggende på GitHub, den publiserte appen fortsetter å kjøre på Cloudflare, en eventuell Cursor-agent blir stående der den er, og Haven har den fortsatt installert. Du kan få appen inn i denne listen igjen ved å bygge en ny — men adressen og beskrivelsen som er lagret her, er da borte.",
+      "hint": "Dette sletter bare det App Builder har lagret om appen, her i sin egen database. Ingenting annet berøres: prosjektet blir liggende på GitHub, den publiserte appen fortsetter å kjøre på Cloudflare, en eventuell Cursor-agent blir stående der den er, og Haven har den fortsatt installert. Å bygge en ny app med samme navn henter ikke denne raden tilbake — byggeren stopper når den ser at GitHub-prosjektet allerede finnes. Den publiserte appen er fortsatt tilgjengelig på adressen sin. Vil du ha raden tilbake, gjenopprett det slettede dokumentet i App Builder-databasen i Haven.",
       "remove": "Fjern fra listen",
       "keep": "Behold den"
     }

@@ -133,6 +133,9 @@ describe("AppList", () => {
       expect(text).toContain("Cloudflare");
       expect(text).toContain("Cursor");
       expect(text).toContain("Haven");
+      expect(text).toContain("already exists");
+      expect(text).toContain("restore");
+      expect(text).not.toContain("building a new one");
     });
 
     it("removes the app once the user confirms", async () => {

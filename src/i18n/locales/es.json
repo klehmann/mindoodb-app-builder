@@ -50,7 +50,7 @@
     },
     "confirm": {
       "title": "¿Quitar «{label}» de esta lista?",
-      "hint": "Esto borra solo lo que App Builder guardó sobre la aplicación, aquí en su propia base de datos. No se toca nada más: el proyecto sigue en GitHub, la aplicación publicada sigue funcionando en Cloudflare, cualquier agente de Cursor se queda donde está y Haven la mantiene instalada. Puedes volver a añadir la aplicación a esta lista creando una nueva — pero la dirección y la descripción guardadas aquí se habrán perdido.",
+      "hint": "Esto borra solo lo que App Builder guardó sobre la aplicación, aquí en su propia base de datos. No se toca nada más: el proyecto sigue en GitHub, la aplicación publicada sigue funcionando en Cloudflare, cualquier agente de Cursor se queda donde está y Haven la mantiene instalada. Crear una aplicación nueva con el mismo nombre no devolverá esta fila: el constructor se detiene al ver que ese proyecto de GitHub ya existe. La aplicación publicada sigue alcanzable en su dirección. Si quieres recuperar la fila, restaura el documento eliminado en la base de datos de App Builder en Haven.",
       "remove": "Quitar de la lista",
       "keep": "Conservarla"
     }

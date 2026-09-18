@@ -50,7 +50,7 @@
     },
     "confirm": {
       "title": "‘{label}’ uit deze lijst verwijderen?",
-      "hint": "Hiermee verdwijnt alleen wat de App Builder over de applicatie heeft bewaard, hier in zijn eigen database. Aan de rest verandert niets: het project blijft op GitHub staan, de gepubliceerde applicatie blijft draaien op Cloudflare, een eventuele Cursor-agent blijft waar hij is, en Haven houdt hem geïnstalleerd. Je kunt de applicatie weer aan deze lijst toevoegen door een nieuwe te bouwen — maar het adres en de beschrijving die hier zijn opgeslagen, zijn dan weg.",
+      "hint": "Hiermee verdwijnt alleen wat de App Builder over de applicatie heeft bewaard, hier in zijn eigen database. Aan de rest verandert niets: het project blijft op GitHub staan, de gepubliceerde applicatie blijft draaien op Cloudflare, een eventuele Cursor-agent blijft waar hij is, en Haven houdt hem geïnstalleerd. Een nieuwe app met dezelfde naam brengt deze rij niet terug — de builder stopt zodra hij ziet dat dat GitHub-project al bestaat. De gepubliceerde applicatie blijft bereikbaar op haar adres. Wil je de rij terug, herstel dan het verwijderde document in de App Builder-database in Haven.",
       "remove": "Uit lijst verwijderen",
       "keep": "Laten staan"
     }

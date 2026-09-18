@@ -50,7 +50,7 @@
     },
     "confirm": {
       "title": "Usunąć „{label}” z tej listy?",
-      "hint": "Usuwa to tylko dane, które App Builder zapisał o aplikacji tutaj, we własnej bazie. Nic więcej nie zostanie ruszone: projekt zostaje na GitHubie, opublikowana aplikacja nadal działa na Cloudflare, agent Cursora pozostaje tam, gdzie jest, a Haven ma ją dalej zainstalowaną. Aplikację możesz ponownie dodać do tej listy, budując nową — ale zapisany tu adres i opis znikną.",
+      "hint": "Usuwa to tylko dane, które App Builder zapisał o aplikacji tutaj, we własnej bazie. Nic więcej nie zostanie ruszone: projekt zostaje na GitHubie, opublikowana aplikacja nadal działa na Cloudflare, agent Cursora pozostaje tam, gdzie jest, a Haven ma ją dalej zainstalowaną. Zbudowanie nowej aplikacji o tej samej nazwie nie przywróci tego wiersza — kreator zatrzymuje się, gdy widzi, że ten projekt GitHub już istnieje. Opublikowana aplikacja pozostaje dostępna pod swoim adresem. Aby odzyskać wiersz, przywróć usunięty dokument w bazie App Builder w Haven.",
       "remove": "Usuń z listy",
       "keep": "Zachowaj"
     }
