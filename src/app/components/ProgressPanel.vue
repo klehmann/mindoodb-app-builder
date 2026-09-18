@@ -48,12 +48,28 @@ function stepLabel(id: FlowStepId): string {
 }
 
 /**
+ * Whether the repository-access remedy is already on this panel.
+ *
+ * Warnings accumulate across a session's phases, so a failed access check from one press
+ * and a failed origin wait from the next are read together — and both used to explain the
+ * same fix. Reading it off the panel's own contents rather than tracking it in the flow is
+ * what makes it true: "already shown" is a question about the screen. The error line and
+ * the warning list are enough to answer it — a step showing the fix always comes with one
+ * of the two.
+ */
+const accessGrantShown = computed(
+  () =>
+    props.result?.error?.code === "repoAccessFix" ||
+    (props.result?.warnings ?? []).some((note) => note.code === "repoAccessFix"),
+);
+
+/**
  * The same for the line underneath: the flow says what happened as a code, this says it
  * in the reader's language. Every note the run produced — per step, the reason it stopped,
  * every warning — is worded here and nowhere else.
  */
 function noteText(note: FlowNote | null): string {
-  return flowNoteText(t, note);
+  return flowNoteText(t, note, { accessGrantShown: accessGrantShown.value });
 }
 
 const SYMBOLS: Record<FlowStep["status"], string> = {

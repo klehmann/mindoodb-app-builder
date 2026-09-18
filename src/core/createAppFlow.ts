@@ -481,7 +481,16 @@ async function runGitHubPhase(
         abort("check-name", { code: "nameTaken", params: { fullName: existing.fullName } });
         return false;
       }
-      update("check-name", "done", { code: "nameAvailable", params: { slug: identity.slug } });
+      /*
+       * The owner/repo path, like the two answers it sits beside — a bare slug is not
+       * unique across owners, and the check is about the path. Composed rather than read,
+       * because the repository does not exist yet; an owner left blank means "the token's
+       * own user", which only GitHub can resolve, so the slug alone is the honest answer.
+       */
+      update("check-name", "done", {
+        code: "nameAvailable",
+        params: { fullName: owner ? `${owner}/${identity.slug}` : identity.slug },
+      });
     } catch (error) {
       abort("check-name", readErrorMessage(error, "nameCheckFailed"));
       return false;

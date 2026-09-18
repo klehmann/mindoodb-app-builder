@@ -40,6 +40,7 @@ describe("AppList", () => {
     const listed = starts(render({ records: [stored()] })).map((button) => button.text());
     expect(listed[0]).toBe("New app");
     expect(listed).toHaveLength(2);
+    expect(render({ records: [stored()] }).find("header .apps__new").text()).toBe("New app");
   });
 
   it("does not show the empty pitch while still looking", () => {

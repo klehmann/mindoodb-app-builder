@@ -113,7 +113,7 @@ function formatDate(iso: string): string {
         Only alongside a list. With nothing built yet the empty state below carries its
         own "Describe an app", and two buttons doing the same thing read as a choice.
       -->
-      <button v-if="rows.length > 0" type="button" @click="emit('create')">
+      <button v-if="rows.length > 0" type="button" class="apps__new" @click="emit('create')">
         {{ t("list.actions.new") }}
       </button>
     </header>
@@ -195,9 +195,19 @@ function formatDate(iso: string): string {
   gap: 1rem;
 }
 
+.apps__head > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .apps__head h2 {
   margin: 0;
   font-size: 1.05rem;
+}
+
+.apps__new {
+  flex: none;
+  white-space: nowrap;
 }
 
 .apps__empty {

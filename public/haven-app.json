@@ -20,7 +20,7 @@
       "logicalDatabaseId": "appbuilder",
       "databaseId": "appbuilder",
       "label": "App Builder",
-      "permissions": ["write"]
+      "permissions": ["write", "delete"]
     }
   ]
 }

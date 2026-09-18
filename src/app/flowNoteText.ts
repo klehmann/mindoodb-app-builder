@@ -31,6 +31,7 @@ const BUTTON_LABELS: Partial<Record<FlowNoteCode, string>> = {
   // "build", so the app's own page offers this as its one Continue button.
   repoAccessNextStartFirstBuild: "detail.continue.labels.build",
   originBuildLogHint: "detail.builds.buildNow",
+  originBuildLogHintBrief: "detail.builds.buildNow",
   repoAccessNextBuildAgain: "detail.builds.buildNow",
   // Live but not installed: `nextAppAction` answers "install".
   pressRegisterInHaven: "detail.continue.labels.install",
@@ -38,7 +39,31 @@ const BUTTON_LABELS: Partial<Record<FlowNoteCode, string>> = {
   templateCopyPending: "detail.continue.labels.commit",
 };
 
-export function flowNoteText(t: TranslateNote, note: FlowNote | null | undefined): string {
+/**
+ * Notes that have to tell the user how to grant Cloudflare access, quoting the one key
+ * that says it as `{grant}`.
+ *
+ * Two of them need that remedy for different reasons — one before a build is attempted,
+ * one after it never produced anything — and they used to spell it out separately, in
+ * different words, with the installations URL written twice in every locale.
+ */
+const QUOTES_ACCESS_GRANT: readonly FlowNoteCode[] = ["repoAccessFix", "originBuildLogHint"];
+
+export interface FlowNoteDisplayContext {
+  /**
+   * True when the access remedy is already on screen. The panel accumulates warnings
+   * across a session's phases, so the failed access check from one press and the failed
+   * origin wait from the next are read together — and the second note repeating the fix
+   * in its own words is what four translators reported as the same advice given twice.
+   */
+  accessGrantShown?: boolean;
+}
+
+export function flowNoteText(
+  t: TranslateNote,
+  note: FlowNote | null | undefined,
+  context: FlowNoteDisplayContext = {},
+): string {
   if (!note) {
     return "";
   }
@@ -65,10 +90,22 @@ export function flowNoteText(t: TranslateNote, note: FlowNote | null | undefined
       // Anything but another counter, so a nested code cannot resolve back into this case.
       const detail =
         isFlowNoteCode(inner) && inner !== "originAttempt"
-          ? flowNoteText(t, { code: inner, params })
+          ? flowNoteText(t, { code: inner, params }, context)
           : "";
       return wording(t, "originAttempt", { attempt: params.attempt ?? 0, detail });
     }
+
+    /*
+     * Where to look when the app never came live. The remedy is only worth giving to a
+     * reader who has not just been given it: once the access fix is on screen, this says
+     * what it alone adds — the build list, and the button.
+     */
+    case "originBuildLogHint":
+      return wording(
+        t,
+        context.accessGrantShown ? "originBuildLogHintBrief" : "originBuildLogHint",
+        params,
+      );
 
     /*
      * The long help text for a repository Cloudflare cannot read. One key, so the four
@@ -82,7 +119,7 @@ export function flowNoteText(t: TranslateNote, note: FlowNote | null | undefined
         fullName: params.fullName ?? "",
         // Resolved through this function rather than `t`, so the nested sentence gets its
         // button label filled in like any other note.
-        next: next ? flowNoteText(t, { code: next }) : "",
+        next: next ? flowNoteText(t, { code: next }, context) : "",
       });
       const said = String(params.said ?? "").trim();
       return said ? `${help} ${wording(t, "cloudflareSaid", { said })}` : help;
@@ -93,12 +130,22 @@ export function flowNoteText(t: TranslateNote, note: FlowNote | null | undefined
   }
 }
 
-/** One note's own key, with the button label filled in for the notes that name one. */
+/**
+ * One note's own key, with whatever it quotes filled in: a button's own label as
+ * `{action}`, the shared repository-access remedy as `{grant}`.
+ */
 function wording(
   t: TranslateNote,
   code: FlowNoteCode,
   params: Record<string, unknown>,
 ): string {
+  const quoted: Record<string, unknown> = { ...params };
   const label = BUTTON_LABELS[code];
-  return t(`flow.note.${code}`, label ? { ...params, action: t(label) } : params);
+  if (label) {
+    quoted.action = t(label);
+  }
+  if (QUOTES_ACCESS_GRANT.includes(code)) {
+    quoted.grant = wording(t, "repoAccessGrant", {});
+  }
+  return t(`flow.note.${code}`, quoted);
 }

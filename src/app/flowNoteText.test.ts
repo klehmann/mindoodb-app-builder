@@ -126,6 +126,7 @@ describe("flowNoteText", () => {
       ["repoAccessNextStartFirstBuild", "detail.continue.labels.build"],
       ["repoAccessNextBuildAgain", "detail.builds.buildNow"],
       ["originBuildLogHint", "detail.builds.buildNow"],
+      ["originBuildLogHintBrief", "detail.builds.buildNow"],
       ["pressRegisterInHaven", "detail.continue.labels.install"],
       ["templateCopyPending", "detail.continue.labels.commit"],
     ];
@@ -136,6 +137,45 @@ describe("flowNoteText", () => {
       // The wording must not carry a second, hardcoded copy of a button name.
       expect(notes[code]).toContain("{action}");
     }
+  });
+
+  /**
+   * Two notes have to give the same remedy, for different reasons. Written out in each,
+   * they drifted into two wordings with the options in opposite orders, and the
+   * installations URL had to be kept in step across sixteen copies.
+   */
+  it("gives the access remedy from one key, so both notes say it the same way", () => {
+    const remedy = t("flow.note.repoAccessGrant");
+
+    const help = flowNoteText(t, {
+      code: "repoAccessFix",
+      params: { fullName: "octocat/team-notes", next: "repoAccessNextStartFirstBuild" },
+    });
+    const hint = flowNoteText(t, { code: "originBuildLogHint" });
+
+    expect(remedy).toContain("https://github.com/settings/installations");
+    expect(help).toContain(remedy);
+    expect(hint).toContain(remedy);
+    // The URL lives in that one key and nowhere else, in every locale.
+    const urls = Object.entries(notes).filter(
+      ([key, message]) =>
+        key !== "repoAccessGrant" && message.includes("github.com/settings/installations"),
+    );
+    expect(urls).toEqual([]);
+  });
+
+  /**
+   * A user who has just been told how to grant access, and has not done it, should not be
+   * told again in different words when the app then fails to go live.
+   */
+  it("does not repeat the access remedy once it is already on screen", () => {
+    const brief = flowNoteText(t, { code: "originBuildLogHint" }, { accessGrantShown: true });
+
+    expect(brief).not.toContain(t("flow.note.repoAccessGrant"));
+    expect(brief).not.toContain("github.com/settings/installations");
+    // What it alone adds: where to look, and which button to press.
+    expect(brief).toContain("Builds");
+    expect(brief).toContain(`“${t("detail.builds.buildNow")}”`);
   });
 
   it("leaves the quote out when Cloudflare said nothing", () => {

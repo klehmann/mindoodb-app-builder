@@ -358,6 +358,28 @@ describe("createApp", () => {
     ]);
   });
 
+  /**
+   * The three answers to "is this name free?" all name the same thing — the owner/repo
+   * path that was actually looked up. A bare slug is not unique across owners.
+   */
+  it("reports the free name as the path it checked", async () => {
+    const deps = makeDeps({
+      github: {
+        getRepository: vi.fn(async () => null),
+        generateFromTemplate: vi.fn(async () => repository),
+        readTemplateSources: vi.fn(async () => templateSources),
+        commitFiles: vi.fn(async () => "sha"),
+      },
+    });
+
+    const result = await createApp({ identity, owner: "octocat" }, deps);
+
+    expect(result.steps.find((step) => step.id === "check-name")!.detail).toEqual({
+      code: "nameAvailable",
+      params: { fullName: "octocat/team-notes" },
+    });
+  });
+
   describe("stopping early", () => {
     it("refuses a name that is taken, before creating anything", async () => {
       const ensureWorker = vi.fn();

@@ -56,6 +56,12 @@ export const FLOW_NOTE_CODES = [
   "repoAccessUnconfirmed",
   "repoAccessCheckFailed",
   "repoAccessFix",
+  /**
+   * The remedy itself — grant Cloudflare's GitHub App access — and the only place the
+   * installations URL is written. Nested by every note that has to give it, so the advice
+   * cannot drift into two wordings and the URL exists once per locale.
+   */
+  "repoAccessGrant",
   "repoAccessNextStartFirstBuild",
   "repoAccessNextBuildAgain",
 
@@ -84,6 +90,12 @@ export const FLOW_NOTE_CODES = [
   "originNotChecked",
   "originNotLiveInTime",
   "originBuildLogHint",
+  /**
+   * The same advice for a reader who has already been given the remedy in this session —
+   * where to look and which button to press, without repeating the fix. Chosen at render
+   * time, never emitted: only the display knows what else is on screen.
+   */
+  "originBuildLogHintBrief",
   "originServing",
   "originCheckFailed",
 

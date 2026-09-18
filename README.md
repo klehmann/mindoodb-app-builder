@@ -30,10 +30,11 @@ you run a builder that has no applications registered, or you would rather mint 
 scoped your way.
 
 Both flows need to open a window — Cloudflare's consent screen, and GitHub's device page —
-so `haven-app.json` asks for `allowPopups`. Haven denies popups to apps by default and
-grants capabilities at install time only, so a builder installed before this was added
-keeps the old answer: switch "Allow popups" on in the app's settings in Haven, or remove
-and reinstall it. Removing an app does not delete its data.
+so `haven-app.json` asks for `allowPopups`. The App Builder database also asks for
+`delete`, so a row can be removed from the list. Haven grants both at install time only,
+so a builder installed before either was added keeps the old answer: switch the missing
+permission on in the app's settings in Haven, or remove and reinstall it. Removing an
+app does not delete its data.
 
 ## What happens to your tokens
 
