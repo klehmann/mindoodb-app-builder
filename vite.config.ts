@@ -49,5 +49,9 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // Registers vue-i18n on every mounted component and pins the language to English,
+    // so a component test asserts on the phrases in en.json instead of failing on a
+    // missing `$t` or on whatever language the machine running it prefers.
+    setupFiles: ["./src/i18n/testSetup.ts"],
   },
 });

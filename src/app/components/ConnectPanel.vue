@@ -18,6 +18,7 @@
  * to offer.
  */
 import { computed, onUnmounted, reactive, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 
 import type { BuilderHostConfig } from "@/app/hostApi";
 import type { UseCloudflareConnectReturn } from "@/app/useCloudflareConnect";
@@ -26,6 +27,8 @@ import type { CloudflareAccount } from "@/core/cloudflare";
 import type { BuilderCredentials, CredentialsStatus } from "@/core/credentials";
 
 export type ConnectAccountId = "github" | "cloudflare" | "cursor";
+
+const { t } = useI18n();
 
 const props = defineProps<{
   credentials: BuilderCredentials;
@@ -209,29 +212,23 @@ onUnmounted(() => {
 <template>
   <section class="panel" :class="{ 'panel--bare': embedded }">
     <header v-if="showPanelHeader">
-      <h2>Accounts</h2>
-      <p class="muted">
-        Stored in one document in your App Builder database, encrypted for you
-        personally. Nobody else can read it, not even someone you share that
-        database with.
-      </p>
-      <p v-if="!canStore" class="warn">
-        These connections will only last until you close this page. To have them
-        remembered, install the App Builder from Haven's App Store — or add it
-        by URL — instead of opening it directly.
-      </p>
+      <h2>{{ t("connect.title") }}</h2>
+      <p class="muted">{{ t("connect.storageHint") }}</p>
+      <p v-if="!canStore" class="warn">{{ t("connect.ephemeralWarning") }}</p>
     </header>
 
     <!-- GitHub -->
     <div v-if="showGitHub" class="account">
       <div v-if="showAccountNames || status.github" class="account-head">
         <h3 v-if="showAccountNames">GitHub</h3>
-        <span v-if="status.github" class="badge">connected</span>
+        <span v-if="status.github" class="badge">{{
+          t("connect.badge.connected")
+        }}</span>
       </div>
 
       <template v-if="canConnectGitHub">
         <p v-if="github.status.value === 'waiting'" class="hint">
-          Open
+          {{ t("connect.github.deviceOpen") }}
           <a
             :href="github.verificationUri.value"
             target="_blank"
@@ -239,19 +236,19 @@ onUnmounted(() => {
           >
             {{ github.verificationUri.value }}
           </a>
-          and enter this code:
+          {{ t("connect.github.deviceEnterCode") }}
         </p>
         <div v-if="github.status.value === 'waiting'" class="device-code-row">
           <p class="device-code">{{ github.userCode.value }}</p>
           <button type="button" class="ghost" @click="copyDeviceCode">
-            {{ copiedDeviceCode ? "Copied" : "Copy" }}
+            {{
+              copiedDeviceCode
+                ? t("connect.deviceCode.copied")
+                : t("connect.deviceCode.copy")
+            }}
           </button>
         </div>
-        <p v-else class="hint">
-          Grants permission to create a new project and make the first commit —
-          not to read the repositories you already have. Revoke it any time in
-          GitHub's application settings.
-        </p>
+        <p v-else class="hint">{{ t("connect.github.scopeHint") }}</p>
         <p v-if="github.error.value" class="warn">{{ github.error.value }}</p>
         <!--
           Authorizing is not installing, and only an installation carries repository
@@ -266,10 +263,10 @@ onUnmounted(() => {
           >
             {{
               github.status.value === "waiting"
-                ? "Waiting for GitHub…"
+                ? t("connect.github.waiting")
                 : status.github
-                  ? "Reconnect GitHub"
-                  : "Connect GitHub"
+                  ? t("connect.github.reconnect")
+                  : t("connect.github.connect")
             }}
           </button>
           <button
@@ -278,14 +275,14 @@ onUnmounted(() => {
             class="ghost"
             @click="github.cancel()"
           >
-            Cancel
+            {{ t("connect.cancel") }}
           </button>
           <button
             type="button"
             class="ghost"
             @click="githubManual = !githubManual"
           >
-            {{ githubManual ? "Hide token" : "Use my own token" }}
+            {{ githubManual ? t("connect.hideToken") : t("connect.useOwnToken") }}
           </button>
         </div>
       </template>
@@ -295,12 +292,12 @@ onUnmounted(() => {
         and the token field below already says what to do instead.
       -->
       <p v-else-if="!configLoaded" class="hint">
-        Checking how you can connect…
+        {{ t("connect.checkingOptions") }}
       </p>
 
       <template v-if="githubFieldsVisible">
         <div class="field">
-          <label for="github-token">GitHub token</label>
+          <label for="github-token">{{ t("connect.github.tokenLabel") }}</label>
           <input
             id="github-token"
             v-model="draft.githubToken"
@@ -311,19 +308,19 @@ onUnmounted(() => {
             @blur="identifyGitHubToken"
           />
           <p v-if="github.identifying.value" class="hint">
-            Checking the token with GitHub…
+            {{ t("connect.github.identifying") }}
           </p>
           <p v-else-if="github.identifyError.value" class="warn">
             {{ github.identifyError.value }}
           </p>
           <p class="hint">
-            <a :href="githubTokenUrl" target="_blank" rel="noreferrer noopener"
-              >Create a token on GitHub</a
-            >
-            — the link opens GitHub's form with the one permission we need,
-            <code>repo</code>, already ticked. Check that it is, choose how long
-            the token should last, press <strong>Generate token</strong>, then
-            copy the value into the field above. GitHub shows it only once.
+            <a :href="githubTokenUrl" target="_blank" rel="noreferrer noopener">{{
+              t("connect.github.tokenLinkText")
+            }}</a>
+            {{ t("connect.github.tokenHintBeforeScope") }}
+            <code>repo</code>{{ t("connect.github.tokenHintAfterScope") }}
+            <strong>{{ t("connect.github.generateTokenButton") }}</strong
+            >{{ t("connect.github.tokenHintAfterGenerate") }}
           </p>
         </div>
       </template>
@@ -335,22 +332,18 @@ onUnmounted(() => {
         one that needs its own installs, which is why it is not the default.
       -->
       <details class="owner">
-        <summary>Create apps under an organization instead</summary>
+        <summary>{{ t("connect.github.orgSummary") }}</summary>
         <div class="field owner__field">
-          <label for="github-owner">GitHub owner</label>
+          <label for="github-owner">{{ t("connect.github.ownerLabel") }}</label>
           <input
             id="github-owner"
             v-model="draft.githubOwner"
             type="text"
             autocomplete="off"
             spellcheck="false"
-            placeholder="your-user-or-org"
+            :placeholder="t('connect.github.ownerPlaceholder')"
           />
-          <p class="hint">
-            Leave this alone and your apps are created under your own account. An
-            organization works too, but the installs you approved for yourself do not
-            cover it — you have to approve them there as well.
-          </p>
+          <p class="hint">{{ t("connect.github.ownerHint") }}</p>
         </div>
       </details>
     </div>
@@ -359,15 +352,13 @@ onUnmounted(() => {
     <div v-if="showCloudflare" class="account">
       <div v-if="showAccountNames || status.cloudflare" class="account-head">
         <h3 v-if="showAccountNames">Cloudflare</h3>
-        <span v-if="status.cloudflare" class="badge">connected</span>
+        <span v-if="status.cloudflare" class="badge">{{
+          t("connect.badge.connected")
+        }}</span>
       </div>
 
       <template v-if="canConnectCloudflare">
-        <p class="hint">
-          Opens Cloudflare's own consent screen. It asks for the Workers
-          permissions the builder needs and nothing else, and the access token
-          is exchanged in this page wherever Cloudflare allows it.
-        </p>
+        <p class="hint">{{ t("connect.cloudflare.consentHint") }}</p>
         <p v-if="cloudflare.error.value" class="warn">
           {{ cloudflare.error.value }}
         </p>
@@ -379,12 +370,12 @@ onUnmounted(() => {
           >
             {{
               cloudflare.status.value === "waiting"
-                ? "Waiting for Cloudflare…"
+                ? t("connect.cloudflare.waiting")
                 : cloudflare.status.value === "exchanging"
-                  ? "Finishing…"
+                  ? t("connect.cloudflare.finishing")
                   : status.cloudflare
-                    ? "Reconnect Cloudflare"
-                    : "Connect Cloudflare"
+                    ? t("connect.cloudflare.reconnect")
+                    : t("connect.cloudflare.connect")
             }}
           </button>
           <button
@@ -393,24 +384,26 @@ onUnmounted(() => {
             class="ghost"
             @click="cloudflare.cancel()"
           >
-            Cancel
+            {{ t("connect.cancel") }}
           </button>
           <button
             type="button"
             class="ghost"
             @click="cloudflareManual = !cloudflareManual"
           >
-            {{ cloudflareManual ? "Hide token" : "Use my own token" }}
+            {{
+              cloudflareManual ? t("connect.hideToken") : t("connect.useOwnToken")
+            }}
           </button>
         </div>
       </template>
       <p v-else-if="!configLoaded" class="hint">
-        Checking how you can connect…
+        {{ t("connect.checkingOptions") }}
       </p>
 
       <template v-if="cloudflareFieldsVisible">
         <div class="field">
-          <label for="cf-token">Cloudflare token</label>
+          <label for="cf-token">{{ t("connect.cloudflare.tokenLabel") }}</label>
           <input
             id="cf-token"
             v-model="draft.cloudflareToken"
@@ -420,26 +413,27 @@ onUnmounted(() => {
             @blur="identifyCloudflareToken"
           />
           <p v-if="cloudflare.identifying.value" class="hint">
-            Checking the token with Cloudflare…
+            {{ t("connect.cloudflare.identifying") }}
           </p>
           <p class="hint">
             <a
               :href="cloudflareTokenUrl"
               target="_blank"
               rel="noreferrer noopener"
-              >Create a token on Cloudflare</a
+              >{{ t("connect.cloudflare.tokenLinkText") }}</a
             >
-            — press <strong>Create Token</strong>, scroll down to
-            <strong>Create Custom Token</strong>, and add these two permissions:
-            Workers&nbsp;Scripts&nbsp;→&nbsp;Edit and Workers&nbsp;Builds
-            Configuration&nbsp;→&nbsp;Edit. Then copy the token into the field
-            above.
+            {{ t("connect.cloudflare.tokenHintPress") }}
+            <strong>{{ t("connect.cloudflare.createTokenButton") }}</strong
+            >{{ t("connect.cloudflare.tokenHintScroll") }}
+            <strong>{{ t("connect.cloudflare.createCustomTokenButton") }}</strong
+            >{{ t("connect.cloudflare.tokenHintPermissions") }}
           </p>
           <p class="hint">
-            Create it on the page that link opens —
-            <strong>My Profile → API Tokens</strong>. Cloudflare offers tokens
-            under <strong>Manage Account</strong> too, but those cannot switch
-            on automatic publishing, so the next page would stop with an error.
+            {{ t("connect.cloudflare.profileHintIntro") }}
+            <strong>{{ t("connect.cloudflare.profileTokensPath") }}</strong
+            >{{ t("connect.cloudflare.profileHintMid") }}
+            <strong>{{ t("connect.cloudflare.manageAccountLabel") }}</strong>
+            {{ t("connect.cloudflare.profileHintTail") }}
           </p>
         </div>
       </template>
@@ -450,7 +444,9 @@ onUnmounted(() => {
         one, and the raw id only when Cloudflare could not be asked.
       -->
       <div v-if="cloudflareAccounts.length > 1" class="field">
-        <label for="cf-account-select">Account</label>
+        <label for="cf-account-select">{{
+          t("connect.cloudflare.accountLabel")
+        }}</label>
         <select id="cf-account-select" v-model="draft.cloudflareAccountId">
           <option
             v-for="account in cloudflareAccounts"
@@ -460,33 +456,36 @@ onUnmounted(() => {
             {{ account.name }}
           </option>
         </select>
-        <p class="hint">Your token can act on several — this is the one your apps go in.</p>
+        <p class="hint">{{ t("connect.cloudflare.accountSelectHint") }}</p>
       </div>
       <p v-else-if="cloudflareAccounts.length === 1" class="hint">
-        Account: <strong>{{ cloudflareAccounts[0].name }}</strong>
+        {{ t("connect.cloudflare.accountPrefix") }}
+        <strong>{{ cloudflareAccounts[0].name }}</strong>
       </p>
       <template v-else>
         <p v-if="cloudflare.identifyError.value" class="warn">
-          {{ cloudflare.identifyError.value }} You can enter it below instead: open
+          {{ cloudflare.identifyError.value }}
+          {{ t("connect.cloudflare.accountIdFallbackIntro") }}
           <a :href="cloudflareDashboardUrl" target="_blank" rel="noreferrer noopener"
-            >your Cloudflare dashboard</a
+            >{{ t("connect.cloudflare.dashboardLinkText") }}</a
           >
-          and copy the long code out of the address bar — the part right after
+          {{ t("connect.cloudflare.accountIdFallbackTail") }}
           <code>dash.cloudflare.com/</code>.
         </p>
         <div v-if="showAccountIdField" class="field">
-          <label for="cf-account">Cloudflare account ID</label>
+          <label for="cf-account">{{
+            t("connect.cloudflare.accountIdLabel")
+          }}</label>
           <input
             id="cf-account"
             v-model="draft.cloudflareAccountId"
             type="text"
             autocomplete="off"
             spellcheck="false"
-            placeholder="read from your token"
+            :placeholder="t('connect.cloudflare.accountIdPlaceholder')"
           />
           <p v-if="!cloudflare.identifyError.value" class="hint">
-            Normally there is nothing to fill in here — pasting the token above reads the
-            account from it.
+            {{ t("connect.cloudflare.accountIdHint") }}
           </p>
         </div>
         <!--
@@ -495,9 +494,17 @@ onUnmounted(() => {
           that brings someone back to this page.
         -->
         <details v-else class="owner">
-          <summary>Account: {{ draft.cloudflareAccountId }}</summary>
+          <summary>
+            {{
+              t("connect.cloudflare.accountSummary", {
+                id: draft.cloudflareAccountId,
+              })
+            }}
+          </summary>
           <div class="field owner__field">
-            <label for="cf-account-manual">Cloudflare account ID</label>
+            <label for="cf-account-manual">{{
+              t("connect.cloudflare.accountIdLabel")
+            }}</label>
             <input
               id="cf-account-manual"
               v-model="draft.cloudflareAccountId"
@@ -506,8 +513,7 @@ onUnmounted(() => {
               spellcheck="false"
             />
             <p class="hint">
-              Pasting a token again reads this from the token. Change it by hand only if
-              you know which account you want.
+              {{ t("connect.cloudflare.accountIdManualHint") }}
             </p>
           </div>
         </details>
@@ -518,11 +524,15 @@ onUnmounted(() => {
     <div v-if="showCursor" class="account">
       <div class="account-head">
         <h3 v-if="showAccountNames">Cursor</h3>
-        <span v-if="status.cursor" class="badge">connected</span>
-        <span v-else class="badge badge--soft">optional</span>
+        <span v-if="status.cursor" class="badge">{{
+          t("connect.badge.connected")
+        }}</span>
+        <span v-else class="badge badge--soft">{{
+          t("connect.badge.optional")
+        }}</span>
       </div>
       <div class="field">
-        <label for="cursor-token">API key</label>
+        <label for="cursor-token">{{ t("connect.cursor.keyLabel") }}</label>
         <input
           id="cursor-token"
           v-model="draft.cursorToken"
@@ -532,24 +542,23 @@ onUnmounted(() => {
           placeholder="crsr_…"
         />
         <p class="hint">
-          Create one in
+          {{ t("connect.cursor.keyHintIntro") }}
           <a :href="cursorKeysUrl" target="_blank" rel="noreferrer noopener"
-            >Cursor's dashboard</a
-          >. Used to start a cloud agent on the new repository. Cursor's API
-          cannot be called from a browser and has no consent flow, so this one
-          key is sent to the builder host for that single call. It is never
-          given to the agent itself.
+            >{{ t("connect.cursor.dashboardLinkText") }}</a
+          >{{ t("connect.cursor.keyHintTail") }}
         </p>
-        <p class="hint">
-          Leave it empty if you would rather write the code yourself, or use another tool
-          on the repository — Claude Code, Codex, your editor. Nothing else here depends
-          on it.
-        </p>
+        <p class="hint">{{ t("connect.cursor.optionalHint") }}</p>
       </div>
     </div>
 
     <button type="button" :disabled="saving" @click="save">
-      {{ saving ? "Saving…" : showAccountNames ? "Save accounts" : "Save" }}
+      {{
+        saving
+          ? t("connect.save.saving")
+          : showAccountNames
+            ? t("connect.save.accounts")
+            : t("connect.save.one")
+      }}
     </button>
   </section>
 </template>

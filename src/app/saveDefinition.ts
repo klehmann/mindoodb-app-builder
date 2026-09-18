@@ -11,6 +11,7 @@
  * fetch is refused — the app's origin need not allow this page to read it — the tab is
  * the honest fallback, and the user can save from there.
  */
+import { t } from "@/i18n";
 
 export type SaveDefinitionOutcome = "saved" | "opened";
 
@@ -58,16 +59,16 @@ export async function saveAppDefinition(
   try {
     safeUrl = new URL(definitionUrl);
   } catch {
-    throw new Error("This app has no web address yet.");
+    throw new Error(t("saveDefinition.noUrl"));
   }
   if (safeUrl.protocol !== "https:" && safeUrl.protocol !== "http:") {
-    throw new Error("This app has no web address yet.");
+    throw new Error(t("saveDefinition.noUrl"));
   }
 
   try {
     const response = await fetchImpl(safeUrl.href);
     if (!response.ok) {
-      throw new Error(`The app answered ${response.status}.`);
+      throw new Error(t("saveDefinition.badStatus", { status: response.status }));
     }
     const text = await response.text();
     const objectUrl = createObjectUrl(

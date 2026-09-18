@@ -29,6 +29,8 @@ describe("probeOrigin", () => {
 
     expect(result.state).toBe("ready");
     expect(result.definition?.label).toBe("Team Notes");
+    // Nothing to say when it worked, so there is no note to word.
+    expect(result.detail).toBeNull();
     expect(fetchImpl).toHaveBeenCalledWith(
       "https://team-notes.acme.workers.dev/haven-app.json",
       expect.objectContaining({ cache: "no-store" }),
@@ -54,7 +56,8 @@ describe("probeOrigin", () => {
     });
 
     expect(result.state).toBe("not-published");
-    expect(result.detail).toContain("404");
+    // The status travels as a parameter, so the sentence around it can be translated.
+    expect(result.detail).toEqual({ code: "originHttpStatus", params: { status: 404 } });
   });
 
   it("reports not-published when the response is not JSON", async () => {
@@ -64,6 +67,7 @@ describe("probeOrigin", () => {
     });
 
     expect(result.state).toBe("not-published");
+    expect(result.detail).toEqual({ code: "originNotJson" });
   });
 
   it("surfaces the first validation error for a malformed definition", async () => {
@@ -73,7 +77,9 @@ describe("probeOrigin", () => {
     });
 
     expect(result.state).toBe("not-published");
-    expect(result.detail).toContain("format");
+    // The SDK's own wording, quoted rather than translated.
+    expect(result.detail?.code).toBe("external");
+    expect(String(result.detail?.params?.message)).toContain("format");
   });
 
   it("reports a mismatch when the origin serves a different app", async () => {
@@ -85,8 +91,10 @@ describe("probeOrigin", () => {
     });
 
     expect(result.state).toBe("mismatched");
-    expect(result.detail).toContain("someone-elses-app");
-    expect(result.detail).toContain("team-notes");
+    expect(result.detail).toEqual({
+      code: "originMismatch",
+      params: { servedAppId: "someone-elses-app", expectedAppId: "team-notes" },
+    });
   });
 
   it("accepts a URL that already points at the definition file", async () => {
@@ -152,7 +160,7 @@ describe("waitForOrigin", () => {
     });
 
     expect(result.state).toBe("not-published");
-    expect(result.detail).toContain("502");
+    expect(result.detail).toEqual({ code: "originHttpStatus", params: { status: 502 } });
   });
 
   it("stops immediately on a mismatch, because waiting cannot fix it", async () => {

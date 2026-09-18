@@ -12,9 +12,12 @@
  * carried on; a finished one is a link to open and share.
  */
 import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 
 import UiIcon from "@/app/components/UiIcon.vue";
 import { appStage, type BuilderAppStage, type StoredAppRecord } from "@/core/appRecords";
+
+const { t } = useI18n();
 
 const props = defineProps<{
   records: StoredAppRecord[];
@@ -58,14 +61,14 @@ function confirmRemoval(stored: StoredAppRecord): void {
   emit("forget", stored);
 }
 
-/** Plain words for the five stages. No jargon: these are read at a glance. */
-const STAGE_LABELS: Record<BuilderAppStage, string> = {
-  planned: "Not built yet",
-  repository: "Code created, not published",
-  published: "Published, not live yet",
-  live: "Live",
-  installed: "Live, added to Haven",
-};
+/**
+ * Plain words for the five stages. No jargon: these are read at a glance.
+ *
+ * Stage ids are the translation keys, so `core/appRecords` stays free of display text.
+ */
+function stageLabel(stage: BuilderAppStage): string {
+  return t(`list.stages.${stage}`);
+}
 
 const rows = computed(() =>
   props.records.map((stored) => {
@@ -73,8 +76,8 @@ const rows = computed(() =>
     return {
       stored,
       stage,
-      label: stored.record.label || stored.record.appId || "Untitled app",
-      stageLabel: STAGE_LABELS[stage],
+      label: stored.record.label || stored.record.appId || t("list.row.untitled"),
+      stageLabel: stageLabel(stage),
       finished: stage === "live" || stage === "installed",
       created: formatDate(stored.record.createdAt),
     };
@@ -103,19 +106,19 @@ function formatDate(iso: string): string {
   <section class="panel">
     <header class="apps__head">
       <div>
-        <h2>Your apps</h2>
-        <p class="muted">
-          Describe what you need, and it gets built, published, and added to Haven.
-        </p>
+        <h2>{{ t("list.heading") }}</h2>
+        <p class="muted">{{ t("list.intro") }}</p>
       </div>
       <!--
         Only alongside a list. With nothing built yet the empty state below carries its
         own "Describe an app", and two buttons doing the same thing read as a choice.
       -->
-      <button v-if="rows.length > 0" type="button" @click="emit('create')">New app</button>
+      <button v-if="rows.length > 0" type="button" @click="emit('create')">
+        {{ t("list.actions.new") }}
+      </button>
     </header>
 
-    <p v-if="loading" class="muted">Looking for your apps…</p>
+    <p v-if="loading" class="muted">{{ t("list.loading") }}</p>
 
     <!--
       The empty state carries the pitch, because on a first visit it is the whole page.
@@ -123,12 +126,9 @@ function formatDate(iso: string): string {
     -->
     <div v-else-if="rows.length === 0" class="apps__empty">
       <UiIcon name="intro" :size="34" />
-      <p class="apps__empty-title">Build your first app</p>
-      <p class="muted">
-        Tell us what your team is missing. An AI developer writes it, it gets published to
-        the web, and Haven installs it — you can keep changing it afterwards.
-      </p>
-      <button type="button" @click="emit('create')">Describe an app</button>
+      <p class="apps__empty-title">{{ t("list.empty.title") }}</p>
+      <p class="muted">{{ t("list.empty.body") }}</p>
+      <button type="button" @click="emit('create')">{{ t("list.empty.action") }}</button>
     </div>
 
     <ul v-else class="apps__list">
@@ -140,7 +140,9 @@ function formatDate(iso: string): string {
               <span v-if="row.stored.record.description" class="apps__row-sub">
                 {{ row.stored.record.description }}
               </span>
-              <span v-else-if="row.created" class="apps__row-sub">Started {{ row.created }}</span>
+              <span v-else-if="row.created" class="apps__row-sub">
+                {{ t("list.row.started", { date: row.created }) }}
+              </span>
             </span>
             <span class="apps__row-side">
               <span :class="['badge', row.finished ? 'badge--live' : 'badge--soft']">
@@ -156,8 +158,8 @@ function formatDate(iso: string): string {
             v-if="canForget"
             type="button"
             class="ghost apps__remove"
-            :aria-label="`Remove ${row.label} from this list`"
-            :title="`Remove ${row.label} from this list`"
+            :aria-label="t('list.row.remove', { label: row.label })"
+            :title="t('list.row.remove', { label: row.label })"
             @click="askToRemove(row.stored.documentId)"
           >
             <UiIcon name="trash" :size="17" />
@@ -165,29 +167,23 @@ function formatDate(iso: string): string {
         </div>
 
         <div v-if="pendingRemoval === row.stored.documentId" class="apps__confirm">
-          <p class="apps__confirm-title">Remove “{{ row.label }}” from this list?</p>
-          <p class="hint">
-            This deletes only what the App Builder saved about the app, here in its own
-            database. Nothing else is touched: the project stays on GitHub, the published
-            app keeps running on Cloudflare, any Cursor agent stays where it is, and
-            Haven keeps it installed. You can add the app to this list again by building
-            a new one — but the address and description saved here will be gone.
+          <p class="apps__confirm-title">
+            {{ t("list.confirm.title", { label: row.label }) }}
           </p>
+          <p class="hint">{{ t("list.confirm.hint") }}</p>
           <div class="apps__confirm-actions">
             <button type="button" class="danger" @click="confirmRemoval(row.stored)">
-              Remove from list
+              {{ t("list.confirm.remove") }}
             </button>
-            <button type="button" class="ghost" @click="cancelRemoval">Keep it</button>
+            <button type="button" class="ghost" @click="cancelRemoval">
+              {{ t("list.confirm.keep") }}
+            </button>
           </div>
         </div>
       </li>
     </ul>
 
-    <p v-if="!canStore" class="hint">
-      This App Builder database is read-only for you, so finished apps are not kept in
-      this list. Everything still works — copy the app’s address before you leave the
-      page.
-    </p>
+    <p v-if="!canStore" class="hint">{{ t("list.readOnly") }}</p>
   </section>
 </template>
 

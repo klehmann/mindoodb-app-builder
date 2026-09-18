@@ -19,8 +19,25 @@
 import type { AppIdentity, TemplateSources } from "./appIdentity";
 import { buildIdentityFiles } from "./appIdentity";
 import type { RepoReadableResult } from "./cloudflare";
+import {
+  externalMessage,
+  externalNote,
+  FlowNoteError,
+  type FlowNote,
+  type FlowNoteCode,
+  type RepoAccessNextCode,
+} from "./flowNotes";
 import type { GitHubRepository } from "./github";
 import type { OriginProbeResult } from "./originProbe";
+
+export {
+  FLOW_NOTE_CODES,
+  FlowNoteError,
+  isFlowNoteCode,
+  type FlowNote,
+  type FlowNoteCode,
+  type RepoAccessNextCode,
+} from "./flowNotes";
 
 export type FlowStepId =
   | "check-name"
@@ -39,8 +56,11 @@ export type FlowStepStatus = "pending" | "running" | "done" | "skipped" | "faile
 export interface FlowStep {
   id: FlowStepId;
   status: FlowStepStatus;
-  /** One line for the user: what happened, or why it did not. */
-  detail: string;
+  /**
+   * One line for the user: what happened, or why it did not — as a code plus its values,
+   * so the wording is chosen where it is rendered. Null while there is nothing to say.
+   */
+  detail: FlowNote | null;
 }
 
 export const GITHUB_PHASE_STEP_IDS: FlowStepId[] = [
@@ -81,7 +101,7 @@ export const DEPLOY_NOW_STEP_IDS: FlowStepId[] = [
 export const REGISTER_HAVEN_STEP_IDS: FlowStepId[] = ["propose"];
 
 function createSteps(ids: FlowStepId[]): FlowStep[] {
-  return ids.map((id) => ({ id, status: "pending", detail: "" }));
+  return ids.map((id) => ({ id, status: "pending", detail: null }));
 }
 
 export function createInitialSteps(): FlowStep[] {
@@ -148,7 +168,7 @@ export interface CreateAppDependencies {
     connectPushToDeploy: (input: {
       repository: GitHubRepository;
       worker: WorkerDeployment;
-    }) => Promise<{ detail: string }>;
+    }) => Promise<{ detail: FlowNote }>;
     /**
      * Start a build with no push behind it. Optional on the one-shot so older callers
      * still compile; the Cloudflare page always supplies it.
@@ -156,7 +176,7 @@ export interface CreateAppDependencies {
     startBuild?: (input: {
       worker: WorkerDeployment;
       branch: string;
-    }) => Promise<{ detail: string }>;
+    }) => Promise<{ detail: FlowNote }>;
   };
   waitForOrigin: (input: { url: string; expectedAppId: string }) => Promise<OriginProbeResult>;
   cursor?: {
@@ -195,7 +215,7 @@ export type DeployNowDependencies = CreateAppDependencies & {
     startBuild: (input: {
       worker: WorkerDeployment;
       branch: string;
-    }) => Promise<{ detail: string }>;
+    }) => Promise<{ detail: FlowNote }>;
   };
 };
 
@@ -231,13 +251,24 @@ export interface CreateAppResult {
    */
   identityCommitted: boolean;
   /** Non-fatal problems worth showing: a skipped agent, a declined install, warnings. */
-  warnings: string[];
+  warnings: FlowNote[];
   /** Set when the flow stopped early. The step list says where. */
-  error: string | null;
+  error: FlowNote | null;
 }
 
-function readErrorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
+/**
+ * What went wrong, as a note.
+ *
+ * A dependency that knew what happened says so with a {@link FlowNoteError}, and that note
+ * is used as-is. A plain `Error` carries wording we did not write — GitHub's, Cloudflare's,
+ * Cursor's — so it travels as an `external` note and is quoted rather than translated.
+ * Anything else gets the caller's own code, which is the case a translator can act on.
+ */
+function readErrorMessage(error: unknown, fallback: FlowNoteCode): FlowNote {
+  if (error instanceof FlowNoteError) {
+    return error.note;
+  }
+  return error instanceof Error ? externalNote(error.message) : { code: fallback };
 }
 
 /**
@@ -268,9 +299,9 @@ async function checkpoint(deps: CreateAppDependencies, result: CreateAppResult):
  */
 interface StepRunner {
   result: CreateAppResult;
-  update: (id: FlowStepId, status: FlowStepStatus, detail?: string) => void;
-  abort: (id: FlowStepId, message: string, keepPending?: FlowStepId[]) => CreateAppResult;
-  warn: (message: string) => void;
+  update: (id: FlowStepId, status: FlowStepStatus, detail?: FlowNote | null) => void;
+  abort: (id: FlowStepId, note: FlowNote, keepPending?: FlowStepId[]) => CreateAppResult;
+  warn: (note: FlowNote) => void;
 }
 
 function createRunner(steps: FlowStep[], onStep?: (steps: FlowStep[]) => void): StepRunner {
@@ -287,7 +318,11 @@ function createRunner(steps: FlowStep[], onStep?: (steps: FlowStep[]) => void): 
 
   const emit = (): void => onStep?.(steps.map((entry) => ({ ...entry })));
 
-  const update = (id: FlowStepId, status: FlowStepStatus, detail = ""): void => {
+  const update = (
+    id: FlowStepId,
+    status: FlowStepStatus,
+    detail: FlowNote | null = null,
+  ): void => {
     const step = steps.find((entry) => entry.id === id);
     if (step) {
       step.status = status;
@@ -298,35 +333,34 @@ function createRunner(steps: FlowStep[], onStep?: (steps: FlowStep[]) => void): 
 
   const abort = (
     id: FlowStepId,
-    message: string,
+    note: FlowNote,
     keepPending: FlowStepId[] = [],
   ): CreateAppResult => {
-    update(id, "failed", message);
+    update(id, "failed", note);
     for (const step of steps) {
       if (step.status === "pending" && !keepPending.includes(step.id)) {
         step.status = "skipped";
       }
     }
     emit();
-    result.error = message;
+    result.error = note;
     return result;
   };
 
-  return { result, update, abort, warn: (message) => result.warnings.push(message) };
+  return { result, update, abort, warn: (note) => result.warnings.push(note) };
 }
 
 /**
  * What to do about a repository Cloudflare cannot read, worded the same wherever it is
  * found — during the build, or again when the rescue build is asked for.
+ *
+ * One note rather than assembled fragments: the help text is four sentences that only
+ * make sense together, and a translator handed half of them cannot reorder anything. The
+ * two things that differ between the call sites travel as parameters — which button to
+ * press next (itself a code, not a sentence) and Cloudflare's own refusal, quoted.
  */
-function repoAccessFix(fullName: string, detail: string, next: string): string {
-  return (
-    `Cloudflare cannot read ${fullName}, so a push to it will not build. Its GitHub App ` +
-    "only reaches repositories it is installed on, and a repository that did not exist " +
-    "a moment ago is not among them. Add this one at " +
-    'https://github.com/settings/installations, or set that installation to "All ' +
-    `repositories". ${next} Cloudflare said: ${detail}`
-  );
+function repoAccessFix(fullName: string, said: string, next: RepoAccessNextCode): FlowNote {
+  return { code: "repoAccessFix", params: { fullName, said, next } };
 }
 
 /**
@@ -341,7 +375,7 @@ async function awaitOrigin(
   keepPending: FlowStepId[] = [],
 ): Promise<boolean> {
   try {
-    run.update("wait-origin", "running", "Waiting for the first Cloudflare build…");
+    run.update("wait-origin", "running", { code: "waitingForBuild" });
     const probe = await deps.waitForOrigin({ url: worker.url, expectedAppId });
     if (probe.state !== "ready") {
       // A silent origin means the build did not publish, and the reason for that lives
@@ -352,29 +386,20 @@ async function awaitOrigin(
       // and `check-repo-access` only catches it when Cloudflare refuses clearly: if
       // Cloudflare's GitHub App is limited to hand-picked repositories, this one is not
       // among them, so no build was ever triggered and the Builds tab is empty.
-      const hint =
-        probe.state === "mismatched"
-          ? ""
-          : " The repository and the Worker exist, so the build is what to look at:" +
-            " Cloudflare, the Worker, Settings, Builds. An empty build list there means" +
-            " Cloudflare's GitHub App never saw the repository — set it to" +
-            ' "All repositories" at https://github.com/settings/installations, or add' +
-            " this one to it, then press Build now.";
-      run.abort(
-        "wait-origin",
-        `${probe.detail || "The app did not come live in time."}${hint}`,
-        keepPending,
-      );
+      //
+      // Carried as a warning rather than glued onto the front of the probe's own reason:
+      // two notes stay two translatable sentences, and the step keeps saying exactly how
+      // the origin was failing.
+      if (probe.state !== "mismatched") {
+        run.warn({ code: "originBuildLogHint" });
+      }
+      run.abort("wait-origin", probe.detail ?? { code: "originNotLiveInTime" }, keepPending);
       return false;
     }
-    run.update("wait-origin", "done", `${worker.url} is serving haven-app.json.`);
+    run.update("wait-origin", "done", { code: "originServing", params: { url: worker.url } });
     return true;
   } catch (error) {
-    run.abort(
-      "wait-origin",
-      readErrorMessage(error, "The app origin could not be checked."),
-      keepPending,
-    );
+    run.abort("wait-origin", readErrorMessage(error, "originCheckFailed"), keepPending);
     return false;
   }
 }
@@ -386,8 +411,8 @@ async function proposeToHaven(
   worker: WorkerDeployment,
 ): Promise<void> {
   if (!deps.haven) {
-    run.update("propose", "skipped", "This Haven install did not grant app proposal.");
-    run.warn(`Add the app manually in Haven using ${worker.url}`);
+    run.update("propose", "skipped", { code: "havenNotGranted" });
+    run.warn({ code: "havenAddManually", params: { url: worker.url } });
     return;
   }
 
@@ -403,21 +428,28 @@ async function proposeToHaven(
         if (/could not create the database .+: not found/i.test(warning)) {
           continue;
         }
-        run.warn(warning);
+        // Haven's own wording, passed through: it knows what went wrong with the install
+        // and this builder cannot improve on it.
+        run.warn(externalNote(warning));
       }
-      run.update("propose", "done", `${proposed.label} is installed in Haven.`);
+      run.update("propose", "done", {
+        code: "havenInstalled",
+        params: { label: proposed.label },
+      });
     } else if (proposed.reason === "declined") {
-      run.update("propose", "skipped", "You declined the install. The app is still deployed.");
-      run.warn(`Add the app later in Haven using ${worker.url}`);
+      run.update("propose", "skipped", { code: "havenDeclined" });
+      run.warn({ code: "havenAddLater", params: { url: worker.url } });
     } else {
-      const message = proposed.message || "Haven could not read the app definition.";
-      run.warn(message);
-      run.update("propose", "failed", message);
+      const note: FlowNote = proposed.message
+        ? externalNote(proposed.message)
+        : { code: "havenReadFailed" };
+      run.warn(note);
+      run.update("propose", "failed", note);
     }
   } catch (error) {
-    const message = readErrorMessage(error, "Haven could not be asked to install the app.");
-    run.warn(message);
-    run.update("propose", "failed", message);
+    const note = readErrorMessage(error, "havenProposeFailed");
+    run.warn(note);
+    run.update("propose", "failed", note);
   }
 }
 
@@ -436,22 +468,22 @@ async function runGitHubPhase(
    */
   if (input.existingRepository) {
     result.repository = input.existingRepository;
-    update("check-name", "skipped", `${input.existingRepository.fullName} is yours already.`);
-    update("create-repo", "skipped", "The project was created in an earlier attempt.");
+    update("check-name", "skipped", {
+      code: "nameAlreadyYours",
+      params: { fullName: input.existingRepository.fullName },
+    });
+    update("create-repo", "skipped", { code: "repoFromEarlierAttempt" });
   } else {
     update("check-name", "running");
     try {
       const existing = await deps.github.getRepository(owner, identity.slug);
       if (existing) {
-        abort(
-          "check-name",
-          `${existing.fullName} already exists. Choose a different repository name.`,
-        );
+        abort("check-name", { code: "nameTaken", params: { fullName: existing.fullName } });
         return false;
       }
-      update("check-name", "done", `${identity.slug} is available.`);
+      update("check-name", "done", { code: "nameAvailable", params: { slug: identity.slug } });
     } catch (error) {
-      abort("check-name", readErrorMessage(error, "The repository name could not be checked."));
+      abort("check-name", readErrorMessage(error, "nameCheckFailed"));
       return false;
     }
 
@@ -463,9 +495,12 @@ async function runGitHubPhase(
         private: input.private ?? false,
       });
       result.repository = repository;
-      update("create-repo", "done", repository.fullName);
+      update("create-repo", "done", {
+        code: "repoCreated",
+        params: { fullName: repository.fullName },
+      });
     } catch (error) {
-      abort("create-repo", readErrorMessage(error, "The repository could not be created."));
+      abort("create-repo", readErrorMessage(error, "repoCreateFailed"));
       return false;
     }
   }
@@ -481,9 +516,12 @@ async function runGitHubPhase(
       files,
     });
     result.identityCommitted = true;
-    update("commit-identity", "done", `${files.length} files named for ${identity.label}.`);
+    update("commit-identity", "done", {
+      code: "identityCommitted",
+      params: { count: files.length, label: identity.label },
+    });
   } catch (error) {
-    abort("commit-identity", readErrorMessage(error, "The app identity could not be committed."));
+    abort("commit-identity", readErrorMessage(error, "identityCommitFailed"));
     return false;
   }
 
@@ -500,7 +538,7 @@ async function checkCloudflareRepoAccess(
   repository: GitHubRepository,
 ): Promise<"readable" | "unreadable" | "unknown"> {
   if (!deps.cloudflare.checkRepoReadable) {
-    run.update("check-repo-access", "skipped", "No Cloudflare account to ask.");
+    run.update("check-repo-access", "skipped", { code: "noCloudflareAccount" });
     return "unknown";
   }
 
@@ -511,16 +549,14 @@ async function checkCloudflareRepoAccess(
       run.update("check-repo-access", "failed", readable.detail);
       return "unreadable";
     }
-    run.update(
-      "check-repo-access",
-      "done",
-      readable.state === "readable" ? readable.detail : `Not confirmed: ${readable.detail}`,
-    );
+    // The check's own note already says whether the answer was a yes or an unconfirmed
+    // maybe — `repoAccessUnconfirmed` carries that, so nothing is prefixed here.
+    run.update("check-repo-access", "done", readable.detail);
     return readable.state === "readable" ? "readable" : "unknown";
   } catch (error) {
     // A check that could not run says nothing about the build, so it must not colour
     // one. This is the same reasoning as `unknown` inside the check itself.
-    run.update("check-repo-access", "done", readErrorMessage(error, "Could not be checked."));
+    run.update("check-repo-access", "done", readErrorMessage(error, "repoAccessCheckFailed"));
     return "unknown";
   }
 }
@@ -535,13 +571,12 @@ async function runCloudflarePhase(
   const { identity, repository } = input;
 
   const access = await checkCloudflareRepoAccess(run, deps, repository);
-  let unreadable: string | null = null;
+  let unreadable: FlowNote | null = null;
   if (access === "unreadable") {
     unreadable = repoAccessFix(
       repository.fullName,
-      run.result.steps.find((step) => step.id === "check-repo-access")?.detail ||
-        "Repository not found",
-      "Then press Start first build — the Worker can still be wired without a push.",
+      externalMessage(run.result.steps.find((step) => step.id === "check-repo-access")?.detail),
+      "repoAccessNextStartFirstBuild",
     );
     warn(unreadable);
   }
@@ -551,9 +586,12 @@ async function runCloudflarePhase(
     update("create-worker", "running");
     worker = await deps.cloudflare.ensureWorker({ name: identity.slug });
     result.worker = worker;
-    update("create-worker", "done", worker.reused ? `${worker.url} (existing)` : worker.url);
+    update("create-worker", "done", {
+      code: worker.reused ? "workerReused" : "workerReserved",
+      params: { url: worker.url },
+    });
   } catch (error) {
-    abort("create-worker", readErrorMessage(error, "The Worker could not be created."), keepPending);
+    abort("create-worker", readErrorMessage(error, "workerCreateFailed"), keepPending);
     return false;
   }
 
@@ -562,24 +600,20 @@ async function runCloudflarePhase(
     const connected = await deps.cloudflare.connectPushToDeploy({ repository, worker });
     update("connect-builds", "done", connected.detail);
   } catch (error) {
-    abort(
-      "connect-builds",
-      readErrorMessage(error, "Push-to-deploy could not be configured."),
-      keepPending,
-    );
+    abort("connect-builds", readErrorMessage(error, "pushToDeployFailed"), keepPending);
     return false;
   }
 
   if (unreadable) {
-    update("start-build", "skipped", "No build can run until Cloudflare can read the repository.");
-    update("wait-origin", "skipped", "No build can run until Cloudflare can read the repository.");
-    update("propose", "skipped", "Haven reads the app definition from the live URL.");
+    update("start-build", "skipped", { code: "noBuildWithoutAccess" });
+    update("wait-origin", "skipped", { code: "noBuildWithoutAccess" });
+    update("propose", "skipped", { code: "havenNeedsLiveUrl" });
     result.error = unreadable;
     return true;
   }
 
   if (!deps.cloudflare.startBuild) {
-    update("start-build", "skipped", "No way to start a build without a push.");
+    update("start-build", "skipped", { code: "noStartBuildCapability" });
   } else {
     try {
       update("start-build", "running");
@@ -589,7 +623,7 @@ async function runCloudflarePhase(
       });
       update("start-build", "done", started.detail);
     } catch (error) {
-      abort("start-build", readErrorMessage(error, "The build could not be started."), keepPending);
+      abort("start-build", readErrorMessage(error, "buildStartFailed"), keepPending);
       return false;
     }
   }
@@ -599,7 +633,7 @@ async function runCloudflarePhase(
   }
 
   if (input.skipPropose) {
-    run.update("propose", "skipped", "Press Register in Haven when you are ready.");
+    run.update("propose", "skipped", { code: "pressRegisterInHaven" });
     return true;
   }
 
@@ -613,7 +647,7 @@ async function runCursorPhase(
   deps: CreateAppDependencies,
 ): Promise<void> {
   if (!deps.cursor) {
-    run.update("launch-agent", "skipped", "No Cursor API key connected.");
+    run.update("launch-agent", "skipped", { code: "noCursorKey" });
     return;
   }
 
@@ -621,11 +655,11 @@ async function runCursorPhase(
     run.update("launch-agent", "running");
     const agent = await deps.cursor.launchAgent({ repository });
     run.result.agent = agent;
-    run.update("launch-agent", "done", agent.url);
+    run.update("launch-agent", "done", { code: "agentStarted", params: { url: agent.url } });
   } catch (error) {
-    const message = readErrorMessage(error, "The Cursor agent could not be started.");
-    run.warn(message);
-    run.update("launch-agent", "failed", message);
+    const note = readErrorMessage(error, "agentStartFailed");
+    run.warn(note);
+    run.update("launch-agent", "failed", note);
   }
 }
 
@@ -760,11 +794,14 @@ export async function deployNow(
 
   const access = await checkCloudflareRepoAccess(run, deps, repository);
   if (access === "unreadable") {
-    const detail =
-      result.steps.find((step) => step.id === "check-repo-access")?.detail || "Repository not found";
+    // The step's note is Cloudflare's refusal, and the abort replaces it — so the
+    // refusal is carried into the help text rather than lost.
+    const said = externalMessage(
+      result.steps.find((step) => step.id === "check-repo-access")?.detail,
+    );
     return run.abort(
       "check-repo-access",
-      repoAccessFix(repository.fullName, detail, "Then press Build now again."),
+      repoAccessFix(repository.fullName, said, "repoAccessNextBuildAgain"),
     );
   }
 
@@ -776,7 +813,7 @@ export async function deployNow(
     });
     update("start-build", "done", started.detail);
   } catch (error) {
-    return run.abort("start-build", readErrorMessage(error, "The build could not be started."));
+    return run.abort("start-build", readErrorMessage(error, "buildStartFailed"));
   }
 
   if (!(await awaitOrigin(run, deps, worker, input.appId))) {

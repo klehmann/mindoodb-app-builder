@@ -33,11 +33,13 @@ import {
   createRegisterHavenSteps,
   deployNow as runDeployNow,
   deployToCloudflare as runDeployToCloudflare,
+  FlowNoteError,
   launchCursorWork as runLaunchCursorWork,
   registerInHaven as runRegisterInHaven,
   type AgentHandle,
   type CreateAppResult,
   type DeployNowDependencies,
+  type FlowNote,
   type FlowStep,
   type FlowStepId,
 } from "@/core/createAppFlow";
@@ -67,6 +69,7 @@ import {
   type BuilderHostConfig,
 } from "@/app/hostApi";
 import type { useBuilderSession } from "@/app/useBuilderSession";
+import { t } from "@/i18n";
 
 export interface NewAppForm {
   label: string;
@@ -140,10 +143,10 @@ export function useBuilderFlow(
 
   const formError = computed(() => {
     if (!identity.value.label) {
-      return "The app needs a name.";
+      return t("flow.validation.nameRequired");
     }
     if (!isValidSlug(identity.value.slug)) {
-      return "The repository name may only contain lowercase letters, digits, and dashes.";
+      return t("flow.validation.slugInvalid");
     }
     return null;
   });
@@ -155,30 +158,30 @@ export function useBuilderFlow(
       return formError.value;
     }
     if (!session.credentialsStatus.value.github) {
-      return "Connect GitHub first.";
+      return t("flow.ready.connectGithub");
     }
     return null;
   });
 
   const cloudflareError = computed(() => {
     if (!session.credentialsStatus.value.github) {
-      return "Connect GitHub first.";
+      return t("flow.ready.connectGithub");
     }
     if (!session.credentialsStatus.value.cloudflare) {
-      return "Connect Cloudflare first.";
+      return t("flow.ready.connectCloudflare");
     }
     if (!result.value?.repository) {
-      return "Create the GitHub repository first, or skip back if it already exists.";
+      return t("flow.ready.createRepositoryOrSkipBack");
     }
     return null;
   });
 
   const cursorError = computed(() => {
     if (!result.value?.repository) {
-      return "Create the GitHub repository first.";
+      return t("flow.ready.createRepository");
     }
     if (!session.credentialsStatus.value.cursor) {
-      return "Paste a Cursor API key to start an agent.";
+      return t("flow.ready.pasteCursorKey");
     }
     return null;
   });
@@ -192,11 +195,15 @@ export function useBuilderFlow(
     if (formError.value) {
       return formError.value;
     }
+    // The setup page is named by interpolating its own link label rather than spelling
+    // it out here: the two drifted apart once already (this said "Setup" long after the
+    // footer link became "Connections and setup"), and a translator cannot catch that.
+    const setup = t("app.footer.setupLink");
     if (!session.credentialsStatus.value.github) {
-      return "GitHub is not connected yet — open Setup to connect it.";
+      return t("flow.ready.githubNotConnected", { setup });
     }
     if (!session.credentialsStatus.value.cloudflare) {
-      return "Cloudflare is not connected yet — open Setup to connect it.";
+      return t("flow.ready.cloudflareNotConnected", { setup });
     }
     return null;
   });
@@ -267,11 +274,16 @@ export function useBuilderFlow(
             ref: repository.defaultBranch,
           });
           if (!filled) {
-            throw new Error(
-              `GitHub has not finished copying the template into ${repository.fullName}. `
-                + "The project is there and empty — press Continue on it in a moment to "
-                + "pick up from here.",
-            );
+            /*
+             * A note rather than a worded message: this is thrown into the flow, which
+             * reports it, and the language it is shown in has to be the language the
+             * reader is in then — not the one that happened to be active mid-build. The
+             * button it names is filled in at that point too, from the button's own key.
+             */
+            throw new FlowNoteError({
+              code: "templateCopyPending",
+              params: { fullName: repository.fullName },
+            });
           }
 
           const read = async (path: string) => {
@@ -283,7 +295,7 @@ export function useBuilderFlow(
               ref: repository.defaultBranch,
             });
             if (text === null) {
-              throw new Error(`The template is missing ${path}.`);
+              throw new FlowNoteError({ code: "templateMissingFile", params: { path } });
             }
             return text;
           };
@@ -330,7 +342,16 @@ export function useBuilderFlow(
             scriptTag: worker.scriptTag,
             branch,
           });
-          return { detail: `Cloudflare is building ${branch} (${build.buildUuid}).` };
+          /*
+           * A code, not a sentence — even though this runs in the browser where `t` is
+           * available. A string baked in here freezes in the language that was active
+           * when the build started, and Haven can switch language at any time.
+           */
+          const detail: FlowNote = {
+            code: "buildStarted",
+            params: { branch, buildUuid: build.buildUuid },
+          };
+          return { detail };
         },
         connectPushToDeploy: async ({ repository, worker }) => {
           const connection = await connectCloudflarePushToDeploy({
@@ -345,11 +366,10 @@ export function useBuilderFlow(
             scriptTag: worker.scriptTag,
             branch: repository.defaultBranch,
           });
-          return {
-            detail: connection.reused
-              ? `Reusing the existing build trigger for ${repository.name}.`
-              : `Pushes to ${repository.defaultBranch} now deploy themselves.`,
-          };
+          const detail: FlowNote = connection.reused
+            ? { code: "buildTriggerReused", params: { name: repository.name } }
+            : { code: "pushToDeployConnected", params: { branch: repository.defaultBranch } };
+          return { detail };
         },
       },
       waitForOrigin: (input) =>
@@ -359,7 +379,19 @@ export function useBuilderFlow(
           onAttempt: (probe, attempt) => {
             const step = steps.value.find((entry) => entry.id === "wait-origin");
             if (step && probe.state !== "ready") {
-              step.detail = `Attempt ${attempt}: ${probe.detail}`;
+              /*
+               * The probe's reason is carried as a nested code rather than resolved here,
+               * which is what stopped "Versuch 3 — The origin did not answer yet.": an
+               * English sentence interpolated into a translated frame.
+               */
+              step.detail = {
+                code: "originAttempt",
+                params: {
+                  ...(probe.detail?.params ?? {}),
+                  attempt,
+                  note: probe.detail?.code ?? "originNoAnswer",
+                },
+              };
               steps.value = [...steps.value];
             }
           },

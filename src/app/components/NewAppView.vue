@@ -9,11 +9,14 @@
  * them.
  */
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 
 import NewAppPanel from "@/app/components/NewAppPanel.vue";
 import ProgressPanel from "@/app/components/ProgressPanel.vue";
 import type { NewAppForm } from "@/app/useBuilderFlow";
 import type { CreateAppResult, FlowStep } from "@/core/createAppFlow";
+
+const { t } = useI18n();
 
 const props = defineProps<{
   form: NewAppForm;
@@ -28,6 +31,8 @@ const props = defineProps<{
   cursorReady: boolean;
   /** True when the user chose per-repository access, which needs a warning up front. */
   narrowAccess: boolean;
+  /** True when a build can be started without a push. See `canBuildNow`. */
+  canBuildNow: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -36,6 +41,7 @@ const emit = defineEmits<{
   create: [];
   back: [];
   openApp: [];
+  buildNow: [];
 }>();
 
 const started = computed(() => props.steps.some((step) => step.status !== "pending"));
@@ -46,7 +52,7 @@ const finished = computed(() => Boolean(props.result?.worker && !props.running))
   <div class="new-app">
     <div class="new-app__head">
       <button type="button" class="ghost new-app__back" @click="emit('back')">
-        ← All apps
+        ← {{ t("newApp.back") }}
       </button>
     </div>
 
@@ -60,19 +66,18 @@ const finished = computed(() => Boolean(props.result?.worker && !props.running))
 
     <section class="panel">
       <button type="button" :disabled="!canCreate" @click="emit('create')">
-        {{ running ? "Building your app…" : "Build my app" }}
+        {{ running ? t("newApp.build.running") : t("newApp.build.idle") }}
       </button>
 
       <p v-if="createError" class="warn">{{ createError }}</p>
+      <!--
+        Two whole sentences rather than one assembled from a shared head and a clause,
+        so a translator can reorder the AI promise instead of being forced to keep it
+        where English puts it.
+      -->
       <p v-else-if="!started" class="hint">
-        This takes a couple of minutes. We create the project, publish it to the web, and
-        add it to Haven
-        <template v-if="cursorReady">, then set the AI developer to work on it</template
-        >. You can watch each step.
-        <template v-if="!cursorReady">
-          What you get is the starter app, live and installed — the code is then yours to
-          change, by hand or with any AI tool.
-        </template>
+        {{ cursorReady ? t("newApp.intro.withAi") : t("newApp.intro.withoutAi") }}
+        <template v-if="!cursorReady">{{ t("newApp.intro.starterOnly") }}</template>
       </p>
 
       <!--
@@ -80,19 +85,23 @@ const finished = computed(() => Boolean(props.result?.worker && !props.running))
         project is not covered by the existing installs, so publishing will stop and ask.
       -->
       <p v-if="narrowAccess && !started" class="hint">
-        You chose to pick repositories yourself, so after the project is created you will
-        need to allow Cloudflare (and Cursor) to see it on GitHub. We will stop and tell
-        you when.
+        {{ t("newApp.narrowAccess") }}
       </p>
     </section>
 
-    <ProgressPanel v-if="started" :steps="steps" :result="result" :running="running" />
+    <ProgressPanel
+      v-if="started"
+      :steps="steps"
+      :result="result"
+      :running="running"
+      :can-build-now="canBuildNow"
+      @build-now="emit('buildNow')"
+    />
 
     <section v-if="finished" class="panel">
-      <button type="button" @click="emit('openApp')">Open my new app</button>
+      <button type="button" @click="emit('openApp')">{{ t("newApp.finished.open") }}</button>
       <p class="hint">
-        Everything about this app — its address, the code, publishing, the AI developer —
-        is on its own page from now on.
+        {{ t("newApp.finished.hint") }}
       </p>
     </section>
   </div>

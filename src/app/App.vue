@@ -15,6 +15,7 @@
  *   sends a user back.
  */
 import { computed, onMounted, ref } from "vue";
+import { useI18n } from "vue-i18n";
 
 import AppDetail from "@/app/components/AppDetail.vue";
 import AppList from "@/app/components/AppList.vue";
@@ -32,9 +33,11 @@ import { appDefinitionUrl, type StoredAppRecord } from "@/core/appRecords";
 import type { WorkerBuild } from "@/core/cloudflare";
 import { isSetupComplete, type BuilderCredentials } from "@/core/credentials";
 import { getAuthenticatedUser } from "@/core/github";
+import { setUiLanguage } from "@/i18n";
 
 type BuilderViewId = "home" | "new" | "app" | "setup";
 
+const { t } = useI18n();
 const session = useBuilderSession();
 const records = useAppRecords(session);
 const hostConfig = ref<BuilderHostConfig | null>(null);
@@ -191,8 +194,8 @@ async function loadBuilds(): Promise<void> {
     // Decoration, not a failure: the app works whether or not its build history loads.
     buildsError.value =
       error instanceof Error
-        ? `Cloudflare did not report the build status: ${error.message}`
-        : "Cloudflare did not report the build status.";
+        ? t("app.builds.errorWithReason", { reason: error.message })
+        : t("app.builds.error");
   }
 }
 
@@ -208,7 +211,7 @@ async function copyAppUrl(): Promise<void> {
       copied.value = false;
     }, 2000);
   } catch {
-    statusMessage.value = `Copying failed. The address is ${url}`;
+    statusMessage.value = t("app.copyFailed", { url });
   }
 }
 
@@ -224,12 +227,10 @@ async function saveDefinition(): Promise<void> {
       `${record.appId || "haven-app"}.haven-app.json`,
     );
     statusMessage.value =
-      outcome === "saved"
-        ? "Saved the app definition to your downloads."
-        : "Opened the app definition in a new tab — save it from there.";
+      outcome === "saved" ? t("app.definition.saved") : t("app.definition.opened");
   } catch (error) {
     statusMessage.value =
-      error instanceof Error ? error.message : "The app definition could not be saved.";
+      error instanceof Error ? error.message : t("app.definition.failed");
   }
 }
 
@@ -279,9 +280,9 @@ onMounted(async () => {
 <template>
   <main class="app">
     <header class="head">
-      <h1>App Builder</h1>
-      <p class="tagline">Describe an app. Get it into Haven.</p>
-      <p v-if="session.connecting.value" class="muted">Connecting to Haven…</p>
+      <h1>{{ t("app.title") }}</h1>
+      <p class="tagline">{{ t("app.tagline") }}</p>
+      <p v-if="session.connecting.value" class="muted">{{ t("app.connecting") }}</p>
       <p v-else-if="session.error.value" class="warn">
         {{ session.error.value }}
       </p>
@@ -289,8 +290,7 @@ onMounted(async () => {
         v-else-if="session.connected.value && !session.canProposeApps.value"
         class="muted"
       >
-        This Haven install cannot add apps for you, so you will add the finished
-        app yourself — we show you the link.
+        {{ t("app.cannotPropose") }}
       </p>
     </header>
 
@@ -329,11 +329,13 @@ onMounted(async () => {
       :result="flow.result.value"
       :cursor-ready="session.credentialsStatus.value.cursor"
       :narrow-access="session.credentials.value.repoAccess === 'selected'"
+      :can-build-now="flow.canBuildNow.value"
       @label-input="flow.onLabelInput"
       @slug-input="flow.onSlugInput"
       @create="flow.createApp"
       @back="showHome"
       @open-app="openBuiltApp"
+      @build-now="flow.buildNow"
     />
 
     <AppDetail
@@ -375,19 +377,15 @@ onMounted(async () => {
     <footer class="foot">
       <p class="muted">
         <button type="button" class="ghost foot__setup" @click="openSetup">
-          Connections and setup
+          {{ t("app.footer.setupLink") }}
         </button>
         <template v-if="session.canStoreCredentials.value">
-          The tokens and keys you enter there are saved, so you do not have to
-          create them again the next time you build an app. They live in one
-          document in your own App Builder database, encrypted so that only you
-          can read them — not even someone you share that database with.
+          {{ t("app.footer.tokensSaved") }}
         </template>
         <template v-else>
-          The tokens and keys you enter there stay in this page only; nothing is
-          saved.
+          {{ t("app.footer.tokensNotSaved") }}
         </template>
-        The App Builder is
+        {{ t("app.footer.sourceLead") }}
         <a
           class="foot__source"
           href="https://github.com/klehmann/mindoodb-app-builder"
@@ -407,9 +405,8 @@ onMounted(async () => {
               d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"
             />
           </svg>
-          open source </a
-        >. If you would rather not use the copy we host, you can run your own
-        and add that to Haven instead.
+          {{ t("app.footer.sourceLink") }} </a
+        >{{ t("app.footer.sourceTail") }}
       </p>
     </footer>
   </main>

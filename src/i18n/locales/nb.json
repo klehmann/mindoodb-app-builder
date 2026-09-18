@@ -1,0 +1,454 @@
+{
+  "app": {
+    "title": "App Builder",
+    "tagline": "Beskriv en app. Få den inn i Haven.",
+    "connecting": "Kobler til Haven…",
+    "cannotPropose": "Denne Haven-installasjonen kan ikke legge inn apper for deg, så du legger til den ferdige appen selv — vi viser deg lenken.",
+    "copyFailed": "Kopieringen mislyktes. Adressen er {url}",
+    "builds": {
+      "error": "Cloudflare meldte ikke tilbake byggestatusen.",
+      "errorWithReason": "Cloudflare meldte ikke tilbake byggestatusen: {reason}"
+    },
+    "definition": {
+      "saved": "Appdefinisjonen er lagret i nedlastingsmappen din.",
+      "opened": "Appdefinisjonen er åpnet i en ny fane — lagre den derfra.",
+      "failed": "Appdefinisjonen kunne ikke lagres."
+    },
+    "footer": {
+      "setupLink": "Tilkoblinger og oppsett",
+      "tokensSaved": "Tokenene og nøklene du skriver inn der, blir lagret, så du slipper å lage dem på nytt neste gang du bygger en app. De ligger i ett dokument i din egen App Builder-database, kryptert slik at bare du kan lese dem — ikke engang de du deler den databasen med.",
+      "tokensNotSaved": "Tokenene og nøklene du skriver inn der, blir bare liggende på denne siden; ingenting lagres.",
+      "sourceLead": "App Builder er",
+      "sourceLink": "åpen kildekode",
+      "sourceTail": ". Vil du helst ikke bruke kopien vi drifter, kan du kjøre din egen og legge den inn i Haven i stedet."
+    }
+  },
+  "list": {
+    "heading": "Appene dine",
+    "intro": "Beskriv det du trenger, så blir det bygget, publisert og lagt inn i Haven.",
+    "loading": "Ser etter appene dine…",
+    "readOnly": "Denne App Builder-databasen er skrivebeskyttet for deg, så ferdige apper blir ikke tatt vare på i denne listen. Alt fungerer likevel — kopier adressen til appen før du forlater siden.",
+    "actions": {
+      "new": "Ny app"
+    },
+    "empty": {
+      "title": "Bygg din første app",
+      "body": "Fortell oss hva teamet ditt mangler. En KI-utvikler skriver appen, den publiseres på nettet, og Haven installerer den — og du kan endre den videre etterpå.",
+      "action": "Beskriv en app"
+    },
+    "stages": {
+      "planned": "Ikke bygget ennå",
+      "repository": "Koden er laget, ikke publisert",
+      "published": "Publisert, ikke i drift ennå",
+      "live": "I drift",
+      "installed": "I drift, lagt inn i Haven"
+    },
+    "row": {
+      "untitled": "App uten navn",
+      "started": "Startet {date}",
+      "remove": "Fjern {label} fra denne listen"
+    },
+    "confirm": {
+      "title": "Fjerne «{label}» fra denne listen?",
+      "hint": "Dette sletter bare det App Builder har lagret om appen, her i sin egen database. Ingenting annet berøres: prosjektet blir liggende på GitHub, den publiserte appen fortsetter å kjøre på Cloudflare, en eventuell Cursor-agent blir stående der den er, og Haven har den fortsatt installert. Du kan få appen inn i denne listen igjen ved å bygge en ny — men adressen og beskrivelsen som er lagret her, er da borte.",
+      "remove": "Fjern fra listen",
+      "keep": "Behold den"
+    }
+  },
+  "detail": {
+    "back": "Alle apper",
+    "address": {
+      "open": "Åpne appen",
+      "copy": "Kopier adresse",
+      "copied": "Kopiert",
+      "addToHaven": "Legg inn i Haven",
+      "addToHavenAgain": "Legg inn i Haven på nytt",
+      "saveAsFile": "Lagre som fil",
+      "hint": "Den du sender denne adressen til, kan legge appen inn i sitt eget Haven. «Lagre som fil» tar vare på en kopi av appdefinisjonen, for et Haven som ikke kan nå adressen."
+    },
+    "continue": {
+      "working": "Jobber…",
+      "labels": {
+        "create": "Bygg den nå",
+        "commit": "Fortsett der det stoppet",
+        "publish": "Publiser den",
+        "build": "Publiser den",
+        "install": "Legg den inn i Haven",
+        "iterate": "Gi den til KI-en igjen"
+      },
+      "hints": {
+        "create": "Ingenting er opprettet ennå — dette kjører hele løpet.",
+        "commit": "GitHub-prosjektet finnes, men startkoden har ennå ikke fått navnet på appen din. Dette fortsetter derfra.",
+        "publish": "Koden ligger på GitHub. Dette legger den ut på nettet og inn i Haven.",
+        "build": "Nettadressen er reservert, men appen kom aldri i drift. Dette bygger den.",
+        "install": "Appen er i drift. Dette ber Haven installere den.",
+        "iterate": "Starter en Cursor-agent på appen igjen."
+      }
+    },
+    "links": {
+      "heading": "Vedlikehold",
+      "repo": "Koden på GitHub",
+      "repoHint": "Alt KI-en skriver, havner her.",
+      "hosting": "Drift hos Cloudflare",
+      "hostingHint": "Byggelogger, egne domener, bruk.",
+      "agent": "KI-utvikleren i Cursor",
+      "agentHint": "Be om endringer og se den jobbe."
+    },
+    "builds": {
+      "heading": "Publisering",
+      "status": {
+        "success": "Det siste bygget gikk bra.",
+        "failed": "Det siste bygget mislyktes.",
+        "running": "Et bygg kjører nå.",
+        "queued": "Et bygg står i kø.",
+        "canceled": "Det siste bygget ble avbrutt."
+      },
+      "statusOther": "Siste bygg: {status}.",
+      "none": "Cloudflare har ikke bygget denne appen ennå.",
+      "buildNow": "Bygg nå",
+      "refresh": "Sjekk publiseringsstatus",
+      "hint": "Hver endring som pushes til GitHub, publiserer seg selv. «Bygg nå» er for når du vil ha det med én gang."
+    },
+    "agent": {
+      "launch": "Gi den til KI-en",
+      "needsKey": "Krever en Cursor-nøkkel — legg inn en under «Tilkoblinger og oppsett». Eller klon repositoriet og endre det selv, med det verktøyet du vil."
+    },
+    "forget": {
+      "summary": "Fjern fra denne listen",
+      "hint": "Dette fjerner bare notatet builderen har om appen, her i sin egen database. Koden blir liggende på GitHub, den publiserte appen fortsetter å kjøre på Cloudflare, en eventuell Cursor-agent blir stående der den er, og Haven har den fortsatt installert.",
+      "button": "Fjern fra listen"
+    }
+  },
+  "newApp": {
+    "back": "Alle apper",
+    "build": {
+      "idle": "Bygg appen min",
+      "running": "Bygger appen din…"
+    },
+    "intro": {
+      "withAi": "Dette tar et par minutter. Vi oppretter prosjektet, publiserer det på nettet og legger det inn i Haven, og setter så KI-utvikleren i arbeid på det. Du kan følge hvert trinn.",
+      "withoutAi": "Dette tar et par minutter. Vi oppretter prosjektet, publiserer det på nettet og legger det inn i Haven. Du kan følge hvert trinn.",
+      "starterOnly": "Det du får, er startappen, i drift og installert — koden er så din å endre, for hånd eller med et KI-verktøy du selv velger."
+    },
+    "narrowAccess": "Du valgte å velge repositorier selv, så når prosjektet er opprettet, må du gi Cloudflare (og Cursor) tilgang til å se det på GitHub. Vi stopper og sier når.",
+    "finished": {
+      "open": "Åpne den nye appen min",
+      "hint": "Alt om denne appen — adressen, koden, publiseringen, KI-utvikleren — ligger fra nå av på sin egen side."
+    }
+  },
+  "newAppForm": {
+    "title": "Hva vil du bygge?",
+    "purpose": "Beskriv appen din slik du ville forklart den til en kollega. KI-en gjør dette om til programvare som fungerer — du trenger ingen tekniske ord.",
+    "name": {
+      "label": "Gi appen et navn",
+      "placeholder": "Teamnotater",
+      "hint": "Dette er navnet du ser i Haven."
+    },
+    "description": {
+      "label": "Hva skal den brukes til, i én setning?",
+      "placeholder": "Delte notater for teamet."
+    },
+    "task": {
+      "label": "Beskriv hva den skal gjøre",
+      "placeholder": "La folk skrive notater, sette tagger på dem og søke i alle sammen. Én skjerm med listen over notater, én for å skrive. Alle på teamet kan se og redigere dem.",
+      "hint": "Dette er oppdraget KI-en jobber ut fra — jo mer konkret, jo bedre. Tenk på hvem som bruker appen, hva de ser på skjermen, og hva de kan gjøre. Du kan alltid be om endringer etterpå."
+    },
+    "advanced": {
+      "summary": "Nettadresse og synlighet"
+    },
+    "slug": {
+      "label": "Kortnavn for nettadressen",
+      "placeholder": "teamnotater",
+      "hintBefore": "Appen din blir liggende på",
+      "hintAfter": "— dette er lenken du sender kollegene dine på e-post, så de kan legge appen inn i sitt eget Haven."
+    },
+    "privateCode": {
+      "label": "Hold koden privat",
+      "hint": "Anbefalt. Selve appen er fortsatt tilgjengelig for alle som har lenken; dette skjuler bare kildekoden for fremmede."
+    }
+  },
+  "setup": {
+    "back": "Alle apper",
+    "header": {
+      "title": "Sett opp én gang, så bygger du apper",
+      "purpose": "Appene dine trenger et sted å bo. Koble til de tre tjenestene nedenfor og godkjenn et par installasjoner — etter det er en ny app et navn og en knapp."
+    },
+    "intro": "GitHub tar vare på koden, og Cloudflare drifter den; begge er gratis. Cursor er KI-utvikleren som skriver appen, og skyagentene der krever en betalt plan. Du kan hoppe over Cursor: appen blir opprettet og publisert likevel, og det du får, er et vanlig Git-repositorium — rediger det selv, eller sett Claude Code, Codex eller et annet verktøy på det.",
+    "access": {
+      "title": "Hvor mye tilgang du skal gi",
+      "purpose": "Hver app du bygger, får sitt eget nye GitHub-prosjekt, og Cloudflare og Cursor må få tilgang til å se det.",
+      "all": {
+        "label": "Alle repositorier — anbefalt",
+        "hint": "Godkjenn én gang, så er alle senere apper dekket. Da blir det å bygge en app stående ved én knapp. Synes du det blir for vidt, bruk en egen GitHub-konto til dette."
+      },
+      "selected": {
+        "label": "Velg repositoriene selv",
+        "hint": "Smalere, men hver nye app krever to ekstra godkjenninger på GitHub før den kan publiseres — builderen sier når."
+      }
+    },
+    "installs": {
+      "title": "Godkjenn installasjonene",
+      "intro": {
+        "lead": "Hver lenke åpner GitHub i en ny fane.",
+        "allBefore": "Velg",
+        "allOption": "All repositories",
+        "allAfter": "i hver av dem.",
+        "selected": "Velg hvilke repositorier hver av dem skal få se."
+      },
+      "builder": {
+        "link": "Installer App Builder",
+        "hint": "Lar denne builderen opprette det nye prosjektet og gjøre den første commit-en. Trengs bare hvis du koblet til GitHub med knappen ovenfor — et token du limte inn selv, har allerede sine egne tillatelser."
+      },
+      "cloudflare": {
+        "link": "Installer Cloudflare Workers and Pages",
+        "hint": "Lar Cloudflare lese prosjektet, slik at det kan publiseres — og publiseres på nytt ved hver endring."
+      },
+      "cursor": {
+        "link": "Installer Cursor",
+        "hint": "Lar KI-utvikleren lese og skrive i prosjektet. Hopp over den hvis du helst vil endre koden selv, eller med et annet verktøy."
+      },
+      "note": "Vi kan ikke se disse installasjonene herfra, så ingenting på denne siden krysser seg av selv. Hvis et bygg senere mislykkes fordi noe ikke ble godkjent, sier vi det og tar deg tilbake hit."
+    },
+    "finish": {
+      "save": "Lagre og fortsett",
+      "start": "Jeg er ferdig — start byggingen",
+      "blocked": "Koble til GitHub og Cloudflare ovenfor først. Det er de to som oppretter og publiserer appen din."
+    }
+  },
+  "connect": {
+    "title": "Kontoer",
+    "storageHint": "Lagres i ett dokument i App Builder-databasen din, kryptert for deg personlig. Ingen andre kan lese det, ikke engang de du deler den databasen med.",
+    "ephemeralWarning": "Disse tilkoblingene varer bare til du lukker denne siden. Vil du at de skal huskes, installer App Builder fra Haven App Store — eller legg den til med en URL — i stedet for å åpne den direkte.",
+    "checkingOptions": "Sjekker hvordan du kan koble til…",
+    "cancel": "Avbryt",
+    "hideToken": "Skjul token",
+    "useOwnToken": "Bruk mitt eget token",
+    "badge": {
+      "connected": "tilkoblet",
+      "optional": "valgfri"
+    },
+    "deviceCode": {
+      "copy": "Kopier",
+      "copied": "Kopiert"
+    },
+    "github": {
+      "deviceOpen": "Åpne",
+      "deviceEnterCode": "og skriv inn denne koden:",
+      "scopeHint": "Gir tillatelse til å opprette et nytt prosjekt og gjøre den første commit-en — ikke til å lese repositoriene du alt har. Du kan trekke den tilbake når som helst i applikasjonsinnstillingene på GitHub.",
+      "waiting": "Venter på GitHub…",
+      "reconnect": "Koble til GitHub på nytt",
+      "connect": "Koble til GitHub",
+      "tokenLabel": "GitHub-token",
+      "identifying": "Sjekker tokenet hos GitHub…",
+      "tokenLinkText": "Opprett et token på GitHub",
+      "tokenHintBeforeScope": "— lenken åpner skjemaet på GitHub med den ene tillatelsen vi trenger,",
+      "tokenHintAfterScope": ", allerede krysset av. Kontroller at den er det, velg hvor lenge tokenet skal vare, trykk",
+      "generateTokenButton": "Generate token",
+      "tokenHintAfterGenerate": ", og kopier så verdien inn i feltet ovenfor. GitHub viser den bare én gang.",
+      "orgSummary": "Opprett apper under en organisasjon i stedet",
+      "ownerLabel": "GitHub-eier",
+      "ownerPlaceholder": "din-bruker-eller-org",
+      "ownerHint": "La dette stå, og appene dine opprettes under din egen konto. En organisasjon går også, men installasjonene du godkjente for deg selv, dekker den ikke — du må godkjenne dem der også."
+    },
+    "cloudflare": {
+      "consentHint": "Åpner Cloudflares egen samtykkeskjerm. Den ber om de Workers-tillatelsene builderen trenger og ingenting mer, og tilgangstokenet byttes inn på denne siden der Cloudflare tillater det.",
+      "waiting": "Venter på Cloudflare…",
+      "finishing": "Fullfører…",
+      "reconnect": "Koble til Cloudflare på nytt",
+      "connect": "Koble til Cloudflare",
+      "tokenLabel": "Cloudflare-token",
+      "identifying": "Sjekker tokenet hos Cloudflare…",
+      "tokenLinkText": "Opprett et token på Cloudflare",
+      "tokenHintPress": "— trykk",
+      "createTokenButton": "Create Token",
+      "tokenHintScroll": ", bla ned til",
+      "createCustomTokenButton": "Create Custom Token",
+      "tokenHintPermissions": ", og legg til disse to tillatelsene: Workers Scripts → Edit og Workers Builds Configuration → Edit. Kopier så tokenet inn i feltet ovenfor.",
+      "profileHintIntro": "Opprett det på siden lenken åpner —",
+      "profileTokensPath": "My Profile → API Tokens",
+      "profileHintMid": ". Cloudflare tilbyr tokener under",
+      "manageAccountLabel": "Manage Account",
+      "profileHintTail": "også, men de kan ikke slå på automatisk publisering, så neste side ville stoppet med en feil.",
+      "accountLabel": "Konto",
+      "accountSelectHint": "Tokenet ditt kan brukes på flere — dette er den appene dine havner i.",
+      "accountPrefix": "Konto:",
+      "accountSummary": "Konto: {id}",
+      "accountIdFallbackIntro": "Du kan skrive den inn nedenfor i stedet: åpne",
+      "dashboardLinkText": "kontrollpanelet ditt hos Cloudflare",
+      "accountIdFallbackTail": "og kopier den lange koden ut av adressefeltet — delen rett etter",
+      "accountIdLabel": "Cloudflare-konto-ID",
+      "accountIdPlaceholder": "leses fra tokenet ditt",
+      "accountIdHint": "Normalt er det ingenting å fylle ut her — når du limer inn tokenet ovenfor, leses kontoen fra det.",
+      "accountIdManualHint": "Limer du inn et token på nytt, leses dette fra tokenet. Endre det for hånd bare hvis du vet hvilken konto du vil bruke."
+    },
+    "cursor": {
+      "keyLabel": "API-nøkkel",
+      "keyHintIntro": "Opprett en i",
+      "dashboardLinkText": "kontrollpanelet til Cursor",
+      "keyHintTail": ". Brukes til å starte en skyagent på det nye repositoriet. API-et til Cursor kan ikke kalles fra en nettleser og har ingen samtykkeflyt, så denne ene nøkkelen sendes til builderens server for det ene kallet. Den blir aldri gitt til agenten selv.",
+      "optionalHint": "La den stå tom hvis du helst vil skrive koden selv, eller bruke et annet verktøy på repositoriet — Claude Code, Codex, redigeringsprogrammet ditt. Ingenting annet her er avhengig av den."
+    },
+    "save": {
+      "saving": "Lagrer…",
+      "accounts": "Lagre kontoer",
+      "one": "Lagre"
+    }
+  },
+  "progress": {
+    "working": "Jobber med det…",
+    "done": "Dette skjedde",
+    "steps": {
+      "check-name": "Sjekk at navnet er ledig",
+      "create-repo": "Opprett prosjektet på GitHub",
+      "commit-identity": "Skriv inn appens navn og oppdrag",
+      "check-repo-access": "Sjekk at Cloudflare ser prosjektet",
+      "create-worker": "Reserver nettadressen",
+      "connect-builds": "Sett opp automatisk publisering",
+      "start-build": "Publiser appen",
+      "wait-origin": "Vent til appen er i drift",
+      "propose": "Legg appen inn i Haven",
+      "launch-agent": "Start KI-utvikleren"
+    },
+    "retry": {
+      "button": "Prøv å publisere på nytt",
+      "hint": "Har du nettopp gitt tilgang? Dette publiserer med én gang — ingen andre trinn trengs."
+    },
+    "share": {
+      "title": "Appen din er i drift",
+      "hint": "Send denne lenken til kollegene dine på e-post — de kan legge den samme appen inn i sitt eget Haven.",
+      "button": "Del på e-post",
+      "mailSubject": "En app til Haven-arbeidsområdet vårt",
+      "mailBody": "Jeg har bygget en app til oss. Legg den inn i Haven-arbeidsområdet ditt med denne lenken:\n\n{url}\n"
+    },
+    "links": {
+      "code": "— koden din på GitHub",
+      "reserved": "{url} — reservert, ikke i drift ennå"
+    }
+  },
+  "agent": {
+    "heading": "Kodeagent",
+    "intro": {
+      "link": "Åpne i Cursor",
+      "rest": "for å se den jobbe. Det den pusher, publiserer seg selv."
+    },
+    "run": {
+      "status": "Kjøring {status}",
+      "pullRequest": "pull request"
+    },
+    "followUp": {
+      "label": "Neste instruks",
+      "placeholder": "Legg til et taggfilter over listen."
+    },
+    "actions": {
+      "send": "Send",
+      "check": "Sjekk status"
+    },
+    "errors": {
+      "status": "Statusen til agenten er ikke tilgjengelig.",
+      "busy": "Agenten jobber fortsatt med forrige instruks. Prøv igjen når den er ferdig.",
+      "send": "Oppfølgingen kunne ikke sendes."
+    }
+  },
+  "flow": {
+    "validation": {
+      "nameRequired": "Appen må ha et navn.",
+      "slugInvalid": "Navnet på repositoriet kan bare inneholde små bokstaver, tall og bindestrek."
+    },
+    "ready": {
+      "connectGithub": "Koble til GitHub først.",
+      "connectCloudflare": "Koble til Cloudflare først.",
+      "createRepositoryOrSkipBack": "Opprett GitHub-repositoriet først, eller hopp tilbake hvis det alt finnes.",
+      "createRepository": "Opprett GitHub-repositoriet først.",
+      "pasteCursorKey": "Lim inn en Cursor-API-nøkkel for å starte en agent.",
+      "githubNotConnected": "GitHub er ikke koblet til ennå — åpne «{setup}» for å koble til.",
+      "cloudflareNotConnected": "Cloudflare er ikke koblet til ennå — åpne «{setup}» for å koble til."
+    },
+    "note": {
+      "cloudflareSaid": "Cloudflare melder: {said}",
+      "nameAvailable": "{slug} er ledig.",
+      "nameTaken": "{fullName} finnes alt. Velg et annet navn på repositoriet.",
+      "nameCheckFailed": "Navnet på repositoriet kunne ikke sjekkes.",
+      "nameAlreadyYours": "{fullName} er ditt fra før.",
+      "repoFromEarlierAttempt": "Prosjektet ble opprettet i et tidligere forsøk.",
+      "repoCreated": "{fullName}",
+      "repoCreateFailed": "Repositoriet kunne ikke opprettes.",
+      "templateCopyPending": "GitHub er ikke ferdig med å kopiere malen inn i {fullName}. Prosjektet er der og tomt — åpne det fra appene dine om et øyeblikk og trykk «{action}».",
+      "templateMissingFile": "Malen mangler {path}.",
+      "identityCommitted": "{count} filer har fått navnet {label}.",
+      "identityCommitFailed": "Navnet på appen kunne ikke skrives inn i koden.",
+      "noCloudflareAccount": "Ingen Cloudflare-konto å spørre.",
+      "repoAccessReadable": "Cloudflare kan lese repositoriet.",
+      "repoAccessUnconfirmed": "Ikke bekreftet: {message}",
+      "repoAccessCheckFailed": "Sjekken kunne ikke gjøres.",
+      "repoAccessFix": "Cloudflare kan ikke lese {fullName}, så det som pushes dit, blir ikke bygget. GitHub-appen til Cloudflare rekker bare de repositoriene den er installert på, og et repositorium som ikke fantes for et øyeblikk siden, er ikke blant dem. Legg til dette repositoriet på https://github.com/settings/installations, eller sett den installasjonen til «All repositories». {next}",
+      "repoAccessNextStartFirstBuild": "Trykk så «{action}» — Worker-en kan kobles opp likevel, uten noe push.",
+      "repoAccessNextBuildAgain": "Trykk så «{action}» en gang til.",
+      "workerReserved": "{url}",
+      "workerReused": "{url} (finnes fra før)",
+      "workerCreateFailed": "Worker-en kunne ikke opprettes.",
+      "pushToDeployConnected": "Det som pushes til {branch}, publiserer seg nå selv.",
+      "buildTriggerReused": "Gjenbruker den eksisterende byggeutløseren for {name}.",
+      "pushToDeployFailed": "Automatisk publisering ved push kunne ikke settes opp.",
+      "noBuildWithoutAccess": "Ingen bygg kan kjøre før Cloudflare kan lese repositoriet.",
+      "havenNeedsLiveUrl": "Haven leser appdefinisjonen fra URL-en der appen er i drift.",
+      "noStartBuildCapability": "Ingen måte å starte et bygg på uten et push.",
+      "buildStarted": "Cloudflare bygger {branch} ({buildUuid}).",
+      "buildStartFailed": "Bygget kunne ikke startes.",
+      "waitingForBuild": "Venter på det første Cloudflare-bygget…",
+      "originAttempt": "Forsøk {attempt}: {detail}",
+      "originNoUrl": "Ingen app-URL ennå.",
+      "originNoAnswer": "Appen har ikke svart ennå.",
+      "originHttpStatus": "haven-app.json svarte HTTP {status}.",
+      "originNotJson": "haven-app.json er ikke JSON ennå — publiseringen kjører sannsynligvis fortsatt.",
+      "originInvalidDefinition": "haven-app.json er ikke en gyldig appdefinisjon.",
+      "originMismatch": "Adressen leverer «{servedAppId}», men denne appen er «{expectedAppId}».",
+      "originNotChecked": "Ikke sjekket ennå.",
+      "originNotLiveInTime": "Appen kom ikke i drift i tide.",
+      "originBuildLogHint": "Repositoriet og Worker-en finnes, så det er bygget du skal se på: Cloudflare, Worker-en, Settings, Builds. En tom byggeliste der betyr at GitHub-appen til Cloudflare aldri har sett repositoriet — sett den til «All repositories» på https://github.com/settings/installations, eller legg til dette repositoriet der, og trykk så «{action}».",
+      "originServing": "{url} leverer haven-app.json.",
+      "originCheckFailed": "Adressen til appen kunne ikke sjekkes.",
+      "havenNotGranted": "Denne Haven-installasjonen har ikke gitt tillatelse til å foreslå apper.",
+      "havenAddManually": "Legg appen inn i Haven manuelt med {url}",
+      "havenInstalled": "{label} er installert i Haven.",
+      "havenDeclined": "Du avslo installasjonen. Appen er publisert likevel.",
+      "havenAddLater": "Legg appen inn i Haven senere med {url}",
+      "havenReadFailed": "Haven kunne ikke lese appdefinisjonen.",
+      "havenProposeFailed": "Haven kunne ikke bli bedt om å installere appen.",
+      "pressRegisterInHaven": "Trykk «{action}» når du er klar.",
+      "noCursorKey": "Ingen Cursor-API-nøkkel er koblet til.",
+      "agentStarted": "{url}",
+      "agentStartFailed": "Cursor-agenten kunne ikke startes."
+    }
+  },
+  "githubConnect": {
+    "tokenRejected": "GitHub godtok ikke dette tokenet. Sjekk at hele verdien ble kopiert, og at det ikke har utløpt.",
+    "tokenCheckFailed": "Tokenet kunne ikke sjekkes hos GitHub.",
+    "unreachable": "GitHub kunne ikke nås.",
+    "codeExpired": "Koden er utløpt. Start på nytt for å få en ny.",
+    "declined": "Autorisasjonen ble avslått i GitHub."
+  },
+  "cloudflareConnect": {
+    "declined": "Autorisasjonen ble avslått i Cloudflare.",
+    "refused": "Cloudflare avslo autorisasjonen ({error}).",
+    "noCode": "Cloudflare returnerte ingen autorisasjonskode.",
+    "exchangeFailed": "Autorisasjonskoden kunne ikke byttes inn.",
+    "noClient": "Denne builderen har ingen Cloudflare-OAuth-klient satt opp.",
+    "urlBuildFailed": "Autorisasjons-URL-en til Cloudflare kunne ikke bygges.",
+    "popupBlocked": "Cloudflare-vinduet ble blokkert. Tillat forgrunnsvinduer for builderen og prøv igjen.",
+    "noAccounts": "Dette tokenet meldte ikke om noen Cloudflare-konto.",
+    "accountLookupFailed": "Cloudflare kunne ikke spørres om hvilken konto dette tokenet hører til."
+  },
+  "session": {
+    "connectFailed": "Kunne ikke koble til Haven. Åpne App Builder fra Haven-arbeidsområdet ditt i stedet for direkte i en nettleserfane, og last så denne siden på nytt.",
+    "credentialsStoreFailed": "Legitimasjonen kunne ikke lagres.",
+    "notConnected": "Builderen er ikke koblet til Haven."
+  },
+  "saveDefinition": {
+    "noUrl": "Denne appen har ingen nettadresse ennå.",
+    "badStatus": "Appen svarte {status}."
+  },
+  "hostApi": {
+    "unreachable": "Builderens server er ikke tilgjengelig. Start den med `mindoodb-app-builder`.",
+    "badStatus": "Serveren svarte HTTP {status}."
+  }
+}

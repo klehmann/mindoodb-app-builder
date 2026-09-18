@@ -16,9 +16,13 @@
  * technical detail stays in the per-step `detail` line underneath.
  */
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 
 import UiIcon from "@/app/components/UiIcon.vue";
-import type { CreateAppResult, FlowStep, FlowStepId } from "@/core/createAppFlow";
+import { flowNoteText } from "@/app/flowNoteText";
+import type { CreateAppResult, FlowNote, FlowStep, FlowStepId } from "@/core/createAppFlow";
+
+const { t } = useI18n();
 
 const props = defineProps<{
   steps: FlowStep[];
@@ -35,18 +39,22 @@ const serving = computed(() =>
   props.steps.some((step) => step.id === "wait-origin" && step.status === "done"),
 );
 
-const LABELS: Record<FlowStepId, string> = {
-  "check-name": "Check the name is still free",
-  "create-repo": "Create your project on GitHub",
-  "commit-identity": "Write in your app’s name and brief",
-  "check-repo-access": "Check Cloudflare can see the project",
-  "create-worker": "Reserve your web address",
-  "connect-builds": "Set up automatic publishing",
-  "start-build": "Publish the app",
-  "wait-origin": "Wait for the app to go live",
-  propose: "Add the app to Haven",
-  "launch-agent": "Start the AI developer",
-};
+/**
+ * Step ids are the translation keys, so `core/createAppFlow` stays free of display
+ * text: it reports what happened, this panel says it in the reader's language.
+ */
+function stepLabel(id: FlowStepId): string {
+  return t(`progress.steps.${id}`);
+}
+
+/**
+ * The same for the line underneath: the flow says what happened as a code, this says it
+ * in the reader's language. Every note the run produced — per step, the reason it stopped,
+ * every warning — is worded here and nowhere else.
+ */
+function noteText(note: FlowNote | null): string {
+  return flowNoteText(t, note);
+}
 
 const SYMBOLS: Record<FlowStep["status"], string> = {
   pending: "○",
@@ -62,10 +70,8 @@ const shareLink = computed(() => {
   if (!url) {
     return "";
   }
-  const subject = encodeURIComponent("An app for our Haven workspace");
-  const body = encodeURIComponent(
-    `I built an app for us. Add it to your Haven workspace with this link:\n\n${url}\n`,
-  );
+  const subject = encodeURIComponent(t("progress.share.mailSubject"));
+  const body = encodeURIComponent(t("progress.share.mailBody", { url }));
   return `mailto:?subject=${subject}&body=${body}`;
 });
 </script>
@@ -73,29 +79,27 @@ const shareLink = computed(() => {
 <template>
   <section v-if="running || result" class="panel">
     <header>
-      <h2>{{ running ? "Working on it…" : "What happened" }}</h2>
+      <h2>{{ running ? t("progress.working") : t("progress.done") }}</h2>
     </header>
 
     <ol class="steps">
       <li v-for="step in steps" :key="step.id" :class="`step step--${step.status}`">
         <span class="step__mark" aria-hidden="true">{{ SYMBOLS[step.status] }}</span>
         <span class="step__body">
-          <span class="step__label">{{ LABELS[step.id] }}</span>
-          <span v-if="step.detail" class="step__detail">{{ step.detail }}</span>
+          <span class="step__label">{{ stepLabel(step.id) }}</span>
+          <span v-if="step.detail" class="step__detail">{{ noteText(step.detail) }}</span>
         </span>
       </li>
     </ol>
 
     <div v-if="result" class="outcome">
-      <p v-if="result.error" class="warn">{{ result.error }}</p>
+      <p v-if="result.error" class="warn">{{ noteText(result.error) }}</p>
 
       <p v-if="canBuildNow" class="retry">
         <button type="button" :disabled="running" @click="$emit('build-now')">
-          Try publishing again
+          {{ t("progress.retry.button") }}
         </button>
-        <span class="retry__hint">
-          Just granted access? This publishes straight away — no other step needed.
-        </span>
+        <span class="retry__hint">{{ t("progress.retry.hint") }}</span>
       </p>
 
       <div v-if="serving && result.worker" class="share">
@@ -103,16 +107,16 @@ const shareLink = computed(() => {
           <UiIcon name="share" :size="18" />
         </span>
         <div class="share__body">
-          <p class="share__title">Your app is live</p>
+          <p class="share__title">{{ t("progress.share.title") }}</p>
           <p class="share__url">
             <a :href="result.worker.url" target="_blank" rel="noopener noreferrer">
               {{ result.worker.url }}
             </a>
           </p>
-          <p class="share__hint">
-            Email this link to colleagues — they can add the same app to their own Haven.
-          </p>
-          <a class="button button--ghost" :href="shareLink">Share by email</a>
+          <p class="share__hint">{{ t("progress.share.hint") }}</p>
+          <a class="button button--ghost" :href="shareLink">
+            {{ t("progress.share.button") }}
+          </a>
         </div>
       </div>
 
@@ -121,15 +125,16 @@ const shareLink = computed(() => {
           <a :href="result.repository.htmlUrl" target="_blank" rel="noopener noreferrer">
             {{ result.repository.fullName }}
           </a>
-          — your code on GitHub
+          {{ t("progress.links.code") }}
         </li>
         <li v-if="result.worker && !serving">
-          {{ result.worker.url }} — reserved, not live yet
+          {{ t("progress.links.reserved", { url: result.worker.url }) }}
         </li>
       </ul>
 
+      <!-- Keyed by position: a note is an object, and two runs can warn about the same thing. -->
       <ul v-if="result.warnings.length" class="warnings">
-        <li v-for="warning in result.warnings" :key="warning">{{ warning }}</li>
+        <li v-for="(warning, index) in result.warnings" :key="index">{{ noteText(warning) }}</li>
       </ul>
     </div>
   </section>

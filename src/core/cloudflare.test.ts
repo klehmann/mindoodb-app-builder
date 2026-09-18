@@ -418,7 +418,7 @@ describe("checkRepoReadable", () => {
     // kept because the user has no other way to see what Cloudflare actually said.
     await expect(ask(refusingFetch(404, 8000000, "Repository not found"))).resolves.toEqual({
       state: "unreadable",
-      detail: "Repository not found",
+      detail: { code: "external", params: { message: "Repository not found" } },
     });
   });
 

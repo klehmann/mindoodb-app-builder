@@ -17,6 +17,8 @@ import {
   type MindooDBAppDefinition,
 } from "mindoodb-app-sdk";
 
+import { externalNote, type FlowNote } from "./flowNotes";
+
 export type OriginProbeState =
   /** Nothing answered yet — DNS, the first build, or the Worker route is still coming up. */
   | "unreachable"
@@ -29,8 +31,8 @@ export type OriginProbeState =
 export interface OriginProbeResult {
   state: OriginProbeState;
   definition: MindooDBAppDefinition | null;
-  /** Short, user-facing reason. Empty when `state` is `"ready"`. */
-  detail: string;
+  /** Why, as a code the display layer words. Null when `state` is `"ready"`. */
+  detail: FlowNote | null;
 }
 
 export interface ProbeOriginOptions {
@@ -51,7 +53,7 @@ export async function probeOrigin(options: ProbeOriginOptions): Promise<OriginPr
 
   const definitionUrl = resolveMindooDBAppDefinitionUrl(url);
   if (!definitionUrl) {
-    return { state: "unreachable", definition: null, detail: "No app URL yet." };
+    return { state: "unreachable", definition: null, detail: { code: "originNoUrl" } };
   }
 
   const controller = new AbortController();
@@ -67,7 +69,7 @@ export async function probeOrigin(options: ProbeOriginOptions): Promise<OriginPr
     return {
       state: "unreachable",
       definition: null,
-      detail: "The origin did not answer yet.",
+      detail: { code: "originNoAnswer" },
     };
   } finally {
     clearTimeout(timer);
@@ -77,7 +79,7 @@ export async function probeOrigin(options: ProbeOriginOptions): Promise<OriginPr
     return {
       state: "not-published",
       definition: null,
-      detail: `haven-app.json answered HTTP ${response.status}.`,
+      detail: { code: "originHttpStatus", params: { status: response.status } },
     };
   }
 
@@ -88,7 +90,7 @@ export async function probeOrigin(options: ProbeOriginOptions): Promise<OriginPr
     return {
       state: "not-published",
       definition: null,
-      detail: "haven-app.json is not JSON yet — the deploy is probably still running.",
+      detail: { code: "originNotJson" },
     };
   }
 
@@ -97,7 +99,9 @@ export async function probeOrigin(options: ProbeOriginOptions): Promise<OriginPr
     return {
       state: "not-published",
       definition: null,
-      detail: errors[0] ?? "haven-app.json is not a valid app definition.",
+      // The SDK's validation message is the outside world's own wording, like an API
+      // error: quoted, not translated.
+      detail: errors[0] ? externalNote(errors[0]) : { code: "originInvalidDefinition" },
     };
   }
 
@@ -105,11 +109,14 @@ export async function probeOrigin(options: ProbeOriginOptions): Promise<OriginPr
     return {
       state: "mismatched",
       definition,
-      detail: `The origin serves "${definition.appId}" but this app is "${expectedAppId}".`,
+      detail: {
+        code: "originMismatch",
+        params: { servedAppId: definition.appId, expectedAppId },
+      },
     };
   }
 
-  return { state: "ready", definition, detail: "" };
+  return { state: "ready", definition, detail: null };
 }
 
 export interface WaitForOriginOptions extends ProbeOriginOptions {
@@ -154,7 +161,7 @@ export async function waitForOrigin(options: WaitForOriginOptions): Promise<Orig
   let last: OriginProbeResult = {
     state: "unreachable",
     definition: null,
-    detail: "Not checked yet.",
+    detail: { code: "originNotChecked" },
   };
 
   for (;;) {

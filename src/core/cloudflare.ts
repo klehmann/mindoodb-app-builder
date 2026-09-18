@@ -25,6 +25,8 @@
  * https://developers.cloudflare.com/workers/ci-cd/builds/api-reference/
  */
 
+import { externalNote, type FlowNote } from "./flowNotes";
+
 const CLOUDFLARE_API = "https://api.cloudflare.com/client/v4";
 
 /**
@@ -363,8 +365,12 @@ export async function ensureWorker(input: {
  */
 export interface RepoReadableResult {
   state: "readable" | "unreadable" | "unknown";
-  /** Cloudflare's own wording when it refused, so the UI can quote rather than guess. */
-  detail: string;
+  /**
+   * Why, as a code the display layer words. A refusal carries Cloudflare's own wording as
+   * an `external` note, so the UI can quote rather than guess — and so this survives the
+   * trip back from the builder host as plain JSON.
+   */
+  detail: FlowNote;
 }
 
 /**
@@ -407,18 +413,24 @@ export async function checkRepoReadable(input: {
 
   try {
     await callCloudflare<unknown>({ token, path, fetchImpl });
-    return { state: "readable", detail: "Cloudflare can read the repository." };
+    return { state: "readable", detail: { code: "repoAccessReadable" } };
   } catch (error) {
     if (!(error instanceof CloudflareApiError)) {
-      return { state: "unknown", detail: "The check could not be made." };
+      return { state: "unknown", detail: { code: "repoAccessCheckFailed" } };
     }
+    // An unknown answer says nothing about the repository, so it is reported as an
+    // unconfirmed check that quotes Cloudflare — not as a refusal.
+    const unconfirmed: RepoReadableResult = {
+      state: "unknown",
+      detail: { code: "repoAccessUnconfirmed", params: { message: error.message } },
+    };
     if (error.code === 7000 || error.code === 7003) {
-      return { state: "unknown", detail: error.message };
+      return unconfirmed;
     }
     if (error.status === 403 || error.status === 404) {
-      return { state: "unreadable", detail: error.message };
+      return { state: "unreadable", detail: externalNote(error.message) };
     }
-    return { state: "unknown", detail: error.message };
+    return unconfirmed;
   }
 }
 

@@ -10,6 +10,7 @@ import {
   type FlowStep,
   type FlowStepId,
 } from "@/core/createAppFlow";
+import { externalNote, FlowNoteError, type FlowNote } from "@/core/flowNotes";
 import type { GitHubRepository } from "@/core/github";
 
 const identity: AppIdentity = {
@@ -42,6 +43,17 @@ const worker = {
   reused: false,
 };
 
+/*
+ * The notes the host-side dependencies hand back. Codes rather than sentences, like the
+ * real ones: the flow never words anything, so a test that asserted wording here would be
+ * asserting its own fixture.
+ */
+const connectedNote: FlowNote = { code: "pushToDeployConnected", params: { branch: "main" } };
+const buildStartedNote: FlowNote = {
+  code: "buildStarted",
+  params: { branch: "main", buildUuid: "build-1" },
+};
+
 function makeDeps(overrides: Partial<CreateAppDependencies> = {}): CreateAppDependencies {
   return {
     github: {
@@ -53,11 +65,11 @@ function makeDeps(overrides: Partial<CreateAppDependencies> = {}): CreateAppDepe
     },
     cloudflare: {
       ensureWorker: vi.fn(async () => worker),
-      connectPushToDeploy: vi.fn(async () => ({ detail: "Pushes to main deploy." })),
-      startBuild: vi.fn(async () => ({ detail: "Cloudflare is building main." })),
+      connectPushToDeploy: vi.fn(async () => ({ detail: connectedNote })),
+      startBuild: vi.fn(async () => ({ detail: buildStartedNote })),
       checkRepoReadable: vi.fn(async () => ({
         state: "readable" as const,
-        detail: "Cloudflare can read the repository.",
+        detail: { code: "repoAccessReadable" } as FlowNote,
       })),
       ...overrides.cloudflare,
     },
@@ -66,7 +78,7 @@ function makeDeps(overrides: Partial<CreateAppDependencies> = {}): CreateAppDepe
       ?? vi.fn(async () => ({
         state: "ready" as const,
         definition: null,
-        detail: "",
+        detail: null,
       })),
     // Presence, not value: `{ cursor: undefined }` is how a test says "no Cursor key
     // connected", which is different from not overriding it at all.
@@ -172,7 +184,8 @@ describe("onPhase", () => {
 
     const result = await createApp({ identity, owner: "octocat" }, deps);
 
-    expect(result.error).toMatch(/token expired/);
+    // GitHub's own wording, quoted rather than translated.
+    expect(result.error).toEqual(externalNote("token expired"));
     expect(onPhase).toHaveBeenCalledTimes(1);
     expect(onPhase.mock.calls[0]![0].repository).toMatchObject({
       fullName: "octocat/team-notes",
@@ -238,11 +251,11 @@ describe("createApp", () => {
         }),
         connectPushToDeploy: vi.fn(async () => {
           order.push("connectPushToDeploy");
-          return { detail: "ok" };
+          return { detail: connectedNote };
         }),
         startBuild: vi.fn(async () => {
           order.push("startBuild");
-          return { detail: "ok" };
+          return { detail: buildStartedNote };
         }),
       },
       github: {
@@ -307,7 +320,7 @@ describe("createApp", () => {
     const waitForOrigin = vi.fn(async () => ({
       state: "ready" as const,
       definition: null,
-      detail: "",
+      detail: null,
     }));
 
     await createApp({ identity, owner: "octocat" }, makeDeps({ waitForOrigin }));
@@ -358,13 +371,16 @@ describe("createApp", () => {
         },
         cloudflare: {
           ensureWorker,
-          connectPushToDeploy: vi.fn(async () => ({ detail: "" })),
+          connectPushToDeploy: vi.fn(async () => ({ detail: connectedNote })),
         },
       });
 
       const result = await createApp({ identity, owner: "octocat" }, deps);
 
-      expect(result.error).toContain("already exists");
+      expect(result.error).toEqual({
+        code: "nameTaken",
+        params: { fullName: "octocat/team-notes" },
+      });
       expect(statusOf(result.steps, "check-name")).toBe("failed");
       expect(statusOf(result.steps, "create-repo")).toBe("skipped");
       expect(generateFromTemplate).not.toHaveBeenCalled();
@@ -429,6 +445,33 @@ describe("createApp", () => {
       expect(result.identityCommitted).toBe(false);
     });
 
+    it("keeps a dependency's own note when it throws one, rather than quoting it", async () => {
+      // The dependencies throw rather than return, and only an `Error` crosses that
+      // boundary — so one that knows what happened attaches the note. Without this the
+      // message would have to be worded at throw time and would be stuck in whatever
+      // language was active during the build.
+      const deps = makeDeps({
+        github: {
+          getRepository: vi.fn(async () => null),
+          generateFromTemplate: vi.fn(async () => repository),
+          readTemplateSources: vi.fn(async () => {
+            throw new FlowNoteError({
+              code: "templateCopyPending",
+              params: { fullName: repository.fullName },
+            });
+          }),
+          commitFiles: vi.fn(async () => "sha"),
+        },
+      });
+
+      const result = await createApp({ identity, owner: "octocat" }, deps);
+
+      expect(result.error).toEqual({
+        code: "templateCopyPending",
+        params: { fullName: "octocat/team-notes" },
+      });
+    });
+
     it("reports a repository Cloudflare cannot read, and wires the rest anyway", async () => {
       // The failure with no other symptom: `PUT /builds/repos/connections` accepts a
       // repository Cloudflare's GitHub App cannot see, so the push reaches nobody and
@@ -439,7 +482,7 @@ describe("createApp", () => {
       // check. Wiring the Worker, the connection and the identity commit means one grant
       // plus one push finishes the app.
       const ensureWorker = vi.fn(async () => worker);
-      const connectPushToDeploy = vi.fn(async () => ({ detail: "Pushes to main deploy." }));
+      const connectPushToDeploy = vi.fn(async () => ({ detail: connectedNote }));
       const commitFiles = vi.fn(async () => "commit-sha");
       const waitForOrigin = vi.fn();
       const deps = makeDeps({
@@ -454,7 +497,7 @@ describe("createApp", () => {
           connectPushToDeploy,
           checkRepoReadable: vi.fn(async () => ({
             state: "unreadable" as const,
-            detail: "Repository not found",
+            detail: externalNote("Repository not found"),
           })),
         },
         waitForOrigin,
@@ -476,8 +519,16 @@ describe("createApp", () => {
 
       // The agent is not skipped: it works on the repository, which exists.
       expect(statusOf(result.steps, "launch-agent")).toBe("done");
-      expect(result.error).toContain("settings/installations");
-      expect(result.error).toContain("Repository not found");
+      // One note carrying the whole help text: which repository, which button to press
+      // next, and Cloudflare's own refusal to quote.
+      expect(result.error).toEqual({
+        code: "repoAccessFix",
+        params: {
+          fullName: "octocat/team-notes",
+          said: "Repository not found",
+          next: "repoAccessNextStartFirstBuild",
+        },
+      });
       expect(result.repository?.fullName).toBe("octocat/team-notes");
       expect(result.worker?.url).toBe("https://team-notes.acme.workers.dev");
     });
@@ -488,10 +539,13 @@ describe("createApp", () => {
       const deps = makeDeps({
         cloudflare: {
           ensureWorker: vi.fn(async () => worker),
-          connectPushToDeploy: vi.fn(async () => ({ detail: "Pushes to main deploy." })),
+          connectPushToDeploy: vi.fn(async () => ({ detail: connectedNote })),
           checkRepoReadable: vi.fn(async () => ({
             state: "unknown" as const,
-            detail: "No route for that URI",
+            detail: {
+              code: "repoAccessUnconfirmed" as const,
+              params: { message: "No route for that URI" },
+            },
           })),
         },
       });
@@ -507,7 +561,7 @@ describe("createApp", () => {
       const deps = makeDeps({
         cloudflare: {
           ensureWorker: vi.fn(async () => worker),
-          connectPushToDeploy: vi.fn(async () => ({ detail: "Pushes to main deploy." })),
+          connectPushToDeploy: vi.fn(async () => ({ detail: connectedNote })),
           checkRepoReadable: undefined,
         },
       });
@@ -524,13 +578,13 @@ describe("createApp", () => {
           ensureWorker: vi.fn(async () => {
             throw new Error("Invalid Cloudflare API token");
           }),
-          connectPushToDeploy: vi.fn(async () => ({ detail: "" })),
+          connectPushToDeploy: vi.fn(async () => ({ detail: connectedNote })),
         },
       });
 
       const result = await createApp({ identity, owner: "octocat" }, deps);
 
-      expect(result.error).toBe("Invalid Cloudflare API token");
+      expect(result.error).toEqual(externalNote("Invalid Cloudflare API token"));
       expect(result.repository?.fullName).toBe("octocat/team-notes");
       expect(statusOf(result.steps, "create-worker")).toBe("failed");
       expect(statusOf(result.steps, "commit-identity")).toBe("done");
@@ -556,7 +610,7 @@ describe("createApp", () => {
 
       const result = await createApp({ identity, owner: "octocat" }, deps);
 
-      expect(result.error).toContain("GitHub App");
+      expect(result.error).toEqual(externalNote("The Cloudflare GitHub App is not installed."));
       expect(commitFiles).toHaveBeenCalled();
       expect(statusOf(result.steps, "commit-identity")).toBe("done");
     });
@@ -566,19 +620,43 @@ describe("createApp", () => {
         waitForOrigin: vi.fn(async () => ({
           state: "not-published" as const,
           definition: null,
-          detail: "haven-app.json answered HTTP 404.",
+          detail: { code: "originHttpStatus" as const, params: { status: 404 } },
         })),
       });
 
       const result = await createApp({ identity, owner: "octocat" }, deps);
 
-      // The probe's own wording comes first, then where to look: a quiet origin means
-      // the build did not publish, and only Cloudflare's build log says why.
-      expect(result.error).toContain("haven-app.json answered HTTP 404.");
-      expect(result.error).toContain("Settings, Builds");
+      // The probe's own reason is what stopped the run, and where to look is advice
+      // alongside it: a quiet origin means the build did not publish, and only
+      // Cloudflare's build log says why. Two notes, so both stay translatable.
+      expect(result.error).toEqual({ code: "originHttpStatus", params: { status: 404 } });
+      expect(result.warnings).toContainEqual({ code: "originBuildLogHint" });
       expect(statusOf(result.steps, "wait-origin")).toBe("failed");
       expect(statusOf(result.steps, "propose")).toBe("skipped");
       expect(statusOf(result.steps, "launch-agent")).toBe("done");
+    });
+
+    it("does not send the user to the build log when the origin serves another app", async () => {
+      // A mismatch is not a missing build: the origin answered, with the wrong app. The
+      // build-log advice would be a wrong turn, so only the reason is reported.
+      const deps = makeDeps({
+        waitForOrigin: vi.fn(async () => ({
+          state: "mismatched" as const,
+          definition: null,
+          detail: {
+            code: "originMismatch" as const,
+            params: { servedAppId: "someone-else", expectedAppId: "team-notes" },
+          },
+        })),
+      });
+
+      const result = await createApp({ identity, owner: "octocat" }, deps);
+
+      expect(result.error).toEqual({
+        code: "originMismatch",
+        params: { servedAppId: "someone-else", expectedAppId: "team-notes" },
+      });
+      expect(result.warnings).not.toContainEqual({ code: "originBuildLogHint" });
     });
   });
 
@@ -605,7 +683,7 @@ describe("createApp", () => {
       expect(result.error).toBeNull();
       expect(statusOf(result.steps, "propose")).toBe("done");
       expect(statusOf(result.steps, "launch-agent")).toBe("failed");
-      expect(result.warnings).toContain("Cursor rate limit reached");
+      expect(result.warnings).toContainEqual(externalNote("Cursor rate limit reached"));
     });
 
     it("tells the user the URL to paste when app proposal was not granted", async () => {
@@ -613,9 +691,10 @@ describe("createApp", () => {
 
       expect(statusOf(result.steps, "propose")).toBe("skipped");
       expect(result.error).toBeNull();
-      expect(result.warnings).toContain(
-        "Add the app manually in Haven using https://team-notes.acme.workers.dev",
-      );
+      expect(result.warnings).toContainEqual({
+        code: "havenAddManually",
+        params: { url: "https://team-notes.acme.workers.dev" },
+      });
     });
 
     it("keeps the deployed app when the user declines the install", async () => {
@@ -630,7 +709,10 @@ describe("createApp", () => {
       expect(result.error).toBeNull();
       expect(statusOf(result.steps, "propose")).toBe("skipped");
       expect(result.installedAppInstanceId).toBeNull();
-      expect(result.warnings.join(" ")).toContain("team-notes.acme.workers.dev");
+      expect(result.warnings).toContainEqual({
+        code: "havenAddLater",
+        params: { url: "https://team-notes.acme.workers.dev" },
+      });
     });
 
     it("surfaces install warnings that the user can still act on", async () => {
@@ -649,7 +731,8 @@ describe("createApp", () => {
       const result = await createApp({ identity, owner: "octocat" }, deps);
 
       expect(result.installedAppInstanceId).toBe("instance-1");
-      expect(result.warnings).toContain("The database main could not be created.");
+      // Haven's wording, passed through: it knows what failed and we cannot reword it.
+      expect(result.warnings).toContainEqual(externalNote("The database main could not be created."));
     });
 
     it("drops Haven's implicit-create warning", async () => {
@@ -683,7 +766,7 @@ describe("deployNow", () => {
       ...base,
       cloudflare: {
         ...base.cloudflare,
-        startBuild: vi.fn(async () => ({ detail: "Cloudflare is building main." })),
+        startBuild: vi.fn(async () => ({ detail: buildStartedNote })),
         ...(overrides.cloudflare ?? {}),
       },
     } as DeployNowDependencies;
@@ -694,7 +777,7 @@ describe("deployNow", () => {
   it("builds without a push and finishes the setup", async () => {
     // The whole point: after access is granted there is no commit left to make, so the
     // build is started directly and the original sequence resumes from the origin wait.
-    const startBuild = vi.fn(async () => ({ detail: "Cloudflare is building main." }));
+    const startBuild = vi.fn(async () => ({ detail: buildStartedNote }));
     const proposeApp = vi.fn(async () => ({
       ok: true as const,
       appId: "team-notes",
@@ -735,14 +818,14 @@ describe("deployNow", () => {
     // Fatal here, unlike during creation: nothing has been created, so stopping costs
     // nothing, and a build Cloudflare cannot clone would replace a clear answer with a
     // failed build log.
-    const startBuild = vi.fn(async () => ({ detail: "" }));
+    const startBuild = vi.fn(async () => ({ detail: buildStartedNote }));
     const deps = makeDeployDeps({
       cloudflare: {
         ensureWorker: vi.fn(async () => worker),
-        connectPushToDeploy: vi.fn(async () => ({ detail: "" })),
+        connectPushToDeploy: vi.fn(async () => ({ detail: connectedNote })),
         checkRepoReadable: vi.fn(async () => ({
           state: "unreadable" as const,
-          detail: "Repository not found",
+          detail: externalNote("Repository not found"),
         })),
       },
     });
@@ -753,7 +836,16 @@ describe("deployNow", () => {
     expect(startBuild).not.toHaveBeenCalled();
     expect(statusOf(result.steps, "check-repo-access")).toBe("failed");
     expect(statusOf(result.steps, "start-build")).toBe("skipped");
-    expect(result.error).toContain("settings/installations");
+    // The rescue run points at its own button, and still quotes Cloudflare — the abort
+    // replaces the step's note, so the refusal has to travel inside the help text.
+    expect(result.error).toEqual({
+      code: "repoAccessFix",
+      params: {
+        fullName: "octocat/team-notes",
+        said: "Repository not found",
+        next: "repoAccessNextBuildAgain",
+      },
+    });
   });
 
   it("stops with Cloudflare's reason when the build cannot be started", async () => {
@@ -766,7 +858,7 @@ describe("deployNow", () => {
 
     expect(statusOf(result.steps, "start-build")).toBe("failed");
     expect(statusOf(result.steps, "wait-origin")).toBe("skipped");
-    expect(result.error).toBe("This Worker has no build trigger for main.");
+    expect(result.error).toEqual(externalNote("This Worker has no build trigger for main."));
   });
 
   it("does not offer Haven an origin that never came up", async () => {
@@ -774,7 +866,7 @@ describe("deployNow", () => {
       waitForOrigin: vi.fn(async () => ({
         state: "not-published" as const,
         definition: null,
-        detail: "The app did not answer.",
+        detail: { code: "originNoAnswer" as const },
       })),
     });
 

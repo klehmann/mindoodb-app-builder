@@ -35,6 +35,7 @@ import {
   type CloudflareOAuthTokens,
 } from "@/core/cloudflareOAuth";
 import { CLOUDFLARE_OAUTH_MESSAGE } from "@/host/oauthCallback";
+import { t } from "@/i18n";
 
 export type CloudflareConnectStatus = "idle" | "waiting" | "exchanging" | "connected" | "failed";
 
@@ -186,13 +187,13 @@ export function useCloudflareConnect(
       fail(
         message.errorDescription ||
           (message.error === "access_denied"
-            ? "The authorization was declined in Cloudflare."
-            : `Cloudflare refused the authorization (${message.error}).`),
+            ? t("cloudflareConnect.declined")
+            : t("cloudflareConnect.refused", { error: message.error })),
       );
       return;
     }
     if (!message.code) {
-      fail("Cloudflare returned no authorization code.");
+      fail(t("cloudflareConnect.noCode"));
       return;
     }
 
@@ -219,7 +220,7 @@ export function useCloudflareConnect(
         fail(
           hostError instanceof Error
             ? hostError.message
-            : "The authorization code could not be exchanged.",
+            : t("cloudflareConnect.exchangeFailed"),
         );
         return;
       }
@@ -255,7 +256,7 @@ export function useCloudflareConnect(
   async function connect(): Promise<void> {
     const hostConfig = config.value;
     if (!hostConfig?.cloudflareClientId) {
-      fail("This builder has no Cloudflare OAuth client configured.");
+      fail(t("cloudflareConnect.noClient"));
       return;
     }
 
@@ -281,7 +282,7 @@ export function useCloudflareConnect(
       fail(
         buildError instanceof Error
           ? buildError.message
-          : "The Cloudflare authorization URL could not be built.",
+          : t("cloudflareConnect.urlBuildFailed"),
       );
       return;
     }
@@ -289,7 +290,7 @@ export function useCloudflareConnect(
     status.value = "waiting";
     popup = window.open(url, "cloudflare-oauth", "width=620,height=780,noopener=no");
     if (!popup) {
-      fail("The Cloudflare window was blocked. Allow pop-ups for the builder and retry.");
+      fail(t("cloudflareConnect.popupBlocked"));
     }
   }
 
@@ -315,7 +316,7 @@ export function useCloudflareConnect(
       if (listed.accounts.length === 0) {
         // A token that can edit Workers but cannot list accounts is possible, so this is
         // a reason to show the id field again — not a reason to refuse the token.
-        identifyError.value = "This token did not report any Cloudflare account.";
+        identifyError.value = t("cloudflareConnect.noAccounts");
       }
       return listed.accounts;
     } catch (lookupError) {
@@ -323,7 +324,7 @@ export function useCloudflareConnect(
       identifyError.value =
         lookupError instanceof Error
           ? lookupError.message
-          : "Cloudflare could not be asked which account this token belongs to.";
+          : t("cloudflareConnect.accountLookupFailed");
       return [];
     } finally {
       identifying.value = false;

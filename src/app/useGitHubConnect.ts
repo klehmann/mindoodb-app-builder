@@ -18,6 +18,7 @@ import {
   githubAppInstallUrl,
   GitHubError,
 } from "@/core/github";
+import { t } from "@/i18n";
 
 export type GitHubConnectStatus = "idle" | "starting" | "waiting" | "connected" | "failed";
 
@@ -126,10 +127,10 @@ export function useGitHubConnect(
     } catch (error) {
       identifyError.value =
         error instanceof GitHubError && error.status === 401
-          ? "GitHub did not accept this token. Check that the whole value was copied, and that it has not expired."
+          ? t("githubConnect.tokenRejected")
           : error instanceof Error
             ? error.message
-            : "The token could not be checked with GitHub.";
+            : t("githubConnect.tokenCheckFailed");
       return "";
     } finally {
       identifying.value = false;
@@ -174,7 +175,7 @@ export function useGitHubConnect(
     try {
       authorization = await startGitHubDeviceFlow();
     } catch (startError) {
-      fail(startError instanceof Error ? startError.message : "GitHub could not be reached.");
+      fail(startError instanceof Error ? startError.message : t("githubConnect.unreachable"));
       return;
     }
     if (mine !== generation) {
@@ -193,7 +194,7 @@ export function useGitHubConnect(
         return;
       }
       if (Date.now() > deadline) {
-        fail("The code expired. Start again to get a new one.");
+        fail(t("githubConnect.codeExpired"));
         return;
       }
 
@@ -201,7 +202,7 @@ export function useGitHubConnect(
       try {
         result = await pollGitHubDeviceFlow(authorization.deviceCode);
       } catch (pollError) {
-        fail(pollError instanceof Error ? pollError.message : "GitHub could not be reached.");
+        fail(pollError instanceof Error ? pollError.message : t("githubConnect.unreachable"));
         return;
       }
       if (mine !== generation) {
@@ -225,10 +226,10 @@ export function useGitHubConnect(
         case "pending":
           break;
         case "expired":
-          fail("The code expired. Start again to get a new one.");
+          fail(t("githubConnect.codeExpired"));
           return;
         case "declined":
-          fail("The authorization was declined in GitHub.");
+          fail(t("githubConnect.declined"));
           return;
       }
 

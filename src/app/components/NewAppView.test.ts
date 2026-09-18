@@ -39,6 +39,7 @@ function render(props: Partial<InstanceType<typeof NewAppView>["$props"]> = {}) 
       result: null,
       cursorReady: true,
       narrowAccess: false,
+      canBuildNow: false,
       ...props,
     },
   });
@@ -106,6 +107,26 @@ describe("NewAppView", () => {
     await wrapper.findAll("button").find((b) => b.text() === "Open my new app")!.trigger("click");
 
     expect(wrapper.emitted("openApp")).toHaveLength(1);
+  });
+
+  it("offers the retry when the app was wired but never built", async () => {
+    const steps = createInitialSteps();
+    steps[0]!.status = "done";
+    const wrapper = render({ steps, result: result({ steps }), canBuildNow: true });
+
+    const retry = wrapper.findAll("button").find((b) => b.text() === "Try publishing again")!;
+    await retry.trigger("click");
+
+    expect(wrapper.emitted("buildNow")).toHaveLength(1);
+  });
+
+  it("hides the retry while nothing can be built", () => {
+    const steps = createInitialSteps();
+    steps[0]!.status = "done";
+
+    expect(render({ steps, result: result({ steps }) }).text()).not.toContain(
+      "Try publishing again",
+    );
   });
 
   it("does not offer the finished app while the run is still going", () => {

@@ -25,6 +25,7 @@ import {
   EMPTY_CREDENTIALS,
   type BuilderCredentials,
 } from "@/core/credentials";
+import { setUiLanguage, t } from "@/i18n";
 
 /** Logical id declared in the builder's `haven-app.json`. */
 export const BUILDER_DATABASE_ID = "appbuilder";
@@ -46,6 +47,7 @@ export function useBuilderSession() {
   const error = ref<string | null>(null);
 
   let unsubscribeTheme: (() => void) | null = null;
+  let unsubscribeLocale: (() => void) | null = null;
 
   const connected = computed(() => session.value !== null);
   const credentialsStatus = computed(() =>
@@ -92,6 +94,12 @@ export function useBuilderSession() {
       applyTheme(context.theme);
       unsubscribeTheme = nextSession.onThemeChange(applyTheme);
 
+      // The builder follows Haven's language the same way it follows its theme, and it
+      // keeps following: switching the language in Haven re-renders this app rather than
+      // leaving it in the language it happened to launch in.
+      setUiLanguage(context.locale);
+      unsubscribeLocale = nextSession.onLocaleChange(setUiLanguage);
+
       if (databaseInfo.value) {
         database.value = await nextSession.openDatabase(BUILDER_DATABASE_ID);
         const loaded = await loadCredentials(database.value);
@@ -106,9 +114,7 @@ export function useBuilderSession() {
        * that fix, and whoever is debugging gets the original in the console.
        */
       console.error("[app-builder] Could not connect to Haven:", connectError);
-      error.value =
-        "Could not connect to Haven. Open the App Builder from your Haven workspace " +
-        "rather than directly in a browser tab, then reload this page.";
+      error.value = t("session.connectFailed");
     } finally {
       connecting.value = false;
     }
@@ -135,10 +141,7 @@ export function useBuilderSession() {
         credentialsDocId.value,
       );
     } catch (saveError) {
-      error.value = readErrorMessage(
-        saveError,
-        "The credentials could not be stored.",
-      );
+      error.value = readErrorMessage(saveError, t("session.credentialsStoreFailed"));
     } finally {
       savingCredentials.value = false;
     }
@@ -156,7 +159,7 @@ export function useBuilderSession() {
       return {
         ok: false,
         reason: "unavailable",
-        message: "The builder is not connected to Haven.",
+        message: t("session.notConnected"),
       };
     }
     return await current.proposeApp({ url });
@@ -165,6 +168,8 @@ export function useBuilderSession() {
   async function disconnect(): Promise<void> {
     unsubscribeTheme?.();
     unsubscribeTheme = null;
+    unsubscribeLocale?.();
+    unsubscribeLocale = null;
     const current = session.value;
     session.value = null;
     database.value = null;

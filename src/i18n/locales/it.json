@@ -1,0 +1,454 @@
+{
+  "app": {
+    "title": "App Builder",
+    "tagline": "Descrivi un’applicazione. Portala in Haven.",
+    "connecting": "Connessione a Haven…",
+    "cannotPropose": "Questa installazione di Haven non può aggiungere applicazioni al posto tuo, quindi l’applicazione finita la aggiungi tu — ti mostriamo il link.",
+    "copyFailed": "Copia non riuscita. L’indirizzo è {url}",
+    "builds": {
+      "error": "Cloudflare non ha comunicato lo stato della build.",
+      "errorWithReason": "Cloudflare non ha comunicato lo stato della build: {reason}"
+    },
+    "definition": {
+      "saved": "Definizione dell’applicazione salvata nei tuoi download.",
+      "opened": "Definizione dell’applicazione aperta in una nuova scheda — salvala da lì.",
+      "failed": "Non è stato possibile salvare la definizione dell’applicazione."
+    },
+    "footer": {
+      "setupLink": "Collegamenti e configurazione",
+      "tokensSaved": "I token e le chiavi che inserisci lì vengono salvati, così non devi ricrearli la prossima volta che crei un’applicazione. Stanno in un unico documento nel tuo database App Builder, cifrato in modo che solo tu possa leggerli — nemmeno chi condivide quel database con te.",
+      "tokensNotSaved": "I token e le chiavi che inserisci lì restano soltanto in questa pagina: non viene salvato nulla.",
+      "sourceLead": "App Builder è",
+      "sourceLink": "open source",
+      "sourceTail": ". Se preferisci non usare la copia che ospitiamo noi, puoi avviare la tua e aggiungere quella a Haven."
+    }
+  },
+  "list": {
+    "heading": "Le tue applicazioni",
+    "intro": "Descrivi ciò che ti serve: viene creato, pubblicato e aggiunto a Haven.",
+    "loading": "Cerchiamo le tue applicazioni…",
+    "readOnly": "Questo database App Builder è in sola lettura per te, quindi le applicazioni finite non restano in questo elenco. Tutto funziona comunque — copia l’indirizzo dell’applicazione prima di lasciare la pagina.",
+    "actions": {
+      "new": "Nuova applicazione"
+    },
+    "empty": {
+      "title": "Crea la tua prima applicazione",
+      "body": "Raccontaci che cosa manca al tuo team. Uno sviluppatore IA la scrive, viene pubblicata sul web e Haven la installa — e potrai continuare a modificarla.",
+      "action": "Descrivi un’applicazione"
+    },
+    "stages": {
+      "planned": "Non ancora creata",
+      "repository": "Codice creato, non pubblicato",
+      "published": "Pubblicata, non ancora online",
+      "live": "Online",
+      "installed": "Online, aggiunta a Haven"
+    },
+    "row": {
+      "untitled": "Applicazione senza titolo",
+      "started": "Iniziata il {date}",
+      "remove": "Rimuovi {label} da questo elenco"
+    },
+    "confirm": {
+      "title": "Rimuovere «{label}» da questo elenco?",
+      "hint": "Questo elimina soltanto ciò che App Builder ha salvato sull’applicazione, qui nel suo database. Nient’altro viene toccato: il progetto resta su GitHub, l’applicazione pubblicata continua a funzionare su Cloudflare, un eventuale agente Cursor rimane dov’è e Haven la mantiene installata. Puoi rimettere l’applicazione in questo elenco creandone una nuova — ma l’indirizzo e la descrizione salvati qui andranno perduti.",
+      "remove": "Rimuovi dall’elenco",
+      "keep": "Mantienila"
+    }
+  },
+  "detail": {
+    "back": "Tutte le applicazioni",
+    "address": {
+      "open": "Apri l’applicazione",
+      "copy": "Copia indirizzo",
+      "copied": "Copiato",
+      "addToHaven": "Aggiungi a Haven",
+      "addToHavenAgain": "Aggiungi di nuovo a Haven",
+      "saveAsFile": "Salva come file",
+      "hint": "Chiunque riceva questo indirizzo può aggiungere l’applicazione al proprio Haven. «Salva come file» conserva una copia della definizione dell’applicazione, per un Haven che non riesce a raggiungere l’indirizzo."
+    },
+    "continue": {
+      "working": "In corso…",
+      "labels": {
+        "create": "Creala adesso",
+        "commit": "Riprendi da dove si è interrotta",
+        "publish": "Pubblicala",
+        "build": "Pubblicala",
+        "install": "Aggiungila a Haven",
+        "iterate": "Affidala di nuovo all’IA"
+      },
+      "hints": {
+        "create": "Non è ancora stato creato nulla — questo esegue tutto quanto.",
+        "commit": "Il progetto su GitHub esiste, ma il codice di partenza non porta ancora il nome della tua applicazione. Questo riprende da lì.",
+        "publish": "Il codice è su GitHub. Questo la mette online e la aggiunge a Haven.",
+        "build": "L’indirizzo web è riservato, ma l’applicazione non è mai andata online. Questo ne esegue la build.",
+        "install": "L’applicazione è online. Questo chiede a Haven di installarla.",
+        "iterate": "Avvia di nuovo un agente Cursor sull’applicazione."
+      }
+    },
+    "links": {
+      "heading": "Gestiscila",
+      "repo": "Il codice su GitHub",
+      "repoHint": "Tutto ciò che scrive l’IA finisce qui.",
+      "hosting": "Hosting su Cloudflare",
+      "hostingHint": "Log delle build, domini personalizzati, utilizzo.",
+      "agent": "Lo sviluppatore IA in Cursor",
+      "agentHint": "Chiedi modifiche e guardalo lavorare."
+    },
+    "builds": {
+      "heading": "Pubblicazione",
+      "status": {
+        "success": "L’ultima build è andata a buon fine.",
+        "failed": "L’ultima build non è riuscita.",
+        "running": "Una build è in corso.",
+        "queued": "Una build è in coda.",
+        "canceled": "L’ultima build è stata annullata."
+      },
+      "statusOther": "Ultima build: {status}.",
+      "none": "Cloudflare non ha ancora eseguito una build di questa applicazione.",
+      "buildNow": "Esegui la build",
+      "refresh": "Controlla lo stato della pubblicazione",
+      "hint": "Ogni modifica inviata a GitHub si pubblica da sé. «Esegui la build» serve quando vuoi farlo subito."
+    },
+    "agent": {
+      "launch": "Affidala all’IA",
+      "needsKey": "Serve una chiave Cursor — aggiungila in «Collegamenti e configurazione». Oppure clona il repository e modificalo tu, con lo strumento che preferisci."
+    },
+    "forget": {
+      "summary": "Rimuovi da questo elenco",
+      "hint": "Questo rimuove soltanto l’annotazione che il builder conserva sull’applicazione, qui nel suo database. Il codice resta su GitHub, l’applicazione pubblicata continua a funzionare su Cloudflare, un eventuale agente Cursor rimane dov’è e Haven la mantiene installata.",
+      "button": "Rimuovi dall’elenco"
+    }
+  },
+  "newApp": {
+    "back": "Tutte le applicazioni",
+    "build": {
+      "idle": "Crea la mia applicazione",
+      "running": "Creazione dell’applicazione…"
+    },
+    "intro": {
+      "withAi": "Ci vogliono un paio di minuti. Creiamo il progetto, lo pubblichiamo sul web e lo aggiungiamo a Haven, poi mettiamo al lavoro lo sviluppatore IA. Puoi seguire ogni passaggio.",
+      "withoutAi": "Ci vogliono un paio di minuti. Creiamo il progetto, lo pubblichiamo sul web e lo aggiungiamo a Haven. Puoi seguire ogni passaggio.",
+      "starterOnly": "Quello che ottieni è l’applicazione di partenza, online e installata — il codice è poi tuo da modificare, a mano o con qualsiasi strumento IA."
+    },
+    "narrowAccess": "Hai scelto di selezionare i repository a mano, quindi dopo la creazione del progetto dovrai consentire a Cloudflare (e a Cursor) di vederlo su GitHub. Ci fermiamo per dirti quando.",
+    "finished": {
+      "open": "Apri la mia nuova applicazione",
+      "hint": "Da ora tutto ciò che riguarda questa applicazione — indirizzo, codice, pubblicazione, sviluppatore IA — si trova su una pagina propria."
+    }
+  },
+  "newAppForm": {
+    "title": "Che cosa vuoi creare?",
+    "purpose": "Descrivi la tua applicazione come la spiegheresti a un collega. L’IA trasforma il testo in software funzionante — non serve nessun termine tecnico.",
+    "name": {
+      "label": "Dai un nome all’applicazione",
+      "placeholder": "Note del team",
+      "hint": "È il nome che vedrai in Haven."
+    },
+    "description": {
+      "label": "In una frase, a che cosa serve?",
+      "placeholder": "Note condivise per il team."
+    },
+    "task": {
+      "label": "Descrivi che cosa deve fare",
+      "placeholder": "Le persone possono scrivere note, assegnare tag e cercare tra tutte. Una schermata con l’elenco delle note, una per scriverle. Tutti nel team possono vederle e modificarle.",
+      "hint": "È l’indicazione da cui parte l’IA — più è concreta, meglio è. Pensa a chi la usa, a che cosa vede sullo schermo e a che cosa può fare. Le modifiche puoi sempre chiederle dopo."
+    },
+    "advanced": {
+      "summary": "Indirizzo web e privacy"
+    },
+    "slug": {
+      "label": "Nome breve per l’indirizzo web",
+      "placeholder": "note-del-team",
+      "hintBefore": "La tua applicazione vivrà su",
+      "hintAfter": "— è il link che invii per email ai colleghi perché possano aggiungerla al loro Haven."
+    },
+    "privateCode": {
+      "label": "Mantieni il codice privato",
+      "hint": "Consigliato. L’applicazione resta raggiungibile da chiunque abbia il link; questo nasconde soltanto il codice sorgente agli estranei."
+    }
+  },
+  "setup": {
+    "back": "Tutte le applicazioni",
+    "header": {
+      "title": "Configura una volta, poi crea applicazioni",
+      "purpose": "Le tue applicazioni hanno bisogno di un posto in cui vivere. Collega i tre servizi qui sotto e approva un paio di installazioni — dopo di che creare un’applicazione è un nome e un pulsante."
+    },
+    "intro": "GitHub conserva il codice e Cloudflare lo ospita; entrambi sono gratuiti. Cursor è lo sviluppatore IA che scrive l’applicazione, e i suoi agenti cloud richiedono un piano a pagamento. Cursor puoi anche tralasciarlo: l’applicazione viene comunque creata e pubblicata, e quello che ottieni è un normale repository Git — modificalo tu, oppure usaci Claude Code, Codex o qualsiasi altro strumento.",
+    "access": {
+      "title": "Quanto accesso concedere",
+      "purpose": "Ogni applicazione che crei ottiene un nuovo progetto GitHub tutto suo, e Cloudflare e Cursor devono poterlo vedere.",
+      "all": {
+        "label": "Tutti i repository — consigliato",
+        "hint": "Approvi una volta e ogni applicazione futura è coperta. Creare un’applicazione diventa un solo pulsante. Se ti sembra troppo ampio, usa un account GitHub che tieni per questo scopo."
+      },
+      "selected": {
+        "label": "Seleziono io i repository",
+        "hint": "Più ristretto, ma ogni nuova applicazione richiede due approvazioni in più su GitHub prima di poter essere pubblicata — il builder ti dirà quando."
+      }
+    },
+    "installs": {
+      "title": "Approva le installazioni",
+      "intro": {
+        "lead": "Ogni link apre GitHub in una nuova scheda.",
+        "allBefore": "Scegli",
+        "allOption": "All repositories",
+        "allAfter": "in ognuna di esse.",
+        "selected": "Scegli i repository che ciascuna deve poter vedere."
+      },
+      "builder": {
+        "link": "Installa App Builder",
+        "hint": "Consente a questo builder di creare il nuovo progetto e di eseguire il primo commit. Serve solo se hai collegato GitHub con il pulsante qui sopra: un token incollato da te porta già con sé i propri permessi."
+      },
+      "cloudflare": {
+        "link": "Installa Cloudflare Workers and Pages",
+        "hint": "Consente a Cloudflare di leggere il progetto per pubblicarlo, e di ripubblicarlo a ogni modifica."
+      },
+      "cursor": {
+        "link": "Installa Cursor",
+        "hint": "Consente allo sviluppatore IA di leggere e scrivere il progetto. Saltalo se preferisci modificare il codice tu, o con un altro strumento."
+      },
+      "note": "Da qui non possiamo vedere queste installazioni, quindi in questa pagina nulla si spunterà da sé. Se più tardi una build non riesce perché qualcosa non è stato approvato, te lo diciamo e ti riportiamo qui."
+    },
+    "finish": {
+      "save": "Salva e continua",
+      "start": "Ho finito — iniziamo a creare",
+      "blocked": "Collega prima GitHub e Cloudflare qui sopra. Sono loro due a creare e pubblicare la tua applicazione."
+    }
+  },
+  "connect": {
+    "title": "Account",
+    "storageHint": "Conservato in un unico documento nel tuo database App Builder, cifrato per te personalmente. Nessun altro può leggerlo, nemmeno chi condivide quel database con te.",
+    "ephemeralWarning": "Questi collegamenti durano soltanto finché non chiudi questa pagina. Perché vengano ricordati, installa App Builder dall’App Store di Haven — o aggiungilo tramite URL — invece di aprirlo direttamente.",
+    "checkingOptions": "Verifichiamo come puoi collegarti…",
+    "cancel": "Annulla",
+    "hideToken": "Nascondi token",
+    "useOwnToken": "Usa un mio token",
+    "badge": {
+      "connected": "collegato",
+      "optional": "facoltativo"
+    },
+    "deviceCode": {
+      "copy": "Copia",
+      "copied": "Copiato"
+    },
+    "github": {
+      "deviceOpen": "Apri",
+      "deviceEnterCode": "e inserisci questo codice:",
+      "scopeHint": "Concede il permesso di creare un nuovo progetto ed eseguire il primo commit — non di leggere i repository che hai già. Puoi revocarlo quando vuoi nelle impostazioni delle applicazioni di GitHub.",
+      "waiting": "In attesa di GitHub…",
+      "reconnect": "Ricollega GitHub",
+      "connect": "Collega GitHub",
+      "tokenLabel": "Token GitHub",
+      "identifying": "Verifica del token con GitHub…",
+      "tokenLinkText": "Crea un token su GitHub",
+      "tokenHintBeforeScope": "— il link apre il modulo di GitHub con l’unico permesso che ci serve,",
+      "tokenHintAfterScope": ", già selezionato. Verifica che lo sia, scegli quanto deve durare il token, premi",
+      "generateTokenButton": "Generate token",
+      "tokenHintAfterGenerate": ", poi copia il valore nel campo qui sopra. GitHub lo mostra una volta sola.",
+      "orgSummary": "Crea le applicazioni sotto un’organizzazione",
+      "ownerLabel": "Proprietario GitHub",
+      "ownerPlaceholder": "tuo-utente-o-organizzazione",
+      "ownerHint": "Se lo lasci così, le tue applicazioni vengono create sotto il tuo account. Anche un’organizzazione va bene, ma le installazioni che hai approvato per te non la coprono: devi approvarle anche lì."
+    },
+    "cloudflare": {
+      "consentHint": "Apre la schermata di consenso di Cloudflare. Chiede i permessi Workers che servono al builder e nient’altro, e il token di accesso viene scambiato in questa pagina ovunque Cloudflare lo consenta.",
+      "waiting": "In attesa di Cloudflare…",
+      "finishing": "Completamento…",
+      "reconnect": "Ricollega Cloudflare",
+      "connect": "Collega Cloudflare",
+      "tokenLabel": "Token Cloudflare",
+      "identifying": "Verifica del token con Cloudflare…",
+      "tokenLinkText": "Crea un token su Cloudflare",
+      "tokenHintPress": "— premi",
+      "createTokenButton": "Create Token",
+      "tokenHintScroll": ", scorri fino a",
+      "createCustomTokenButton": "Create Custom Token",
+      "tokenHintPermissions": ", e aggiungi questi due permessi: Workers Scripts → Edit e Workers Builds Configuration → Edit. Poi copia il token nel campo qui sopra.",
+      "profileHintIntro": "Crealo nella pagina che apre quel link —",
+      "profileTokensPath": "My Profile → API Tokens",
+      "profileHintMid": ". Cloudflare offre token anche sotto",
+      "manageAccountLabel": "Manage Account",
+      "profileHintTail": ", ma quelli non possono attivare la pubblicazione automatica, quindi la pagina successiva si fermerebbe con un errore.",
+      "accountLabel": "Account",
+      "accountSelectHint": "Il tuo token può agire su più di uno — questo è quello in cui finiscono le tue applicazioni.",
+      "accountPrefix": "Account:",
+      "accountSummary": "Account: {id}",
+      "accountIdFallbackIntro": "Puoi anche inserirlo qui sotto: apri",
+      "dashboardLinkText": "la tua dashboard Cloudflare",
+      "accountIdFallbackTail": "e copia il codice lungo dalla barra degli indirizzi — la parte subito dopo",
+      "accountIdLabel": "ID account Cloudflare",
+      "accountIdPlaceholder": "letto dal tuo token",
+      "accountIdHint": "Normalmente qui non c’è nulla da compilare — incollando il token qui sopra l’account viene letto da lì.",
+      "accountIdManualHint": "Incollando di nuovo un token, questo valore viene letto dal token. Modificalo a mano solo se sai quale account vuoi."
+    },
+    "cursor": {
+      "keyLabel": "Chiave API",
+      "keyHintIntro": "Creane una in",
+      "dashboardLinkText": "la dashboard di Cursor",
+      "keyHintTail": ". Serve ad avviare un agente cloud sul nuovo repository. L’API di Cursor non può essere chiamata da un browser e non ha una schermata di consenso, quindi questa singola chiave viene inviata al server del builder per quella sola chiamata. All’agente non viene mai data.",
+      "optionalHint": "Lascia il campo vuoto se preferisci scrivere il codice tu, o usare un altro strumento sul repository — Claude Code, Codex, il tuo editor. Nient’altro qui dipende da questa chiave."
+    },
+    "save": {
+      "saving": "Salvataggio…",
+      "accounts": "Salva gli account",
+      "one": "Salva"
+    }
+  },
+  "progress": {
+    "working": "Ci stiamo lavorando…",
+    "done": "Cosa è successo",
+    "steps": {
+      "check-name": "Verificare che il nome sia libero",
+      "create-repo": "Creare il progetto su GitHub",
+      "commit-identity": "Scrivere nome e descrizione dell’applicazione",
+      "check-repo-access": "Verificare che Cloudflare veda il progetto",
+      "create-worker": "Riservare l’indirizzo web",
+      "connect-builds": "Attivare la pubblicazione automatica",
+      "start-build": "Pubblicare l’applicazione",
+      "wait-origin": "Attendere che l’applicazione sia online",
+      "propose": "Aggiungere l’applicazione a Haven",
+      "launch-agent": "Avviare lo sviluppatore IA"
+    },
+    "retry": {
+      "button": "Riprova a pubblicare",
+      "hint": "Hai appena concesso l’accesso? Questo pubblica subito — non serve nessun altro passaggio."
+    },
+    "share": {
+      "title": "La tua applicazione è online",
+      "hint": "Invia questo link ai colleghi per email — possono aggiungere la stessa applicazione al loro Haven.",
+      "button": "Condividi per email",
+      "mailSubject": "Un’applicazione per il nostro spazio di lavoro Haven",
+      "mailBody": "Ho creato un’applicazione per noi. Aggiungila al tuo spazio di lavoro Haven con questo link:\n\n{url}\n"
+    },
+    "links": {
+      "code": "— il tuo codice su GitHub",
+      "reserved": "{url} — riservato, non ancora online"
+    }
+  },
+  "agent": {
+    "heading": "Agente di programmazione",
+    "intro": {
+      "link": "Apri in Cursor",
+      "rest": "per guardarlo lavorare. I suoi push si pubblicano da sé."
+    },
+    "run": {
+      "status": "Esecuzione {status}",
+      "pullRequest": "pull request"
+    },
+    "followUp": {
+      "label": "Prossima istruzione",
+      "placeholder": "Aggiungi un filtro per tag sopra l’elenco."
+    },
+    "actions": {
+      "send": "Invia",
+      "check": "Controlla lo stato"
+    },
+    "errors": {
+      "status": "Lo stato dell’agente non è disponibile.",
+      "busy": "L’agente sta ancora lavorando all’istruzione precedente. Riprova quando ha finito.",
+      "send": "Non è stato possibile inviare l’istruzione successiva."
+    }
+  },
+  "flow": {
+    "validation": {
+      "nameRequired": "L’applicazione ha bisogno di un nome.",
+      "slugInvalid": "Il nome del repository può contenere solo lettere minuscole, cifre e trattini."
+    },
+    "ready": {
+      "connectGithub": "Collega prima GitHub.",
+      "connectCloudflare": "Collega prima Cloudflare.",
+      "createRepositoryOrSkipBack": "Crea prima il repository su GitHub, oppure torna indietro se esiste già.",
+      "createRepository": "Crea prima il repository su GitHub.",
+      "pasteCursorKey": "Incolla una chiave API di Cursor per avviare un agente.",
+      "githubNotConnected": "GitHub non è ancora collegato — apri «{setup}» per collegarlo.",
+      "cloudflareNotConnected": "Cloudflare non è ancora collegato — apri «{setup}» per collegarlo."
+    },
+    "note": {
+      "cloudflareSaid": "Cloudflare ha risposto: {said}",
+      "nameAvailable": "{slug} è disponibile.",
+      "nameTaken": "{fullName} esiste già. Scegli un altro nome per il repository.",
+      "nameCheckFailed": "Non è stato possibile verificare il nome del repository.",
+      "nameAlreadyYours": "{fullName} è già tuo.",
+      "repoFromEarlierAttempt": "Il progetto è stato creato in un tentativo precedente.",
+      "repoCreated": "{fullName}",
+      "repoCreateFailed": "Non è stato possibile creare il repository.",
+      "templateCopyPending": "GitHub non ha ancora finito di copiare il modello in {fullName}. Il progetto esiste ed è vuoto — tra poco aprilo dalle tue applicazioni e premi «{action}».",
+      "templateMissingFile": "Nel modello manca {path}.",
+      "identityCommitted": "{count} file ora portano il nome {label}.",
+      "identityCommitFailed": "Non è stato possibile scrivere nome e descrizione dell’applicazione.",
+      "noCloudflareAccount": "Nessun account Cloudflare a cui chiedere.",
+      "repoAccessReadable": "Cloudflare può leggere il repository.",
+      "repoAccessUnconfirmed": "Nessuna conferma: {message}",
+      "repoAccessCheckFailed": "Non è stato possibile eseguire la verifica.",
+      "repoAccessFix": "Cloudflare non può leggere {fullName}, quindi un push su questo repository non farà partire nessuna build. La sua GitHub App raggiunge solo i repository su cui è installata, e un repository che un attimo fa non esisteva non è tra quelli. Aggiungi questo su https://github.com/settings/installations, oppure imposta quell’installazione su «All repositories». {next}",
+      "repoAccessNextStartFirstBuild": "Poi premi «{action}» — il Worker si può collegare anche senza un push.",
+      "repoAccessNextBuildAgain": "Poi premi di nuovo «{action}».",
+      "workerReserved": "{url}",
+      "workerReused": "{url} (esistente)",
+      "workerCreateFailed": "Non è stato possibile creare il Worker.",
+      "pushToDeployConnected": "I push su {branch} ora si pubblicano da sé.",
+      "buildTriggerReused": "Riutilizzo del trigger di build esistente per {name}.",
+      "pushToDeployFailed": "Non è stato possibile configurare la pubblicazione automatica a ogni push.",
+      "noBuildWithoutAccess": "Nessuna build può partire finché Cloudflare non riesce a leggere il repository.",
+      "havenNeedsLiveUrl": "Haven legge la definizione dell’applicazione dal suo indirizzo online.",
+      "noStartBuildCapability": "Senza un push non c’è modo di avviare una build.",
+      "buildStarted": "Cloudflare sta eseguendo la build di {branch} ({buildUuid}).",
+      "buildStartFailed": "Non è stato possibile avviare la build.",
+      "waitingForBuild": "In attesa della prima build di Cloudflare…",
+      "originAttempt": "Tentativo {attempt}: {detail}",
+      "originNoUrl": "L’applicazione non ha ancora un indirizzo.",
+      "originNoAnswer": "L’applicazione non ha ancora risposto.",
+      "originHttpStatus": "haven-app.json ha risposto HTTP {status}.",
+      "originNotJson": "haven-app.json non è ancora JSON — probabilmente la pubblicazione è ancora in corso.",
+      "originInvalidDefinition": "haven-app.json non è una definizione di applicazione valida.",
+      "originMismatch": "L’indirizzo risponde con «{servedAppId}», ma questa applicazione è «{expectedAppId}».",
+      "originNotChecked": "Non ancora verificato.",
+      "originNotLiveInTime": "L’applicazione non è andata online in tempo.",
+      "originBuildLogHint": "Il repository e il Worker esistono, quindi è la build da guardare: Cloudflare, il Worker, Settings, Builds. Se lì l’elenco delle build è vuoto, la GitHub App di Cloudflare non ha mai visto il repository — impostala su «All repositories» su https://github.com/settings/installations, oppure aggiungici questo, poi premi «{action}».",
+      "originServing": "{url} risponde con haven-app.json.",
+      "originCheckFailed": "Non è stato possibile verificare l’indirizzo dell’applicazione.",
+      "havenNotGranted": "Questa installazione di Haven non ha concesso il permesso di proporre applicazioni.",
+      "havenAddManually": "Aggiungi l’applicazione a mano in Haven usando {url}",
+      "havenInstalled": "{label} è installata in Haven.",
+      "havenDeclined": "Hai rifiutato l’installazione. L’applicazione resta comunque pubblicata.",
+      "havenAddLater": "Aggiungi l’applicazione più tardi in Haven usando {url}",
+      "havenReadFailed": "Haven non è riuscito a leggere la definizione dell’applicazione.",
+      "havenProposeFailed": "Non è stato possibile chiedere a Haven di installare l’applicazione.",
+      "pressRegisterInHaven": "Premi «{action}» quando vuoi.",
+      "noCursorKey": "Nessuna chiave API di Cursor collegata.",
+      "agentStarted": "{url}",
+      "agentStartFailed": "Non è stato possibile avviare l’agente Cursor."
+    }
+  },
+  "githubConnect": {
+    "tokenRejected": "GitHub non ha accettato questo token. Controlla di aver copiato il valore per intero e che non sia scaduto.",
+    "tokenCheckFailed": "Non è stato possibile verificare il token con GitHub.",
+    "unreachable": "Non è stato possibile raggiungere GitHub.",
+    "codeExpired": "Il codice è scaduto. Ricomincia per ottenerne uno nuovo.",
+    "declined": "L’autorizzazione è stata rifiutata in GitHub."
+  },
+  "cloudflareConnect": {
+    "declined": "L’autorizzazione è stata rifiutata in Cloudflare.",
+    "refused": "Cloudflare ha rifiutato l’autorizzazione ({error}).",
+    "noCode": "Cloudflare non ha restituito alcun codice di autorizzazione.",
+    "exchangeFailed": "Non è stato possibile scambiare il codice di autorizzazione.",
+    "noClient": "Questo builder non ha nessun client OAuth di Cloudflare configurato.",
+    "urlBuildFailed": "Non è stato possibile creare l’URL di autorizzazione di Cloudflare.",
+    "popupBlocked": "La finestra di Cloudflare è stata bloccata. Consenti i pop-up per il builder e riprova.",
+    "noAccounts": "Questo token non ha indicato nessun account Cloudflare.",
+    "accountLookupFailed": "Non è stato possibile chiedere a Cloudflare a quale account appartiene questo token."
+  },
+  "session": {
+    "connectFailed": "Non è stato possibile connettersi a Haven. Apri App Builder dal tuo spazio di lavoro Haven invece che direttamente in una scheda del browser, poi ricarica questa pagina.",
+    "credentialsStoreFailed": "Non è stato possibile salvare le credenziali.",
+    "notConnected": "Il builder non è connesso a Haven."
+  },
+  "saveDefinition": {
+    "noUrl": "Questa applicazione non ha ancora un indirizzo web.",
+    "badStatus": "L’applicazione ha risposto {status}."
+  },
+  "hostApi": {
+    "unreachable": "Il server del builder non è raggiungibile. Avvialo con `mindoodb-app-builder`.",
+    "badStatus": "L’host ha risposto HTTP {status}."
+  }
+}

@@ -1,0 +1,454 @@
+{
+  "app": {
+    "title": "App Builder",
+    "tagline": "Beschrijf een applicatie. Zet hem in Haven.",
+    "connecting": "Verbinden met Haven…",
+    "cannotPropose": "Deze Haven-installatie kan geen applicaties voor je toevoegen, dus de afgeronde applicatie voeg je zelf toe — we laten je de link zien.",
+    "copyFailed": "Kopiëren is mislukt. Het adres is {url}",
+    "builds": {
+      "error": "Cloudflare heeft de buildstatus niet gemeld.",
+      "errorWithReason": "Cloudflare heeft de buildstatus niet gemeld: {reason}"
+    },
+    "definition": {
+      "saved": "De applicatiedefinitie is bij je downloads opgeslagen.",
+      "opened": "De applicatiedefinitie is in een nieuw tabblad geopend — sla hem daar op.",
+      "failed": "De applicatiedefinitie kon niet worden opgeslagen."
+    },
+    "footer": {
+      "setupLink": "Verbindingen en instellingen",
+      "tokensSaved": "De tokens en sleutels die je daar invult, worden opgeslagen, zodat je ze niet opnieuw hoeft aan te maken als je de volgende keer een applicatie bouwt. Ze staan in één document in je eigen App Builder-database, versleuteld zodat alleen jij ze kunt lezen — zelfs iemand met wie je die database deelt niet.",
+      "tokensNotSaved": "De tokens en sleutels die je daar invult, blijven alleen in deze pagina; er wordt niets opgeslagen.",
+      "sourceLead": "De App Builder is",
+      "sourceLink": "open source",
+      "sourceTail": ". Wil je liever niet de kopie gebruiken die wij hosten, dan kun je je eigen kopie draaien en die in plaats daarvan aan Haven toevoegen."
+    }
+  },
+  "list": {
+    "heading": "Je applicaties",
+    "intro": "Beschrijf wat je nodig hebt, en het wordt gebouwd, gepubliceerd en aan Haven toegevoegd.",
+    "loading": "Zoeken naar je applicaties…",
+    "readOnly": "Deze App Builder-database is voor jou alleen-lezen, dus afgeronde applicaties worden niet in deze lijst bewaard. Alles werkt gewoon — kopieer het adres van de applicatie voordat je de pagina verlaat.",
+    "actions": {
+      "new": "Nieuwe applicatie"
+    },
+    "empty": {
+      "title": "Bouw je eerste applicatie",
+      "body": "Vertel ons wat je team mist. Een AI-programmeur schrijft de applicatie, hij wordt op het web gepubliceerd en Haven installeert hem — daarna kun je hem blijven veranderen.",
+      "action": "Beschrijf een applicatie"
+    },
+    "stages": {
+      "planned": "Nog niet gebouwd",
+      "repository": "Code gemaakt, nog niet gepubliceerd",
+      "published": "Gepubliceerd, nog niet live",
+      "live": "Live",
+      "installed": "Live, aan Haven toegevoegd"
+    },
+    "row": {
+      "untitled": "Naamloze applicatie",
+      "started": "Gestart op {date}",
+      "remove": "{label} uit deze lijst verwijderen"
+    },
+    "confirm": {
+      "title": "‘{label}’ uit deze lijst verwijderen?",
+      "hint": "Hiermee verdwijnt alleen wat de App Builder over de applicatie heeft bewaard, hier in zijn eigen database. Aan de rest verandert niets: het project blijft op GitHub staan, de gepubliceerde applicatie blijft draaien op Cloudflare, een eventuele Cursor-agent blijft waar hij is, en Haven houdt hem geïnstalleerd. Je kunt de applicatie weer aan deze lijst toevoegen door een nieuwe te bouwen — maar het adres en de beschrijving die hier zijn opgeslagen, zijn dan weg.",
+      "remove": "Uit lijst verwijderen",
+      "keep": "Laten staan"
+    }
+  },
+  "detail": {
+    "back": "Alle applicaties",
+    "address": {
+      "open": "De applicatie openen",
+      "copy": "Adres kopiëren",
+      "copied": "Gekopieerd",
+      "addToHaven": "Aan Haven toevoegen",
+      "addToHavenAgain": "Opnieuw aan Haven toevoegen",
+      "saveAsFile": "Als bestand opslaan",
+      "hint": "Iedereen aan wie je dit adres stuurt, kan de applicatie aan zijn eigen Haven toevoegen. ‘Als bestand opslaan’ bewaart een kopie van de applicatiedefinitie, voor een Haven die het adres niet kan bereiken."
+    },
+    "continue": {
+      "working": "Bezig…",
+      "labels": {
+        "create": "Nu bouwen",
+        "commit": "Verdergaan waar het stopte",
+        "publish": "Publiceren",
+        "build": "Publiceren",
+        "install": "Aan Haven toevoegen",
+        "iterate": "Opnieuw aan de AI geven"
+      },
+      "hints": {
+        "create": "Er is nog niets aangemaakt — hiermee loopt alles in één keer door.",
+        "commit": "Het GitHub-project bestaat, maar de startcode is nog niet naar je applicatie vernoemd. Hiermee gaat het vanaf daar verder.",
+        "publish": "De code staat op GitHub. Hiermee komt hij op het web en wordt hij aan Haven toegevoegd.",
+        "build": "Het webadres is gereserveerd, maar de applicatie is nooit live gegaan. Hiermee wordt hij gebouwd.",
+        "install": "De applicatie is live. Hiermee wordt Haven gevraagd hem te installeren.",
+        "iterate": "Start opnieuw een Cursor-agent op de applicatie."
+      }
+    },
+    "links": {
+      "heading": "Onderhoud",
+      "repo": "De code op GitHub",
+      "repoHint": "Alles wat de AI schrijft, komt hier terecht.",
+      "hosting": "Hosting op Cloudflare",
+      "hostingHint": "Buildlogboeken, eigen domeinen, gebruik.",
+      "agent": "De AI-agent in Cursor",
+      "agentHint": "Vraag om wijzigingen en kijk hem aan het werk."
+    },
+    "builds": {
+      "heading": "Publiceren",
+      "status": {
+        "success": "De laatste build is gelukt.",
+        "failed": "De laatste build is mislukt.",
+        "running": "Er loopt nu een build.",
+        "queued": "Er staat een build in de wachtrij.",
+        "canceled": "De laatste build is geannuleerd."
+      },
+      "statusOther": "Laatste build: {status}.",
+      "none": "Cloudflare heeft deze applicatie nog niet gebouwd.",
+      "buildNow": "Nu bouwen",
+      "refresh": "Publicatiestatus controleren",
+      "hint": "Elke wijziging die naar GitHub wordt gepusht, publiceert zichzelf. ‘Nu bouwen’ is voor als je het direct wilt."
+    },
+    "agent": {
+      "launch": "Aan de AI geven",
+      "needsKey": "Hiervoor is een Cursor-sleutel nodig — voeg er een toe bij ‘Verbindingen en instellingen’. Of kloon de repository en wijzig hem zelf, met welk hulpmiddel je maar wilt."
+    },
+    "forget": {
+      "summary": "Uit deze lijst verwijderen",
+      "hint": "Hiermee verdwijnt alleen de aantekening die de builder over de applicatie bijhoudt, hier in zijn eigen database. De code blijft op GitHub staan, de gepubliceerde applicatie blijft draaien op Cloudflare, een eventuele Cursor-agent blijft waar hij is, en Haven houdt hem geïnstalleerd.",
+      "button": "Uit lijst verwijderen"
+    }
+  },
+  "newApp": {
+    "back": "Alle applicaties",
+    "build": {
+      "idle": "Mijn applicatie bouwen",
+      "running": "Je applicatie wordt gebouwd…"
+    },
+    "intro": {
+      "withAi": "Dit duurt een paar minuten. We maken het project aan, publiceren het op het web en voegen het toe aan Haven, en zetten daarna de AI-programmeur aan het werk. Je kunt elke stap volgen.",
+      "withoutAi": "Dit duurt een paar minuten. We maken het project aan, publiceren het op het web en voegen het toe aan Haven. Je kunt elke stap volgen.",
+      "starterOnly": "Wat je krijgt is de startapplicatie, live en geïnstalleerd — de code is daarna van jou om te wijzigen, met de hand of met een AI-hulpmiddel naar keuze."
+    },
+    "narrowAccess": "Je hebt ervoor gekozen om zelf repository's te kiezen, dus nadat het project is aangemaakt moet je Cloudflare (en Cursor) op GitHub toegang geven. We stoppen dan en laten je weten wanneer.",
+    "finished": {
+      "open": "Mijn nieuwe applicatie openen",
+      "hint": "Alles over deze applicatie — het adres, de code, het publiceren, de AI-programmeur — staat vanaf nu op haar eigen pagina."
+    }
+  },
+  "newAppForm": {
+    "title": "Wat wil je bouwen?",
+    "purpose": "Beschrijf je applicatie zoals je hem aan een collega zou uitleggen. De AI maakt hier werkende software van — technische woorden zijn niet nodig.",
+    "name": {
+      "label": "Geef je applicatie een naam",
+      "placeholder": "Teamnotities",
+      "hint": "Dit is de naam die je in Haven ziet."
+    },
+    "description": {
+      "label": "Waar is hij voor, in één zin?",
+      "placeholder": "Gedeelde notities voor het team."
+    },
+    "task": {
+      "label": "Beschrijf wat hij moet doen",
+      "placeholder": "Mensen kunnen notities schrijven, ze labelen en erin zoeken. Eén scherm met de lijst met notities, één om te schrijven. Iedereen in het team kan ze zien en bewerken.",
+      "hint": "Dit is de opdracht waarmee de AI werkt — hoe concreter, hoe beter. Denk aan wie hem gebruikt, wat ze op het scherm zien en wat ze kunnen doen. Je kunt later altijd om wijzigingen vragen."
+    },
+    "advanced": {
+      "summary": "Webadres en privacy"
+    },
+    "slug": {
+      "label": "Korte naam voor het webadres",
+      "placeholder": "team-notities",
+      "hintBefore": "Je applicatie komt te staan op",
+      "hintAfter": "— dit is de link die je collega's mailt zodat ze hem aan hun Haven kunnen toevoegen."
+    },
+    "privateCode": {
+      "label": "De code privé houden",
+      "hint": "Aanbevolen. De applicatie zelf blijft bereikbaar voor iedereen met de link; dit verbergt alleen de broncode voor vreemden."
+    }
+  },
+  "setup": {
+    "back": "Alle applicaties",
+    "header": {
+      "title": "Eén keer instellen, daarna applicaties bouwen",
+      "purpose": "Je applicaties moeten ergens staan. Verbind de drie diensten hieronder en keur een paar installaties goed — daarna is een applicatie maken een naam en een knop."
+    },
+    "intro": "GitHub bewaart de code en Cloudflare host hem; beide zijn gratis. Cursor is de AI-programmeur die de applicatie schrijft, en zijn cloudagents vragen een betaald plan. Cursor kun je weglaten: de applicatie wordt dan nog steeds aangemaakt en gepubliceerd, en wat je krijgt is een gewone Git-repository — wijzig hem zelf, of zet Claude Code, Codex of een ander hulpmiddel erop.",
+    "access": {
+      "title": "Hoeveel toegang je geeft",
+      "purpose": "Elke applicatie die je bouwt, krijgt zijn eigen nieuwe GitHub-project, en Cloudflare en Cursor moeten dat mogen zien.",
+      "all": {
+        "label": "All repositories — aanbevolen",
+        "hint": "Eén keer goedkeuren, en elke volgende applicatie is gedekt. Een applicatie bouwen wordt dan één knop. Voelt dat te ruim, houd er dan een apart GitHub-account voor op na."
+      },
+      "selected": {
+        "label": "Zelf de repository's kiezen",
+        "hint": "Beperkter, maar elke nieuwe applicatie heeft twee extra goedkeuringen op GitHub nodig voordat hij gepubliceerd kan worden — de builder laat je weten wanneer."
+      }
+    },
+    "installs": {
+      "title": "Keur de installaties goed",
+      "intro": {
+        "lead": "Elke link opent GitHub in een nieuw tabblad.",
+        "allBefore": "Kies",
+        "allOption": "All repositories",
+        "allAfter": "in elk daarvan.",
+        "selected": "Kies bij elk de repository's die het mag zien."
+      },
+      "builder": {
+        "link": "De App Builder installeren",
+        "hint": "Hiermee kan deze builder het nieuwe project aanmaken en de eerste commit doen. Alleen nodig als je GitHub met de knop hierboven hebt verbonden — een token dat je zelf hebt geplakt, brengt zijn eigen rechten al mee."
+      },
+      "cloudflare": {
+        "link": "Cloudflare Workers and Pages installeren",
+        "hint": "Hiermee kan Cloudflare het project lezen om het te publiceren, en bij elke wijziging opnieuw te publiceren."
+      },
+      "cursor": {
+        "link": "Cursor installeren",
+        "hint": "Hiermee kan de AI-programmeur het project lezen en schrijven. Sla dit over als je de code liever zelf wijzigt, of met een ander hulpmiddel."
+      },
+      "note": "Wij kunnen deze installaties hiervandaan niet zien, dus er wordt op deze pagina niets automatisch afgevinkt. Mislukt een build later omdat iets niet is goedgekeurd, dan zeggen we dat en brengen we je terug."
+    },
+    "finish": {
+      "save": "Opslaan en verdergaan",
+      "start": "Ik ben klaar — beginnen met bouwen",
+      "blocked": "Verbind eerst GitHub en Cloudflare hierboven. Die twee maken en publiceren je applicatie."
+    }
+  },
+  "connect": {
+    "title": "Accounts",
+    "storageHint": "Opgeslagen in één document in je App Builder-database, versleuteld voor jou persoonlijk. Niemand anders kan het lezen, zelfs iemand met wie je die database deelt niet.",
+    "ephemeralWarning": "Deze verbindingen blijven alleen bestaan tot je deze pagina sluit. Wil je dat ze bewaard worden, installeer de App Builder dan vanuit de App Store van Haven — of voeg hem toe via URL — in plaats van hem direct te openen.",
+    "checkingOptions": "Nagaan hoe je kunt verbinden…",
+    "cancel": "Annuleren",
+    "hideToken": "Token verbergen",
+    "useOwnToken": "Mijn eigen token gebruiken",
+    "badge": {
+      "connected": "verbonden",
+      "optional": "optioneel"
+    },
+    "deviceCode": {
+      "copy": "Kopiëren",
+      "copied": "Gekopieerd"
+    },
+    "github": {
+      "deviceOpen": "Open",
+      "deviceEnterCode": "en voer deze code in:",
+      "scopeHint": "Geeft toestemming om een nieuw project aan te maken en de eerste commit te doen — niet om de repository's te lezen die je al hebt. Je kunt dit altijd intrekken bij de applicatie-instellingen van GitHub.",
+      "waiting": "Wachten op GitHub…",
+      "reconnect": "GitHub opnieuw verbinden",
+      "connect": "GitHub verbinden",
+      "tokenLabel": "GitHub-token",
+      "identifying": "Token controleren bij GitHub…",
+      "tokenLinkText": "Een token aanmaken op GitHub",
+      "tokenHintBeforeScope": "— de link opent het formulier van GitHub met het enige recht dat we nodig hebben,",
+      "tokenHintAfterScope": ", al aangevinkt. Controleer dat, kies hoe lang het token geldig moet blijven en druk op",
+      "generateTokenButton": "Generate token",
+      "tokenHintAfterGenerate": ", en kopieer de waarde daarna in het veld hierboven. GitHub laat hem maar één keer zien.",
+      "orgSummary": "Applicaties onder een organisatie aanmaken",
+      "ownerLabel": "GitHub-eigenaar",
+      "ownerPlaceholder": "je-gebruiker-of-organisatie",
+      "ownerHint": "Laat dit staan en je applicaties worden onder je eigen account aangemaakt. Een organisatie kan ook, maar de installaties die je voor jezelf hebt goedgekeurd, gelden daar niet — die moet je daar ook goedkeuren."
+    },
+    "cloudflare": {
+      "consentHint": "Opent het eigen toestemmingsscherm van Cloudflare. Daar wordt gevraagd om de Workers-rechten die de builder nodig heeft en niets meer, en het toegangstoken wordt in deze pagina uitgewisseld waar Cloudflare dat toestaat.",
+      "waiting": "Wachten op Cloudflare…",
+      "finishing": "Afronden…",
+      "reconnect": "Cloudflare opnieuw verbinden",
+      "connect": "Cloudflare verbinden",
+      "tokenLabel": "Cloudflare-token",
+      "identifying": "Token controleren bij Cloudflare…",
+      "tokenLinkText": "Een token aanmaken op Cloudflare",
+      "tokenHintPress": "— druk op",
+      "createTokenButton": "Create Token",
+      "tokenHintScroll": ", scroll naar beneden naar",
+      "createCustomTokenButton": "Create Custom Token",
+      "tokenHintPermissions": ", en voeg deze twee rechten toe: Workers Scripts → Edit en Workers Builds Configuration → Edit. Kopieer het token daarna in het veld hierboven.",
+      "profileHintIntro": "Maak hem aan op de pagina die die link opent —",
+      "profileTokensPath": "My Profile → API Tokens",
+      "profileHintMid": ". Cloudflare biedt ook tokens aan onder",
+      "manageAccountLabel": "Manage Account",
+      "profileHintTail": ", maar die kunnen automatisch publiceren niet aanzetten, waardoor de volgende pagina met een foutmelding zou stoppen.",
+      "accountLabel": "Account",
+      "accountSelectHint": "Je token kan voor meerdere accounts werken — dit is het account waarin je applicaties komen.",
+      "accountPrefix": "Account:",
+      "accountSummary": "Account: {id}",
+      "accountIdFallbackIntro": "Je kunt het hieronder ook zelf invullen: open",
+      "dashboardLinkText": "je Cloudflare-dashboard",
+      "accountIdFallbackTail": "en kopieer de lange code uit de adresbalk — het deel direct na",
+      "accountIdLabel": "Cloudflare-account-ID",
+      "accountIdPlaceholder": "uit je token gelezen",
+      "accountIdHint": "Normaal hoef je hier niets in te vullen — als je het token hierboven plakt, wordt het account daaruit gelezen.",
+      "accountIdManualHint": "Plak je opnieuw een token, dan wordt dit uit dat token gelezen. Wijzig het alleen met de hand als je weet welk account je wilt."
+    },
+    "cursor": {
+      "keyLabel": "API-sleutel",
+      "keyHintIntro": "Maak er een aan in",
+      "dashboardLinkText": "het dashboard van Cursor",
+      "keyHintTail": ". Wordt gebruikt om een cloudagent op de nieuwe repository te starten. De API van Cursor kan niet vanuit een browser worden aangeroepen en heeft geen toestemmingsscherm, dus deze ene sleutel gaat voor die enkele aanroep naar de server van de builder. De agent zelf krijgt hem nooit.",
+      "optionalHint": "Laat dit leeg als je de code liever zelf schrijft, of met een ander hulpmiddel op de repository werkt — Claude Code, Codex, je editor. Verder hangt hier niets van af."
+    },
+    "save": {
+      "saving": "Opslaan…",
+      "accounts": "Accounts opslaan",
+      "one": "Opslaan"
+    }
+  },
+  "progress": {
+    "working": "We zijn ermee bezig…",
+    "done": "Wat er is gebeurd",
+    "steps": {
+      "check-name": "Controleren of de naam nog vrij is",
+      "create-repo": "Je project op GitHub aanmaken",
+      "commit-identity": "Naam en opdracht van je applicatie invullen",
+      "check-repo-access": "Controleren of Cloudflare het project ziet",
+      "create-worker": "Je webadres reserveren",
+      "connect-builds": "Automatisch publiceren instellen",
+      "start-build": "De applicatie publiceren",
+      "wait-origin": "Wachten tot de applicatie live is",
+      "propose": "De applicatie aan Haven toevoegen",
+      "launch-agent": "De AI-programmeur starten"
+    },
+    "retry": {
+      "button": "Publiceren opnieuw proberen",
+      "hint": "Net toegang gegeven? Hiermee wordt direct gepubliceerd — een andere stap is niet nodig."
+    },
+    "share": {
+      "title": "Je applicatie is live",
+      "hint": "Mail deze link naar collega's — zij kunnen dezelfde applicatie aan hun eigen Haven toevoegen.",
+      "button": "Delen per e-mail",
+      "mailSubject": "Een applicatie voor onze Haven-werkruimte",
+      "mailBody": "Ik heb een applicatie voor ons gebouwd. Voeg hem met deze link toe aan je Haven-werkruimte:\n\n{url}\n"
+    },
+    "links": {
+      "code": "— je code op GitHub",
+      "reserved": "{url} — gereserveerd, nog niet live"
+    }
+  },
+  "agent": {
+    "heading": "Programmeeragent",
+    "intro": {
+      "link": "Openen in Cursor",
+      "rest": "om hem aan het werk te zien. Wat hij pusht, publiceert zichzelf."
+    },
+    "run": {
+      "status": "Uitvoering {status}",
+      "pullRequest": "pull request"
+    },
+    "followUp": {
+      "label": "Volgende instructie",
+      "placeholder": "Voeg boven de lijst een filter op label toe."
+    },
+    "actions": {
+      "send": "Verzenden",
+      "check": "Status controleren"
+    },
+    "errors": {
+      "status": "De status van de agent is niet beschikbaar.",
+      "busy": "De agent werkt nog aan de vorige instructie. Probeer het opnieuw als hij klaar is.",
+      "send": "De vervolginstructie kon niet worden verzonden."
+    }
+  },
+  "flow": {
+    "validation": {
+      "nameRequired": "De applicatie heeft een naam nodig.",
+      "slugInvalid": "De naam van de repository mag alleen kleine letters, cijfers en streepjes bevatten."
+    },
+    "ready": {
+      "connectGithub": "Verbind eerst GitHub.",
+      "connectCloudflare": "Verbind eerst Cloudflare.",
+      "createRepositoryOrSkipBack": "Maak eerst de GitHub-repository aan, of ga terug als hij al bestaat.",
+      "createRepository": "Maak eerst de GitHub-repository aan.",
+      "pasteCursorKey": "Plak een Cursor-API-sleutel om een agent te starten.",
+      "githubNotConnected": "GitHub is nog niet verbonden — open ‘{setup}’ om het te verbinden.",
+      "cloudflareNotConnected": "Cloudflare is nog niet verbonden — open ‘{setup}’ om het te verbinden."
+    },
+    "note": {
+      "cloudflareSaid": "Cloudflare zei: {said}",
+      "nameAvailable": "{slug} is vrij.",
+      "nameTaken": "{fullName} bestaat al. Kies een andere naam voor de repository.",
+      "nameCheckFailed": "De naam van de repository kon niet worden gecontroleerd.",
+      "nameAlreadyYours": "{fullName} is al van jou.",
+      "repoFromEarlierAttempt": "Het project is bij een eerdere poging aangemaakt.",
+      "repoCreated": "{fullName}",
+      "repoCreateFailed": "De repository kon niet worden aangemaakt.",
+      "templateCopyPending": "GitHub is nog niet klaar met het kopiëren van het sjabloon naar {fullName}. Het project staat er al en is leeg — open het over een moment bij je applicaties en druk op ‘{action}’.",
+      "templateMissingFile": "In het sjabloon ontbreekt {path}.",
+      "identityCommitted": "{count} bestanden vernoemd naar {label}.",
+      "identityCommitFailed": "De naam en opdracht van de applicatie konden niet worden vastgelegd.",
+      "noCloudflareAccount": "Er is geen Cloudflare-account om dit aan te vragen.",
+      "repoAccessReadable": "Cloudflare kan de repository lezen.",
+      "repoAccessUnconfirmed": "Niet bevestigd: {message}",
+      "repoAccessCheckFailed": "De controle kon niet worden uitgevoerd.",
+      "repoAccessFix": "Cloudflare kan {fullName} niet lezen, dus een push ernaartoe levert geen build op. De GitHub App van Cloudflare bereikt alleen repository's waarop hij is geïnstalleerd, en een repository die er een moment geleden nog niet was, hoort daar niet bij. Voeg deze toe op https://github.com/settings/installations, of zet die installatie op ‘All repositories’. {next}",
+      "repoAccessNextStartFirstBuild": "Druk daarna op ‘{action}’ — de Worker kan ook zonder push worden gekoppeld.",
+      "repoAccessNextBuildAgain": "Druk daarna opnieuw op ‘{action}’.",
+      "workerReserved": "{url}",
+      "workerReused": "{url} (bestaand)",
+      "workerCreateFailed": "De Worker kon niet worden aangemaakt.",
+      "pushToDeployConnected": "Pushes naar {branch} publiceren nu zichzelf.",
+      "buildTriggerReused": "De bestaande buildtrigger voor {name} wordt hergebruikt.",
+      "pushToDeployFailed": "Automatisch publiceren kon niet worden ingesteld.",
+      "noBuildWithoutAccess": "Er kan geen build lopen zolang Cloudflare de repository niet kan lezen.",
+      "havenNeedsLiveUrl": "Haven leest de applicatiedefinitie van de live URL.",
+      "noStartBuildCapability": "Zonder push is er geen manier om een build te starten.",
+      "buildStarted": "Cloudflare bouwt {branch} ({buildUuid}).",
+      "buildStartFailed": "De build kon niet worden gestart.",
+      "waitingForBuild": "Wachten op de eerste build van Cloudflare…",
+      "originAttempt": "Poging {attempt}: {detail}",
+      "originNoUrl": "Nog geen webadres voor de applicatie.",
+      "originNoAnswer": "Het adres antwoordt nog niet.",
+      "originHttpStatus": "haven-app.json antwoordde HTTP {status}.",
+      "originNotJson": "haven-app.json is nog geen JSON — de publicatie loopt waarschijnlijk nog.",
+      "originInvalidDefinition": "haven-app.json is geen geldige applicatiedefinitie.",
+      "originMismatch": "Op het adres staat ‘{servedAppId}’, maar deze applicatie is ‘{expectedAppId}’.",
+      "originNotChecked": "Nog niet gecontroleerd.",
+      "originNotLiveInTime": "De applicatie is niet op tijd live gegaan.",
+      "originBuildLogHint": "De repository en de Worker bestaan, dus het is de build waar je naar moet kijken: Cloudflare, de Worker, Settings, Builds. Een lege buildlijst daar betekent dat de GitHub App van Cloudflare de repository nooit heeft gezien — zet hem op ‘All repositories’ op https://github.com/settings/installations, of voeg deze eraan toe, en druk daarna op ‘{action}’.",
+      "originServing": "{url} levert haven-app.json.",
+      "originCheckFailed": "Het adres van de applicatie kon niet worden gecontroleerd.",
+      "havenNotGranted": "Deze Haven-installatie heeft geen recht gegeven om applicaties voor te stellen.",
+      "havenAddManually": "Voeg de applicatie in Haven met de hand toe via {url}",
+      "havenInstalled": "{label} is in Haven geïnstalleerd.",
+      "havenDeclined": "Je hebt de installatie geweigerd. De applicatie is wel gepubliceerd.",
+      "havenAddLater": "Voeg de applicatie later in Haven toe via {url}",
+      "havenReadFailed": "Haven kon de applicatiedefinitie niet lezen.",
+      "havenProposeFailed": "Aan Haven kon niet worden gevraagd de applicatie te installeren.",
+      "pressRegisterInHaven": "Druk op ‘{action}’ wanneer je er klaar voor bent.",
+      "noCursorKey": "Geen Cursor-API-sleutel verbonden.",
+      "agentStarted": "{url}",
+      "agentStartFailed": "De Cursor-agent kon niet worden gestart."
+    }
+  },
+  "githubConnect": {
+    "tokenRejected": "GitHub heeft dit token niet geaccepteerd. Controleer of de hele waarde is gekopieerd en of het niet is verlopen.",
+    "tokenCheckFailed": "Het token kon niet bij GitHub worden gecontroleerd.",
+    "unreachable": "GitHub was niet bereikbaar.",
+    "codeExpired": "De code is verlopen. Begin opnieuw om een nieuwe te krijgen.",
+    "declined": "De toestemming is in GitHub geweigerd."
+  },
+  "cloudflareConnect": {
+    "declined": "De toestemming is in Cloudflare geweigerd.",
+    "refused": "Cloudflare heeft de toestemming geweigerd ({error}).",
+    "noCode": "Cloudflare heeft geen autorisatiecode teruggegeven.",
+    "exchangeFailed": "De autorisatiecode kon niet worden ingewisseld.",
+    "noClient": "Voor deze builder is geen Cloudflare-OAuth-client ingesteld.",
+    "urlBuildFailed": "De autorisatie-URL van Cloudflare kon niet worden opgebouwd.",
+    "popupBlocked": "Het venster van Cloudflare is geblokkeerd. Sta pop-ups voor de builder toe en probeer het opnieuw.",
+    "noAccounts": "Dit token meldde geen enkel Cloudflare-account.",
+    "accountLookupFailed": "Aan Cloudflare kon niet worden gevraagd bij welk account dit token hoort."
+  },
+  "session": {
+    "connectFailed": "Er kon geen verbinding met Haven worden gemaakt. Open de App Builder vanuit je Haven-werkruimte in plaats van direct in een browsertabblad, en herlaad deze pagina daarna.",
+    "credentialsStoreFailed": "De inloggegevens konden niet worden opgeslagen.",
+    "notConnected": "De builder is niet met Haven verbonden."
+  },
+  "saveDefinition": {
+    "noUrl": "Deze applicatie heeft nog geen webadres.",
+    "badStatus": "De applicatie antwoordde {status}."
+  },
+  "hostApi": {
+    "unreachable": "De server van de builder is niet bereikbaar. Start hem met `mindoodb-app-builder`.",
+    "badStatus": "De server antwoordde HTTP {status}."
+  }
+}

@@ -12,10 +12,13 @@
  * error.
  */
 import { onBeforeUnmount, ref } from "vue";
+import { useI18n } from "vue-i18n";
 
 import { isTerminalRunStatus, type CursorRun } from "@/core/cursorAgents";
 import { readCursorStatus, sendCursorFollowUp, HostApiError } from "@/app/hostApi";
 import type { AgentHandle } from "@/core/createAppFlow";
+
+const { t } = useI18n();
 
 const props = defineProps<{
   agent: AgentHandle | null;
@@ -51,7 +54,7 @@ async function refresh(): Promise<void> {
     run.value = status.run;
     message.value = null;
   } catch (error) {
-    message.value = error instanceof Error ? error.message : "The agent status is unavailable.";
+    message.value = error instanceof Error ? error.message : t("agent.errors.status");
   }
 }
 
@@ -98,10 +101,10 @@ async function send(): Promise<void> {
   } catch (error) {
     message.value =
       error instanceof HostApiError && error.code === "agent_busy"
-        ? "The agent is still working on the previous instruction. Try again when it finishes."
+        ? t("agent.errors.busy")
         : error instanceof Error
           ? error.message
-          : "The follow-up could not be sent.";
+          : t("agent.errors.send");
   } finally {
     busy.value = false;
   }
@@ -113,40 +116,47 @@ onBeforeUnmount(stopPolling);
 <template>
   <section v-if="agent" class="panel">
     <header>
-      <h2>Coding agent</h2>
+      <h2>{{ t("agent.heading") }}</h2>
       <p class="muted">
-        <a :href="agent.url" target="_blank" rel="noopener noreferrer">Open in Cursor</a>
-        to watch it work. Its pushes deploy themselves.
+        <a :href="agent.url" target="_blank" rel="noopener noreferrer">{{
+          t("agent.intro.link")
+        }}</a>
+        {{ t("agent.intro.rest") }}
       </p>
     </header>
 
     <p v-if="run" class="status">
-      Run {{ run.status.toLowerCase() }}<span v-if="run.result">: {{ run.result }}</span>
+      {{ t("agent.run.status", { status: run.status.toLowerCase() })
+      }}<span v-if="run.result">: {{ run.result }}</span>
     </p>
     <ul v-if="run?.branches.length" class="links">
       <li v-for="branch in run.branches" :key="branch.branch">
         <code>{{ branch.branch }}</code>
         <a v-if="branch.prUrl" :href="branch.prUrl" target="_blank" rel="noopener noreferrer">
-          pull request
+          {{ t("agent.run.pullRequest") }}
         </a>
       </li>
     </ul>
 
     <div class="field">
-      <label for="follow-up">Next instruction</label>
+      <label for="follow-up">{{ t("agent.followUp.label") }}</label>
       <textarea
         id="follow-up"
         v-model="followUp"
         rows="3"
-        placeholder="Add a tag filter above the list."
+        :placeholder="t('agent.followUp.placeholder')"
       ></textarea>
     </div>
 
     <p v-if="message" class="warn">{{ message }}</p>
 
     <div class="row">
-      <button type="button" :disabled="busy || !followUp.trim()" @click="send">Send</button>
-      <button type="button" class="ghost" :disabled="busy" @click="check">Check status</button>
+      <button type="button" :disabled="busy || !followUp.trim()" @click="send">
+        {{ t("agent.actions.send") }}
+      </button>
+      <button type="button" class="ghost" :disabled="busy" @click="check">
+        {{ t("agent.actions.check") }}
+      </button>
     </div>
   </section>
 </template>

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { ref } from "vue";
 
 import { useBuilderFlow } from "@/app/useBuilderFlow";
 import type { useBuilderSession } from "@/app/useBuilderSession";
+import { EMPTY_CREDENTIALS } from "@/core/credentials";
+import { t } from "@/i18n";
 
 /**
  * `plannedRepositoryName` is the name the UI puts in front of the user, so it has its own
@@ -69,5 +72,38 @@ describe("plannedRepositoryName", () => {
     builder.onSlugInput("team-notes");
 
     expect(builder.plannedRepositoryName.value).toBe("team-notes");
+  });
+});
+
+/**
+ * The message that sends a user to the setup page has to name it the way the page is
+ * actually labelled.
+ *
+ * It said "open Setup" for a while after the footer link became "Connections and setup",
+ * which is the kind of drift nobody notices in English and no translator can catch. The
+ * name is interpolated from the link's own key now, so this asserts the two stay tied
+ * together rather than asserting any particular wording.
+ */
+describe("createAppError", () => {
+  function unconnected(status: { github: boolean; cloudflare: boolean }) {
+    const session = {
+      credentials: ref({ ...EMPTY_CREDENTIALS }),
+      credentialsStatus: ref({ ...status, cursor: false }),
+    } as unknown as ReturnType<typeof useBuilderSession>;
+    const builder = useBuilderFlow(session);
+    builder.onLabelInput("Team Notes");
+    return builder;
+  }
+
+  it("names the setup page by its own link label when GitHub is missing", () => {
+    const error = unconnected({ github: false, cloudflare: false }).createAppError.value;
+
+    expect(error).toContain(t("app.footer.setupLink"));
+  });
+
+  it("names the setup page by its own link label when Cloudflare is missing", () => {
+    const error = unconnected({ github: true, cloudflare: false }).createAppError.value;
+
+    expect(error).toContain(t("app.footer.setupLink"));
   });
 });

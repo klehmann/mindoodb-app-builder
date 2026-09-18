@@ -24,6 +24,7 @@ import type {
   GitHubDevicePollResult,
 } from "@/core/githubDeviceFlow";
 import type { BuilderOAuthAvailability } from "@/core/oauthConfig";
+import { t } from "@/i18n";
 
 export class HostApiError extends Error {
   constructor(
@@ -45,10 +46,7 @@ async function post<T>(path: string, body: Record<string, unknown>): Promise<T> 
       body: JSON.stringify(body),
     });
   } catch {
-    throw new HostApiError(
-      "The builder host is not reachable. Start it with `mindoodb-app-builder`.",
-      0,
-    );
+    throw new HostApiError(t("hostApi.unreachable"), 0);
   }
 
   const payload = (await response.json().catch(() => ({}))) as {
@@ -58,7 +56,9 @@ async function post<T>(path: string, body: Record<string, unknown>): Promise<T> 
 
   if (!response.ok) {
     throw new HostApiError(
-      typeof payload.error === "string" ? payload.error : `The host answered HTTP ${response.status}.`,
+      typeof payload.error === "string"
+        ? payload.error
+        : t("hostApi.badStatus", { status: response.status }),
       response.status,
       typeof payload.code === "string" ? payload.code : undefined,
     );

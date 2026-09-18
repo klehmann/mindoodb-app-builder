@@ -14,6 +14,7 @@
  * check we cannot do.
  */
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 
 import ConnectPanel from "@/app/components/ConnectPanel.vue";
 import PageHeader from "@/app/components/PageHeader.vue";
@@ -42,6 +43,8 @@ const props = defineProps<{
   canFinish: boolean;
 }>();
 
+const { t } = useI18n();
+
 const emit = defineEmits<{
   save: [BuilderCredentials];
   repoAccess: ["all" | "selected"];
@@ -66,23 +69,17 @@ const grantAll = computed(() => props.credentials.repoAccess !== "selected");
           class="ghost setup__back"
           @click="emit('back')"
         >
-          ← All apps
+          ← {{ t("setup.back") }}
         </button>
       </header>
 
       <PageHeader
         icon="intro"
-        title="Set up once, then build apps"
-        purpose="Your apps need somewhere to live. Connect the three services below and approve a couple of installs — after that, creating an app is a name and a button."
+        :title="t('setup.header.title')"
+        :purpose="t('setup.header.purpose')"
       />
 
-      <p class="hint">
-        GitHub keeps the code and Cloudflare hosts it; both are free. Cursor is the AI
-        developer that writes the app, and its cloud agents need a paid plan. You can
-        leave Cursor out: the app is still created and published, and what you get is an
-        ordinary Git repository — edit it yourself, or point Claude Code, Codex or any
-        other tool at it.
-      </p>
+      <p class="hint">{{ t("setup.intro") }}</p>
     </section>
 
     <!--
@@ -106,11 +103,8 @@ const grantAll = computed(() => props.credentials.repoAccess !== "selected");
 
     <section class="panel">
       <header>
-        <h2>How much access to give</h2>
-        <p class="muted">
-          Every app you build gets its own new GitHub project, and Cloudflare and Cursor
-          have to be allowed to see it.
-        </p>
+        <h2>{{ t("setup.access.title") }}</h2>
+        <p class="muted">{{ t("setup.access.purpose") }}</p>
       </header>
 
       <label class="setup__choice">
@@ -121,11 +115,8 @@ const grantAll = computed(() => props.credentials.repoAccess !== "selected");
           @change="emit('repoAccess', 'all')"
         />
         <span>
-          <strong>All repositories — recommended</strong>
-          <span class="hint">
-            Approve once, and every future app is covered. Building an app becomes a
-            single button. If that feels broad, use a GitHub account you keep for this.
-          </span>
+          <strong>{{ t("setup.access.all.label") }}</strong>
+          <span class="hint">{{ t("setup.access.all.hint") }}</span>
         </span>
       </label>
 
@@ -137,25 +128,29 @@ const grantAll = computed(() => props.credentials.repoAccess !== "selected");
           @change="emit('repoAccess', 'selected')"
         />
         <span>
-          <strong>Pick the repositories myself</strong>
-          <span class="hint">
-            Narrower, but every new app needs two extra approvals on GitHub before it can
-            be published — the builder will tell you when.
-          </span>
+          <strong>{{ t("setup.access.selected.label") }}</strong>
+          <span class="hint">{{ t("setup.access.selected.hint") }}</span>
         </span>
       </label>
     </section>
 
     <section class="panel">
       <header>
-        <h2>Approve the installs</h2>
+        <h2>{{ t("setup.installs.title") }}</h2>
         <p class="muted">
-          Each link opens GitHub in a new tab.
+          {{ t("setup.installs.intro.lead") }}
+          <!--
+            Split around the <strong>, rather than carrying markup in a phrase: the
+            emphasis is on the option's own name, which is the one part a translator
+            must render exactly as GitHub labels it.
+          -->
           <template v-if="grantAll">
-            Choose <strong>All repositories</strong> in every one of them.
+            {{ t("setup.installs.intro.allBefore") }}
+            <strong>{{ t("setup.installs.intro.allOption") }}</strong>
+            {{ t("setup.installs.intro.allAfter") }}
           </template>
           <template v-else>
-            Choose the repositories you want each one to see.
+            {{ t("setup.installs.intro.selected") }}
           </template>
         </p>
       </header>
@@ -163,13 +158,9 @@ const grantAll = computed(() => props.credentials.repoAccess !== "selected");
       <ol class="setup__installs">
         <li v-if="installUrl">
           <a class="button button--ghost" :href="installUrl" target="_blank" rel="noopener noreferrer">
-            Install the App Builder
+            {{ t("setup.installs.builder.link") }}
           </a>
-          <span class="hint">
-            Lets this builder create the new project and make its first commit. Only
-            needed if you connected GitHub with the button above — a token you pasted
-            yourself already carries its own permissions.
-          </span>
+          <span class="hint">{{ t("setup.installs.builder.hint") }}</span>
         </li>
         <li>
           <a
@@ -178,12 +169,9 @@ const grantAll = computed(() => props.credentials.repoAccess !== "selected");
             target="_blank"
             rel="noopener noreferrer"
           >
-            Install Cloudflare Workers and Pages
+            {{ t("setup.installs.cloudflare.link") }}
           </a>
-          <span class="hint">
-            Lets Cloudflare read the project so it can publish it, and re-publish on every
-            change.
-          </span>
+          <span class="hint">{{ t("setup.installs.cloudflare.hint") }}</span>
         </li>
         <li>
           <a
@@ -192,30 +180,20 @@ const grantAll = computed(() => props.credentials.repoAccess !== "selected");
             target="_blank"
             rel="noopener noreferrer"
           >
-            Install Cursor
+            {{ t("setup.installs.cursor.link") }}
           </a>
-          <span class="hint">
-            Lets the AI developer read and write the project. Skip it if you would rather
-            change the code yourself, or with a different tool.
-          </span>
+          <span class="hint">{{ t("setup.installs.cursor.hint") }}</span>
         </li>
       </ol>
 
-      <p class="hint">
-        We cannot see these installs from here, so nothing on this page will tick itself
-        off. If a build later fails because something was not approved, we will say so and
-        bring you back.
-      </p>
+      <p class="hint">{{ t("setup.installs.note") }}</p>
     </section>
 
     <section class="panel">
       <button type="button" :disabled="!canFinish" @click="emit('finish')">
-        {{ alreadyDone ? "Save and continue" : "I am done — start building" }}
+        {{ alreadyDone ? t("setup.finish.save") : t("setup.finish.start") }}
       </button>
-      <p v-if="!canFinish" class="hint">
-        Connect GitHub and Cloudflare above first. Those two are what create and publish
-        your app.
-      </p>
+      <p v-if="!canFinish" class="hint">{{ t("setup.finish.blocked") }}</p>
     </section>
   </div>
 </template>

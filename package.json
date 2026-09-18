@@ -12,7 +12,13 @@
   "bin": {
     "mindoodb-app-builder": "./bin/mindoodb-app-builder.mjs"
   },
-  "files": ["bin", "dist", "dist-host", "README.md", "LICENSE"],
+  "files": [
+    "bin",
+    "dist",
+    "dist-host",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "dev": "vite --port 4401",
     "dev:local": "LOCAL_MINDOODB=1 vite --port 4401",
@@ -29,7 +35,8 @@
   },
   "dependencies": {
     "mindoodb-app-sdk": "^0.0.47",
-    "vue": "^3.5.31"
+    "vue": "^3.5.31",
+    "vue-i18n": "^11.4.12"
   },
   "devDependencies": {
     "@automerge/automerge": "^3.2.1",

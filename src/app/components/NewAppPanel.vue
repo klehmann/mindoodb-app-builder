@@ -6,9 +6,13 @@
  * it becomes the repository name, the Worker name, the `appId`, and therefore the public
  * URL. Showing that URL while they type is cheaper than explaining it.
  */
+import { useI18n } from "vue-i18n";
+
 import type { NewAppForm } from "@/app/useBuilderFlow";
 
 import PageHeader from "@/app/components/PageHeader.vue";
+
+const { t } = useI18n();
 
 defineProps<{
   form: NewAppForm;
@@ -24,76 +28,71 @@ const emit = defineEmits<{
 
 <template>
   <section class="panel">
-    <PageHeader
-      icon="details"
-      title="What do you want to build?"
-      purpose="Describe your app the way you would explain it to a colleague. The AI turns this into working software — no technical wording needed."
-    />
+    <PageHeader icon="details" :title="t('newAppForm.title')" :purpose="t('newAppForm.purpose')" />
 
     <div class="field">
-      <label for="app-label">Name your app</label>
+      <label for="app-label">{{ t("newAppForm.name.label") }}</label>
       <input
         id="app-label"
         :value="form.label"
         type="text"
-        placeholder="Team Notes"
+        :placeholder="t('newAppForm.name.placeholder')"
         @input="emit('labelInput', ($event.target as HTMLInputElement).value)"
       />
-      <p class="hint">This is the name you will see in Haven.</p>
+      <p class="hint">{{ t("newAppForm.name.hint") }}</p>
     </div>
 
     <div class="field">
-      <label for="app-description">In one sentence, what is it for?</label>
+      <label for="app-description">{{ t("newAppForm.description.label") }}</label>
       <input
         id="app-description"
         v-model="form.description"
         type="text"
-        placeholder="Shared notes for the team."
+        :placeholder="t('newAppForm.description.placeholder')"
       />
     </div>
 
     <div class="field">
-      <label for="app-task">Describe what it should do</label>
+      <label for="app-task">{{ t("newAppForm.task.label") }}</label>
       <textarea
         id="app-task"
         v-model="form.task"
         rows="6"
-        placeholder="Let people write notes, tag them, and search across them. One screen with the list of notes, one for writing. Everyone on the team can see and edit them."
+        :placeholder="t('newAppForm.task.placeholder')"
       ></textarea>
       <p class="hint">
-        This is the brief the AI works from — the more concrete, the better. Think about
-        who uses it, what they see on screen, and what they can do. You can always ask
-        for changes afterwards.
+        {{ t("newAppForm.task.hint") }}
       </p>
     </div>
 
     <details class="advanced">
-      <summary>Web address and privacy</summary>
+      <summary>{{ t("newAppForm.advanced.summary") }}</summary>
       <div class="advanced__body">
         <div class="field">
-          <label for="app-slug">Short name for the web address</label>
+          <label for="app-slug">{{ t("newAppForm.slug.label") }}</label>
           <input
             id="app-slug"
             :value="form.slug"
             type="text"
-            placeholder="team-notes"
+            :placeholder="t('newAppForm.slug.placeholder')"
             spellcheck="false"
             @input="emit('slugInput', ($event.target as HTMLInputElement).value)"
           />
+          <!-- The sentence wraps the live URL, so it is translated in two halves
+               around the <code> element rather than smuggling markup into a phrase. -->
           <p class="hint">
-            Your app will live at
-            <code>https://{{ plannedRepositoryName || "your-app" }}.…workers.dev</code> —
-            this is the link you email to colleagues so they can add it to their Haven.
+            {{ t("newAppForm.slug.hintBefore") }}
+            <code>https://{{ plannedRepositoryName || "your-app" }}.…workers.dev</code>
+            {{ t("newAppForm.slug.hintAfter") }}
           </p>
         </div>
 
         <label class="checkbox">
           <input v-model="form.private" type="checkbox" />
-          Keep the code private
+          {{ t("newAppForm.privateCode.label") }}
         </label>
         <p class="hint">
-          Recommended. The app itself is still reachable by anyone with the link; this
-          only hides the source code from strangers.
+          {{ t("newAppForm.privateCode.hint") }}
         </p>
       </div>
     </details>
