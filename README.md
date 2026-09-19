@@ -1,5 +1,5 @@
 # MindooDB App Builder
-
+ 
 Creates a new MindooDB Haven application end to end: a GitHub repository from the
 [starter template](https://github.com/klehmann/mindoodb-app-starter), a live Cloudflare
 Workers deployment that redeploys itself on every push, an optional Cursor cloud agent
