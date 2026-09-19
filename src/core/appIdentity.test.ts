@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  APP_DATABASE_ID_PREFIX,
+  DEFAULT_APP_DATABASE_PERMISSIONS,
+  MAX_DATABASE_ID_LENGTH,
   buildIdentityFiles,
+  databaseIdFromSlug,
+  isValidDatabaseId,
   isValidSlug,
   patchAppDefinition,
   patchPackageJson,
   patchWranglerConfig,
   renderTaskMarkdown,
+  resolveAppDatabase,
   slugifyAppName,
   workersDevUrl,
   type AppIdentity,
@@ -41,6 +47,63 @@ describe("slugifyAppName", () => {
     expect(slug.length).toBeLessThanOrEqual(63);
     expect(slug.endsWith("-")).toBe(false);
     expect(isValidSlug(slug)).toBe(true);
+  });
+});
+
+describe("databaseIdFromSlug", () => {
+  it("prefixes the slug with app_", () => {
+    expect(databaseIdFromSlug("team-notes")).toBe("app_team-notes");
+    expect(isValidDatabaseId(databaseIdFromSlug("team-notes"))).toBe(true);
+  });
+
+  it("stays within the MindooDB new-database id limit when the slug is max length", () => {
+    const slug = "a".repeat(63);
+    const id = databaseIdFromSlug(slug);
+    expect(id.startsWith(APP_DATABASE_ID_PREFIX)).toBe(true);
+    expect(id.length).toBeLessThanOrEqual(MAX_DATABASE_ID_LENGTH);
+    expect(isValidDatabaseId(id)).toBe(true);
+  });
+
+  it("is empty when nothing usable survives", () => {
+    expect(databaseIdFromSlug("...")).toBe("");
+  });
+});
+
+describe("isValidDatabaseId", () => {
+  it.each(["app_team-notes", "notes", "a", "test.db-1"])("accepts %s", (id) => {
+    expect(isValidDatabaseId(id)).toBe(true);
+  });
+
+  it.each(["", "Main", "has space", "_leading", "trail.", "a".repeat(65)])(
+    "rejects %s",
+    (id) => {
+      expect(isValidDatabaseId(id)).toBe(false);
+    },
+  );
+});
+
+describe("resolveAppDatabase", () => {
+  it("defaults the id from the slug and the label from the app name", () => {
+    expect(resolveAppDatabase(identity)).toEqual({
+      id: "app_team-notes",
+      label: "Team Notes",
+      permissions: [...DEFAULT_APP_DATABASE_PERMISSIONS],
+    });
+  });
+
+  it("keeps an explicit id, label, and a narrowed permission set", () => {
+    expect(
+      resolveAppDatabase({
+        ...identity,
+        databaseId: "app_notes",
+        databaseLabel: "Notes",
+        databasePermissions: ["write", "delete"],
+      }),
+    ).toEqual({
+      id: "app_notes",
+      label: "Notes",
+      permissions: ["write", "delete"],
+    });
   });
 });
 
@@ -139,12 +202,17 @@ describe("patchAppDefinition", () => {
     expect(parsed.description).toBe("Shared notes for the team.");
   });
 
-  it("never touches the declared databases or permissions", () => {
+  it("gives the app its own hosted database instead of the template's main store", () => {
     const parsed = JSON.parse(patchAppDefinition(source, identity));
+    expect(parsed.hosting).toBe("hosted");
+    expect(parsed.defaultLaunchDatabaseId).toBe("app_team-notes");
     expect(parsed.databases).toEqual([
-      { logicalDatabaseId: "main", label: "Main", permissions: ["write"] },
+      {
+        logicalDatabaseId: "app_team-notes",
+        label: "Team Notes",
+        permissions: [...DEFAULT_APP_DATABASE_PERMISSIONS],
+      },
     ]);
-    expect(parsed.defaultLaunchDatabaseId).toBe("main");
   });
 
   it("drops the template placeholder description when the user gave none", () => {
@@ -159,6 +227,7 @@ describe("renderTaskMarkdown", () => {
     expect(markdown.startsWith("# Team Notes")).toBe(true);
     expect(markdown).toContain("Let people write notes and search them.");
     expect(markdown).toContain("Read `AGENTS.md` first");
+    expect(markdown).toContain("`app_team-notes`");
   });
 
   it("says so explicitly when there is no description yet", () => {

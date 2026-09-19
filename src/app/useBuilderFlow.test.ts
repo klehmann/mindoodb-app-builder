@@ -75,6 +75,55 @@ describe("plannedRepositoryName", () => {
   });
 });
 
+describe("database fields", () => {
+  it("follow the name until the user edits them", () => {
+    const builder = flow();
+
+    builder.onLabelInput("Team Notes");
+
+    expect(builder.form.value.databaseId).toBe("app_team-notes");
+    expect(builder.form.value.databaseLabel).toBe("Team Notes");
+    expect(builder.identity.value.databasePermissions).toEqual([
+      "write",
+      "delete",
+      "history",
+      "attachments",
+      "views",
+      "directory",
+    ]);
+  });
+
+  it("keeps an edited database id when the slug later changes", () => {
+    const builder = flow();
+
+    builder.onLabelInput("Team Notes");
+    builder.onDatabaseIdInput("app_notes");
+    builder.onSlugInput("other-name");
+
+    expect(builder.form.value.databaseId).toBe("app_notes");
+    expect(builder.form.value.databaseIdFollowsSlug).toBe(false);
+  });
+
+  it("keeps an edited database label when the app name later changes", () => {
+    const builder = flow();
+
+    builder.onLabelInput("Team Notes");
+    builder.onDatabaseLabelInput("Shared notes");
+    builder.onLabelInput("Other Name");
+
+    expect(builder.form.value.databaseLabel).toBe("Shared notes");
+    expect(builder.form.value.slug).toBe("other-name");
+  });
+
+  it("lowercases a typed database id", () => {
+    const builder = flow();
+
+    builder.onDatabaseIdInput("App_Notes");
+
+    expect(builder.form.value.databaseId).toBe("app_notes");
+  });
+});
+
 /**
  * The message that sends a user to the setup page has to name it the way the page is
  * actually labelled.

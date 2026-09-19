@@ -14,8 +14,15 @@
 import { computed, ref, type Ref } from "vue";
 
 import {
-  slugifyAppName,
+  APP_DATABASE_PERMISSIONS,
+  DEFAULT_APP_DATABASE_PERMISSIONS,
+  databaseIdFromSlug,
+  isValidDatabaseId,
   isValidSlug,
+  normalizeDatabaseIdInput,
+  resolveAppDatabase,
+  slugifyAppName,
+  type AppDatabasePermission,
   type AppIdentity,
 } from "@/core/appIdentity";
 import { isCloudflareTokenStale } from "@/core/credentials";
@@ -79,6 +86,13 @@ export interface NewAppForm {
   description: string;
   task: string;
   private: boolean;
+  databaseId: string;
+  databaseLabel: string;
+  /** True while the database id still tracks the slug as `app_<slug>`. */
+  databaseIdFollowsSlug: boolean;
+  /** True while the readable database name still tracks the app name. */
+  databaseLabelFollowsLabel: boolean;
+  permissions: AppDatabasePermission[];
 }
 
 export function createEmptyForm(): NewAppForm {
@@ -92,8 +106,15 @@ export function createEmptyForm(): NewAppForm {
     // and the cost of publishing it by accident is not symmetric with the cost of
     // clicking a checkbox.
     private: true,
+    databaseId: "",
+    databaseLabel: "",
+    databaseIdFollowsSlug: true,
+    databaseLabelFollowsLabel: true,
+    permissions: [...DEFAULT_APP_DATABASE_PERMISSIONS],
   };
 }
+
+export { APP_DATABASE_PERMISSIONS };
 
 type BuilderSession = ReturnType<typeof useBuilderSession>;
 type AppRecords = ReturnType<typeof useAppRecords>;
@@ -121,6 +142,9 @@ export function useBuilderFlow(
     slug: form.value.slug.trim() || slugifyAppName(form.value.label),
     description: form.value.description.trim(),
     task: form.value.task,
+    databaseId: form.value.databaseId.trim(),
+    databaseLabel: form.value.databaseLabel.trim(),
+    databasePermissions: [...form.value.permissions],
   }));
 
   /**
@@ -147,6 +171,9 @@ export function useBuilderFlow(
     }
     if (!isValidSlug(identity.value.slug)) {
       return t("flow.validation.slugInvalid");
+    }
+    if (!isValidDatabaseId(resolveAppDatabase(identity.value).id)) {
+      return t("flow.validation.databaseIdInvalid");
     }
     return null;
   });
@@ -230,17 +257,39 @@ export function useBuilderFlow(
   const cloudflareSteps = computed(() => stepsIn(CLOUDFLARE_PHASE_STEP_IDS));
   const cursorSteps = computed(() => stepsIn(CURSOR_PHASE_STEP_IDS));
 
+  function syncFollowedDatabaseFields(): void {
+    if (form.value.databaseLabelFollowsLabel) {
+      form.value.databaseLabel = form.value.label.trim();
+    }
+    if (form.value.databaseIdFollowsSlug) {
+      const slug = form.value.slug.trim();
+      form.value.databaseId = slug ? databaseIdFromSlug(slug) : "";
+    }
+  }
+
   /** Keep the slug in step with the name until the user takes it over. */
   function onLabelInput(label: string): void {
     form.value.label = label;
     if (form.value.slugFollowsLabel) {
       form.value.slug = slugifyAppName(label);
     }
+    syncFollowedDatabaseFields();
   }
 
   function onSlugInput(slug: string): void {
     form.value.slug = slug;
     form.value.slugFollowsLabel = false;
+    syncFollowedDatabaseFields();
+  }
+
+  function onDatabaseIdInput(value: string): void {
+    form.value.databaseId = normalizeDatabaseIdInput(value);
+    form.value.databaseIdFollowsSlug = false;
+  }
+
+  function onDatabaseLabelInput(value: string): void {
+    form.value.databaseLabel = value;
+    form.value.databaseLabelFollowsLabel = false;
   }
 
   function buildDependencies(): DeployNowDependencies {
@@ -654,6 +703,11 @@ export function useBuilderFlow(
       description: record.description,
       task: record.task,
       private: record.private,
+      databaseId: databaseIdFromSlug(record.appId),
+      databaseLabel: record.label,
+      databaseIdFollowsSlug: false,
+      databaseLabelFollowsLabel: false,
+      permissions: [...DEFAULT_APP_DATABASE_PERMISSIONS],
     };
 
     const storedAgent = record.cursorAgentId
@@ -807,6 +861,8 @@ export function useBuilderFlow(
     identity,
     identityValid,
     launchCursor,
+    onDatabaseIdInput,
+    onDatabaseLabelInput,
     onLabelInput,
     onSlugInput,
     originReady,

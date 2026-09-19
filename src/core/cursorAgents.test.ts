@@ -146,5 +146,6 @@ describe("launchAgent", () => {
 describe("buildLaunchPrompt", () => {
   it("names the default branch when the caller gives none", () => {
     expect(buildLaunchPrompt()).toContain("push to main directly");
+    expect(buildLaunchPrompt()).toContain("public/appicon.png");
   });
 });

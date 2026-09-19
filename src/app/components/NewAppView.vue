@@ -38,6 +38,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   labelInput: [string];
   slugInput: [string];
+  databaseIdInput: [string];
+  databaseLabelInput: [string];
   create: [];
   back: [];
   openApp: [];
@@ -62,6 +64,8 @@ const finished = computed(() => Boolean(props.result?.worker && !props.running))
       :form-error="formError"
       @label-input="emit('labelInput', $event)"
       @slug-input="emit('slugInput', $event)"
+      @database-id-input="emit('databaseIdInput', $event)"
+      @database-label-input="emit('databaseLabelInput', $event)"
     />
 
     <section class="panel">

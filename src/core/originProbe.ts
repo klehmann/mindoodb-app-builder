@@ -12,7 +12,10 @@
  * a pass here is evidence the install will work, not a guess.
  */
 import {
+  MINDOODB_APP_BUNDLE_MANIFEST_FILE_NAME,
+  MINDOODB_APP_DEFINITION_FILE_NAME,
   resolveMindooDBAppDefinitionUrl,
+  validateMindooDBAppBundleManifest,
   validateMindooDBAppDefinition,
   type MindooDBAppDefinition,
 } from "mindoodb-app-sdk";
@@ -59,11 +62,31 @@ export async function probeOrigin(options: ProbeOriginOptions): Promise<OriginPr
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+  try {
+    return await probeOriginOnce({
+      definitionUrl,
+      expectedAppId,
+      signal: controller.signal,
+      fetchImpl,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function probeOriginOnce(input: {
+  definitionUrl: string;
+  expectedAppId?: string;
+  signal: AbortSignal;
+  fetchImpl: typeof fetch;
+}): Promise<OriginProbeResult> {
+  const { definitionUrl, expectedAppId, signal, fetchImpl } = input;
+
   let response: Response;
   try {
     response = await fetchImpl(definitionUrl, {
       cache: "no-store",
-      signal: controller.signal,
+      signal,
     });
   } catch {
     return {
@@ -71,8 +94,6 @@ export async function probeOrigin(options: ProbeOriginOptions): Promise<OriginPr
       definition: null,
       detail: { code: "originNoAnswer" },
     };
-  } finally {
-    clearTimeout(timer);
   }
 
   if (!response.ok) {
@@ -116,7 +137,54 @@ export async function probeOrigin(options: ProbeOriginOptions): Promise<OriginPr
     };
   }
 
+  if (definition.hosting === "hosted") {
+    const bundle = await probeHostedBundle(definitionUrl, signal, fetchImpl);
+    if (bundle) {
+      return { state: "not-published", definition, detail: bundle };
+    }
+  }
+
   return { state: "ready", definition, detail: null };
+}
+
+function hostedBundleManifestUrl(definitionUrl: string): string {
+  return definitionUrl.replace(
+    new RegExp(`${MINDOODB_APP_DEFINITION_FILE_NAME}$`, "i"),
+    MINDOODB_APP_BUNDLE_MANIFEST_FILE_NAME,
+  );
+}
+
+/**
+ * A hosted app is not installable until Haven can also fetch `haven-bundle.json`.
+ * The definition coming up first is common: the placeholder Worker already serves
+ * `haven-app.json`, and the first real build is what writes the archive.
+ */
+async function probeHostedBundle(
+  definitionUrl: string,
+  signal: AbortSignal,
+  fetchImpl: typeof fetch,
+): Promise<FlowNote | null> {
+  const bundleUrl = hostedBundleManifestUrl(definitionUrl);
+  let response: Response;
+  try {
+    response = await fetchImpl(bundleUrl, { cache: "no-store", signal });
+  } catch {
+    return { code: "originNoAnswer" };
+  }
+
+  if (!response.ok) {
+    return { code: "originBundleMissing" };
+  }
+
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    return { code: "originBundleMissing" };
+  }
+
+  const { manifest } = validateMindooDBAppBundleManifest(payload);
+  return manifest ? null : { code: "originBundleMissing" };
 }
 
 export interface WaitForOriginOptions extends ProbeOriginOptions {

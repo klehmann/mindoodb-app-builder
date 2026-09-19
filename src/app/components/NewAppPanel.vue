@@ -8,7 +8,7 @@
  */
 import { useI18n } from "vue-i18n";
 
-import type { NewAppForm } from "@/app/useBuilderFlow";
+import { APP_DATABASE_PERMISSIONS, type NewAppForm } from "@/app/useBuilderFlow";
 
 import PageHeader from "@/app/components/PageHeader.vue";
 
@@ -23,6 +23,8 @@ defineProps<{
 const emit = defineEmits<{
   labelInput: [string];
   slugInput: [string];
+  databaseIdInput: [string];
+  databaseLabelInput: [string];
 }>();
 </script>
 
@@ -97,6 +99,48 @@ const emit = defineEmits<{
       </div>
     </details>
 
+    <details class="advanced">
+      <summary>{{ t("newAppForm.database.summary") }}</summary>
+      <div class="advanced__body">
+        <div class="field">
+          <label for="app-database-id">{{ t("newAppForm.database.id.label") }}</label>
+          <input
+            id="app-database-id"
+            :value="form.databaseId"
+            type="text"
+            :placeholder="t('newAppForm.database.id.placeholder')"
+            spellcheck="false"
+            autocomplete="off"
+            @input="emit('databaseIdInput', ($event.target as HTMLInputElement).value)"
+          />
+          <p class="hint">{{ t("newAppForm.database.id.hint") }}</p>
+        </div>
+
+        <div class="field">
+          <label for="app-database-label">{{ t("newAppForm.database.label.label") }}</label>
+          <input
+            id="app-database-label"
+            :value="form.databaseLabel"
+            type="text"
+            :placeholder="t('newAppForm.database.label.placeholder')"
+            @input="emit('databaseLabelInput', ($event.target as HTMLInputElement).value)"
+          />
+          <p class="hint">{{ t("newAppForm.database.label.hint") }}</p>
+        </div>
+
+        <fieldset class="permissions">
+          <legend>{{ t("newAppForm.database.permissions.label") }}</legend>
+          <p class="hint">{{ t("newAppForm.database.permissions.hint") }}</p>
+          <div class="permissions__grid">
+            <label v-for="permission in APP_DATABASE_PERMISSIONS" :key="permission" class="checkbox">
+              <input v-model="form.permissions" type="checkbox" :value="permission" />
+              {{ t(`newAppForm.database.permissions.${permission}`) }}
+            </label>
+          </div>
+        </fieldset>
+      </div>
+    </details>
+
     <p v-if="formError" class="warn">{{ formError }}</p>
   </section>
 </template>
@@ -120,5 +164,22 @@ const emit = defineEmits<{
   flex-direction: column;
   gap: 0.6rem;
   padding-top: 0.75rem;
+}
+
+.permissions {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.permissions legend {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.permissions__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.35rem 0.85rem;
 }
 </style>

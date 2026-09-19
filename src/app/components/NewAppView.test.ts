@@ -29,6 +29,11 @@ function render(props: Partial<InstanceType<typeof NewAppView>["$props"]> = {}) 
         description: "",
         task: "",
         private: true,
+        databaseId: "app_team-notes",
+        databaseLabel: "Team Notes",
+        databaseIdFollowsSlug: true,
+        databaseLabelFollowsLabel: true,
+        permissions: ["write", "delete", "history", "attachments", "views", "directory"],
       },
       plannedRepositoryName: "team-notes",
       formError: null,
@@ -51,6 +56,16 @@ function buildButton(wrapper: ReturnType<typeof render>) {
 }
 
 describe("NewAppView", () => {
+  it("lets the user open the database and access panel", () => {
+    const wrapper = render();
+
+    expect(wrapper.text()).toContain("Database and access");
+    expect(wrapper.text()).toContain("Write");
+    expect(wrapper.text()).toContain("Directory");
+    const write = wrapper.findAll("input").find((input) => input.attributes("value") === "write")!;
+    expect((write.element as HTMLInputElement).checked).toBe(true);
+  });
+
   it("creates an app from one button", async () => {
     const wrapper = render();
 

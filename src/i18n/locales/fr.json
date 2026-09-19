@@ -106,8 +106,7 @@
       "statusOther": "Dernière publication : {status}.",
       "none": "Cloudflare n’a pas encore construit cette application.",
       "buildNow": "Publier maintenant",
-      "refresh": "Vérifier l’état de la publication",
-      "hint": "Chaque modification poussée sur GitHub se publie d’elle-même. « Publier maintenant » sert quand vous la voulez tout de suite."
+      "hint": "Chaque modification poussée sur GitHub se publie d’elle-même."
     },
     "agent": {
       "launch": "Confier à l’IA",
@@ -160,6 +159,29 @@
     "privateCode": {
       "label": "Garder le code privé",
       "hint": "Recommandé. L’application reste accessible à toute personne disposant du lien ; cela masque seulement le code source aux inconnus."
+    },
+    "database": {
+      "summary": "Base de données et droits",
+      "id": {
+        "label": "Identifiant de la base",
+        "placeholder": "app_notes-equipe",
+        "hint": "Le magasin dans lequel cette application écrit. Chacune a le sien, pour que deux applications ne partagent pas des documents par accident."
+      },
+      "label": {
+        "label": "Nom affiché dans Haven",
+        "placeholder": "Notes d’équipe",
+        "hint": "Un nom lisible pour la base. Ce peut être celui de l’application, avec des espaces et des majuscules."
+      },
+      "permissions": {
+        "label": "Ce que l’application peut faire",
+        "hint": "La lecture est toujours incluse. Vous pouvez désactiver n’importe lequel de ces droits avant de créer.",
+        "write": "Écriture",
+        "delete": "Suppression",
+        "history": "Historique",
+        "attachments": "Pièces jointes",
+        "views": "Vues",
+        "directory": "Annuaire"
+      }
     }
   },
   "setup": {
@@ -351,7 +373,8 @@
   "flow": {
     "validation": {
       "nameRequired": "L’application a besoin d’un nom.",
-      "slugInvalid": "Le nom du dépôt ne peut contenir que des lettres minuscules, des chiffres et des tirets."
+      "slugInvalid": "Le nom du dépôt ne peut contenir que des lettres minuscules, des chiffres et des tirets.",
+      "databaseIdInvalid": "L’identifiant de la base ne peut contenir que des lettres minuscules, des chiffres, des points, des tirets bas et des tirets, et 64 caractères au plus."
     },
     "ready": {
       "connectGithub": "Connectez d’abord GitHub.",
@@ -400,6 +423,7 @@
       "originNoAnswer": "L’adresse ne répond pas encore.",
       "originHttpStatus": "haven-app.json a répondu HTTP {status}.",
       "originNotJson": "haven-app.json n’est pas encore du JSON — le déploiement est probablement encore en cours.",
+      "originBundleMissing": "haven-bundle.json n’est pas encore sur l’origine — le premier build est probablement encore en cours.",
       "originInvalidDefinition": "haven-app.json n’est pas une définition d’application valide.",
       "originMismatch": "L’adresse sert « {servedAppId} », mais cette application est « {expectedAppId} ».",
       "originNotChecked": "Pas encore vérifié.",

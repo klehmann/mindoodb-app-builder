@@ -21,6 +21,35 @@
 /** Cloudflare Worker names, and therefore our repository slugs: `[a-z0-9-]`, max 63. */
 const MAX_SLUG_LENGTH = 63;
 
+/**
+ * MindooDB database ids for a *new* store: lowercase `[a-z0-9._-]`, first character
+ * alphanumeric, max 64. Mirrors Haven/`mindoodb` `NEW_DATABASE_ID_REGEX`.
+ */
+export const MAX_DATABASE_ID_LENGTH = 64;
+const NEW_DATABASE_ID_REGEX = /^[a-z0-9][a-z0-9._-]*$/;
+/** So generated apps do not all land in the tenant's `main` database. */
+export const APP_DATABASE_ID_PREFIX = "app_";
+
+/**
+ * Permissions a generated app asks for on its one database. Read is implied by the
+ * mapping existing. `sign` / `timestamps` / `sealedchannel` stay off until the app
+ * actually needs them.
+ */
+export const APP_DATABASE_PERMISSIONS = [
+  "write",
+  "delete",
+  "history",
+  "attachments",
+  "views",
+  "directory",
+] as const;
+
+export type AppDatabasePermission = (typeof APP_DATABASE_PERMISSIONS)[number];
+
+export const DEFAULT_APP_DATABASE_PERMISSIONS: readonly AppDatabasePermission[] = [
+  ...APP_DATABASE_PERMISSIONS,
+];
+
 export interface AppIdentity {
   /** What the user typed, shown as the app label in Haven. */
   label: string;
@@ -30,6 +59,21 @@ export interface AppIdentity {
   description: string;
   /** The user's full task text, written into `TASK.md`. May be empty. */
   task: string;
+  /**
+   * Logical (and suggested physical) database id. Defaults to `app_<slug>`, truncated
+   * to {@link MAX_DATABASE_ID_LENGTH}.
+   */
+  databaseId?: string;
+  /** Readable database name shown in Haven. Defaults to the app label. */
+  databaseLabel?: string;
+  /** Requested mapping permissions. Defaults to {@link DEFAULT_APP_DATABASE_PERMISSIONS}. */
+  databasePermissions?: readonly AppDatabasePermission[];
+}
+
+export interface ResolvedAppDatabase {
+  id: string;
+  label: string;
+  permissions: AppDatabasePermission[];
 }
 
 /**
@@ -54,6 +98,47 @@ export function slugifyAppName(name: string): string {
 
 export function isValidSlug(slug: string): boolean {
   return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(slug) && slug.length <= MAX_SLUG_LENGTH;
+}
+
+/**
+ * Derive a new-database id from a Worker/repo slug: `app_` plus the slug, cut to 64
+ * characters so a 63-character Worker name still produces a legal MindooDB id.
+ */
+export function databaseIdFromSlug(slug: string): string {
+  const maxBody = MAX_DATABASE_ID_LENGTH - APP_DATABASE_ID_PREFIX.length;
+  const body = slug
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^[^a-z0-9]+/, "")
+    .slice(0, maxBody)
+    .replace(/[-.]+$/, "");
+
+  return body ? `${APP_DATABASE_ID_PREFIX}${body}` : "";
+}
+
+export function isValidDatabaseId(id: string): boolean {
+  return (
+    id.length > 0 &&
+    id.length <= MAX_DATABASE_ID_LENGTH &&
+    NEW_DATABASE_ID_REGEX.test(id) &&
+    !id.endsWith(".")
+  );
+}
+
+/** Lowercase while typing, matching Haven's create-database field. */
+export function normalizeDatabaseIdInput(value: string): string {
+  return value.toLowerCase();
+}
+
+/** Fill in the database the generated app will declare, using the identity defaults. */
+export function resolveAppDatabase(identity: AppIdentity): ResolvedAppDatabase {
+  const slug = identity.slug.trim() || slugifyAppName(identity.label);
+  const id = identity.databaseId?.trim() || databaseIdFromSlug(slug);
+  const label = identity.databaseLabel?.trim() || identity.label.trim() || slug;
+  const permissions = identity.databasePermissions
+    ? [...identity.databasePermissions]
+    : [...DEFAULT_APP_DATABASE_PERMISSIONS];
+  return { id, label, permissions };
 }
 
 /** The workers.dev URL a Worker will get, so the UI can show it before it is live. */
@@ -91,14 +176,25 @@ export function patchWranglerConfig(source: string, identity: AppIdentity): stri
 }
 
 /**
- * Set `appId`, `label`, and `description` in `haven-app.json`, leaving the declared
- * databases and permissions exactly as the template had them. The builder decides who
- * the app is; only the app's own code decides what it needs.
+ * Stamp the app identity onto `haven-app.json`, including the per-app database and
+ * hosted-bundle mode. Generated apps must not share the template's `main` store, and
+ * Haven should serve the Vite `haven-bundle.zip` rather than keep the Worker as the
+ * live origin.
  */
 export function patchAppDefinition(source: string, identity: AppIdentity): string {
   const parsed = JSON.parse(source) as Record<string, unknown>;
+  const database = resolveAppDatabase(identity);
   parsed.appId = identity.slug;
   parsed.label = identity.label;
+  parsed.hosting = "hosted";
+  parsed.defaultLaunchDatabaseId = database.id;
+  parsed.databases = [
+    {
+      logicalDatabaseId: database.id,
+      label: database.label,
+      permissions: database.permissions,
+    },
+  ];
   if (identity.description) {
     parsed.description = identity.description;
   } else {
@@ -123,7 +219,11 @@ export function renderTaskMarkdown(identity: AppIdentity): string {
   lines.push("## What this app should do", "");
   lines.push(identity.task.trim() || "_Not described yet._", "");
   lines.push("## Notes", "");
+  const database = resolveAppDatabase(identity);
   lines.push("- Read `AGENTS.md` first; it lists the SDK docs and the invariants.");
+  lines.push(
+    `- The app's database is \`${database.id}\` (see \`public/haven-app.json\`). Open that id, not \`main\`.`,
+  );
   lines.push(
     "- Keep `public/haven-app.json` in step with the databases the app actually uses.",
   );

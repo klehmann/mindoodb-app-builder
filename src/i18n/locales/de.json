@@ -106,8 +106,7 @@
       "statusOther": "Letzte Veröffentlichung: {status}.",
       "none": "Cloudflare hat diese Anwendung noch nicht gebaut.",
       "buildNow": "Jetzt veröffentlichen",
-      "refresh": "Status der Veröffentlichung prüfen",
-      "hint": "Jede Änderung, die nach GitHub gepusht wird, veröffentlicht sich selbst. „Jetzt veröffentlichen“ ist für den Fall, dass es sofort passieren soll."
+      "hint": "Jede Änderung, die nach GitHub gepusht wird, veröffentlicht sich selbst."
     },
     "agent": {
       "launch": "An die KI übergeben",
@@ -160,6 +159,29 @@
     "privateCode": {
       "label": "Den Code privat halten",
       "hint": "Empfohlen. Die Anwendung selbst bleibt für alle erreichbar, die den Link haben; verborgen wird nur der Quellcode."
+    },
+    "database": {
+      "summary": "Datenbank und Rechte",
+      "id": {
+        "label": "Datenbank-ID",
+        "placeholder": "app_team-notizen",
+        "hint": "Der Speicher, in den diese App schreibt. Jede App bekommt einen eigenen, damit sich zwei Apps nicht in die Quere kommen."
+      },
+      "label": {
+        "label": "Name in Haven",
+        "placeholder": "Team-Notizen",
+        "hint": "Ein lesbarer Name für die Datenbank. Das darf der App-Name sein, mit Leerzeichen und Großbuchstaben."
+      },
+      "permissions": {
+        "label": "Was die App darf",
+        "hint": "Lesen ist immer dabei. Du kannst jedes Recht vor dem Erzeugen abwählen.",
+        "write": "Schreiben",
+        "delete": "Löschen",
+        "history": "Verlauf",
+        "attachments": "Anhänge",
+        "views": "Ansichten",
+        "directory": "Verzeichnis"
+      }
     }
   },
   "setup": {
@@ -351,7 +373,8 @@
   "flow": {
     "validation": {
       "nameRequired": "Die Anwendung braucht einen Namen.",
-      "slugInvalid": "Der Repository-Name darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten."
+      "slugInvalid": "Der Repository-Name darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten.",
+      "databaseIdInvalid": "Die Datenbank-ID darf nur Kleinbuchstaben, Ziffern, Punkte, Unterstriche und Bindestriche enthalten und höchstens 64 Zeichen lang sein."
     },
     "ready": {
       "connectGithub": "Verbinde zuerst GitHub.",
@@ -400,6 +423,7 @@
       "originNoAnswer": "Die App antwortet noch nicht.",
       "originHttpStatus": "haven-app.json hat mit HTTP {status} geantwortet.",
       "originNotJson": "haven-app.json ist noch kein JSON — die Veröffentlichung läuft wahrscheinlich noch.",
+      "originBundleMissing": "haven-bundle.json liegt noch nicht auf der Origin — der erste Build läuft wahrscheinlich noch.",
       "originInvalidDefinition": "haven-app.json ist keine gültige Anwendungsdefinition.",
       "originMismatch": "Unter der Adresse liegt „{servedAppId}“, diese App ist aber „{expectedAppId}“.",
       "originNotChecked": "Noch nicht geprüft.",

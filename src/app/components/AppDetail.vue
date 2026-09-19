@@ -3,8 +3,8 @@
  * One app, and everything you can do with it afterwards.
  *
  * The list gets you here; this page is why the records exist. Open it, copy its address,
- * add it to Haven again, save its definition, jump to the code or to Cloudflare, start a
- * build, or hand it back to the AI. All of it from what was written down when the app was
+ * add it to Haven again, save its definition, jump to the code or to Cloudflare, or
+ * hand it back to the AI. All of it from what was written down when the app was
  * built, so none of it needs a live service to render.
  *
  * Unfinished apps get one button — "Continue" — and the record decides what that means.
@@ -53,8 +53,6 @@ const emit = defineEmits<{
   copyUrl: [];
   addToHaven: [];
   saveDefinition: [];
-  buildNow: [];
-  refreshBuilds: [];
   launchCursor: [];
 }>();
 
@@ -213,11 +211,7 @@ function formatDateTime(iso: string): string {
       </ul>
     </div>
 
-    <!--
-      Builds are read from Cloudflare on demand. Not polled: the answer matters when the
-      user asks, and a page that polls a third-party API in the background is a page that
-      fails quietly when a token expires.
-    -->
+    <!-- Last Cloudflare build, loaded when this page opens. Push to GitHub deploys. -->
     <div v-if="record.workerScriptTag" class="detail__builds">
       <h3>{{ t("detail.builds.heading") }}</h3>
       <p v-if="buildSummary" class="muted">{{ buildSummary }}</p>
@@ -225,14 +219,6 @@ function formatDateTime(iso: string): string {
       <p v-else-if="builds && builds.length === 0" class="hint">
         {{ t("detail.builds.none") }}
       </p>
-      <div class="detail__row">
-        <button type="button" class="ghost" :disabled="running" @click="emit('buildNow')">
-          {{ t("detail.builds.buildNow") }}
-        </button>
-        <button type="button" class="ghost" @click="emit('refreshBuilds')">
-          {{ t("detail.builds.refresh") }}
-        </button>
-      </div>
       <p class="hint">{{ t("detail.builds.hint") }}</p>
     </div>
 

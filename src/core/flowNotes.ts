@@ -85,6 +85,7 @@ export const FLOW_NOTE_CODES = [
   "originNoAnswer",
   "originHttpStatus",
   "originNotJson",
+  "originBundleMissing",
   "originInvalidDefinition",
   "originMismatch",
   "originNotChecked",

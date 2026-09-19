@@ -311,9 +311,10 @@ describe("createApp", () => {
     expect(call.files.find((file) => file.path === "TASK.md")!.content).toContain(
       "Notes with search.",
     );
-    expect(call.files.find((file) => file.path === "public/haven-app.json")!.content).toContain(
-      '"appId": "team-notes"',
-    );
+    const definition = call.files.find((file) => file.path === "public/haven-app.json")!.content;
+    expect(definition).toContain('"appId": "team-notes"');
+    expect(definition).toContain('"hosting": "hosted"');
+    expect(definition).toContain('"logicalDatabaseId": "app_team-notes"');
   });
 
   it("waits for the expected app on the Worker URL", async () => {

@@ -219,8 +219,10 @@ export function buildLaunchPrompt(branch = "main"): string {
     "the documentation that matches the pinned SDK version.",
     "",
     "Then implement TASK.md. Keep public/haven-app.json in step with the databases the",
-    "app actually opens, run `pnpm test` and `pnpm build` before you finish, and commit",
-    "the pnpm lockfile that the first install produces.",
+    "app actually opens. Generate a 512×512 PNG that matches the app's theme and write",
+    "it to public/appicon.png — Haven uses that file as the workspace icon after a",
+    "hosted-bundle install. Run `pnpm test` and `pnpm build` before you finish, and",
+    "commit the pnpm lockfile that the first install produces.",
     "",
     // Said in the prompt as well as in the launch options because the agent can reach
     // for `gh pr create` on its own. Cloudflare deploys this app on a push to the

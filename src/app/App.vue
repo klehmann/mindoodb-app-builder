@@ -48,7 +48,7 @@ const hostConfigLoaded = ref(false);
 const view = ref<BuilderViewId>("home");
 const setupComplete = computed(() => isSetupComplete(session.credentials.value));
 
-/** Cloudflare's builds for the open app, fetched when asked rather than polled. */
+/** Cloudflare's builds for the open app, fetched when the detail page opens. */
 const builds = ref<WorkerBuild[] | null>(null);
 const buildsError = ref<string | null>(null);
 /** One line of feedback for actions that otherwise leave no trace, like a download. */
@@ -321,6 +321,8 @@ onMounted(async () => {
       :can-build-now="flow.canBuildNow.value"
       @label-input="flow.onLabelInput"
       @slug-input="flow.onSlugInput"
+      @database-id-input="flow.onDatabaseIdInput"
+      @database-label-input="flow.onDatabaseLabelInput"
       @create="flow.createApp"
       @back="showHome"
       @open-app="openBuiltApp"
@@ -345,8 +347,6 @@ onMounted(async () => {
       @copy-url="copyAppUrl"
       @add-to-haven="addToHaven"
       @save-definition="saveDefinition"
-      @build-now="buildNow"
-      @refresh-builds="loadBuilds"
       @launch-cursor="flow.launchCursor"
     />
 

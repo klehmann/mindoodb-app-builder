@@ -183,6 +183,6 @@ describe("AppDetail", () => {
       .filter((button) => button.attributes("disabled") !== undefined)
       .map((button) => button.text());
     expect(blocked).toContain("Working…");
-    expect(blocked).toContain("Build now");
+    expect(blocked.join(" ")).not.toContain("Build now");
   });
 });

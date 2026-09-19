@@ -106,8 +106,7 @@
       "statusOther": "Ultima build: {status}.",
       "none": "Cloudflare non ha ancora eseguito una build di questa applicazione.",
       "buildNow": "Esegui la build",
-      "refresh": "Controlla lo stato della pubblicazione",
-      "hint": "Ogni modifica inviata a GitHub si pubblica da sé. «Esegui la build» serve quando vuoi farlo subito."
+      "hint": "Ogni modifica inviata a GitHub si pubblica da sé."
     },
     "agent": {
       "launch": "Affidala all’IA",
@@ -160,6 +159,29 @@
     "privateCode": {
       "label": "Mantieni il codice privato",
       "hint": "Consigliato. L’applicazione resta raggiungibile da chiunque abbia il link; questo nasconde soltanto il codice sorgente agli estranei."
+    },
+    "database": {
+      "summary": "Database e autorizzazioni",
+      "id": {
+        "label": "ID del database",
+        "placeholder": "app_note-di-squadra",
+        "hint": "L’archivio in cui scrive questa applicazione. Ognuna ha il proprio, così due app non condividono documenti per sbaglio."
+      },
+      "label": {
+        "label": "Nome mostrato in Haven",
+        "placeholder": "Note di squadra",
+        "hint": "Un nome leggibile per il database. Può essere quello dell’applicazione, con spazi e maiuscole."
+      },
+      "permissions": {
+        "label": "Che cosa può fare l’applicazione",
+        "hint": "La lettura è sempre inclusa. Puoi disattivare ciascuno di questi diritti prima di creare.",
+        "write": "Scrittura",
+        "delete": "Eliminazione",
+        "history": "Cronologia",
+        "attachments": "Allegati",
+        "views": "Viste",
+        "directory": "Directory"
+      }
     }
   },
   "setup": {
@@ -351,7 +373,8 @@
   "flow": {
     "validation": {
       "nameRequired": "L’applicazione ha bisogno di un nome.",
-      "slugInvalid": "Il nome del repository può contenere solo lettere minuscole, cifre e trattini."
+      "slugInvalid": "Il nome del repository può contenere solo lettere minuscole, cifre e trattini.",
+      "databaseIdInvalid": "L’ID del database può contenere solo lettere minuscole, cifre, punti, trattini bassi e trattini, e al massimo 64 caratteri."
     },
     "ready": {
       "connectGithub": "Collega prima GitHub.",
@@ -400,6 +423,7 @@
       "originNoAnswer": "L’applicazione non ha ancora risposto.",
       "originHttpStatus": "haven-app.json ha risposto HTTP {status}.",
       "originNotJson": "haven-app.json non è ancora JSON — probabilmente la pubblicazione è ancora in corso.",
+      "originBundleMissing": "haven-bundle.json non è ancora sull’origine — probabilmente la prima compilazione è ancora in corso.",
       "originInvalidDefinition": "haven-app.json non è una definizione di applicazione valida.",
       "originMismatch": "L’indirizzo risponde con «{servedAppId}», ma questa applicazione è «{expectedAppId}».",
       "originNotChecked": "Non ancora verificato.",

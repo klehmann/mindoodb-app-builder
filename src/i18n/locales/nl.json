@@ -106,8 +106,7 @@
       "statusOther": "Laatste build: {status}.",
       "none": "Cloudflare heeft deze applicatie nog niet gebouwd.",
       "buildNow": "Nu bouwen",
-      "refresh": "Publicatiestatus controleren",
-      "hint": "Elke wijziging die naar GitHub wordt gepusht, publiceert zichzelf. ‘Nu bouwen’ is voor als je het direct wilt."
+      "hint": "Elke wijziging die naar GitHub wordt gepusht, publiceert zichzelf."
     },
     "agent": {
       "launch": "Aan de AI geven",
@@ -160,6 +159,29 @@
     "privateCode": {
       "label": "De code privé houden",
       "hint": "Aanbevolen. De applicatie zelf blijft bereikbaar voor iedereen met de link; dit verbergt alleen de broncode voor vreemden."
+    },
+    "database": {
+      "summary": "Database en rechten",
+      "id": {
+        "label": "Database-id",
+        "placeholder": "app_teamnotities",
+        "hint": "De opslag waarin deze app schrijft. Elke app krijgt een eigen, zodat twee apps nooit per ongeluk documenten delen."
+      },
+      "label": {
+        "label": "Naam in Haven",
+        "placeholder": "Teamnotities",
+        "hint": "Een leesbare naam voor de database. Dat mag de appnaam zijn, met spaties en hoofdletters."
+      },
+      "permissions": {
+        "label": "Wat de app mag doen",
+        "hint": "Lezen hoort er altijd bij. Je kunt elk recht uitzetten voordat je bouwt.",
+        "write": "Schrijven",
+        "delete": "Verwijderen",
+        "history": "Geschiedenis",
+        "attachments": "Bijlagen",
+        "views": "Weergaven",
+        "directory": "Directory"
+      }
     }
   },
   "setup": {
@@ -351,7 +373,8 @@
   "flow": {
     "validation": {
       "nameRequired": "De applicatie heeft een naam nodig.",
-      "slugInvalid": "De naam van de repository mag alleen kleine letters, cijfers en streepjes bevatten."
+      "slugInvalid": "De naam van de repository mag alleen kleine letters, cijfers en streepjes bevatten.",
+      "databaseIdInvalid": "De database-id mag alleen kleine letters, cijfers, punten, underscores en streepjes bevatten en maximaal 64 tekens lang zijn."
     },
     "ready": {
       "connectGithub": "Verbind eerst GitHub.",
@@ -400,6 +423,7 @@
       "originNoAnswer": "Het adres antwoordt nog niet.",
       "originHttpStatus": "haven-app.json antwoordde HTTP {status}.",
       "originNotJson": "haven-app.json is nog geen JSON — de publicatie loopt waarschijnlijk nog.",
+      "originBundleMissing": "haven-bundle.json staat nog niet op de origin — de eerste build loopt waarschijnlijk nog.",
       "originInvalidDefinition": "haven-app.json is geen geldige applicatiedefinitie.",
       "originMismatch": "Op het adres staat ‘{servedAppId}’, maar deze applicatie is ‘{expectedAppId}’.",
       "originNotChecked": "Nog niet gecontroleerd.",

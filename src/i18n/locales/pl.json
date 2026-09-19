@@ -106,8 +106,7 @@
       "statusOther": "Ostatnia kompilacja: {status}.",
       "none": "Cloudflare jeszcze nie skompilował tej aplikacji.",
       "buildNow": "Skompiluj teraz",
-      "refresh": "Sprawdź stan publikowania",
-      "hint": "Każda zmiana wypchnięta do GitHuba publikuje się sama. „Skompiluj teraz” jest po to, żeby stało się to od razu."
+      "hint": "Każda zmiana wypchnięta do GitHuba publikuje się sama."
     },
     "agent": {
       "launch": "Przekaż do AI",
@@ -160,6 +159,29 @@
     "privateCode": {
       "label": "Zachowaj kod jako prywatny",
       "hint": "Zalecane. Sama aplikacja pozostaje dostępna dla każdego, kto ma link; to ukrywa jedynie kod źródłowy przed osobami postronnymi."
+    },
+    "database": {
+      "summary": "Baza danych i uprawnienia",
+      "id": {
+        "label": "Identyfikator bazy",
+        "placeholder": "app_notatki-zespolu",
+        "hint": "Magazyn, do którego ta aplikacja zapisuje. Każda ma własny, żeby dwie aplikacje nie dzieliły dokumentów przez przypadek."
+      },
+      "label": {
+        "label": "Nazwa widoczna w Haven",
+        "placeholder": "Notatki zespołu",
+        "hint": "Czytelna nazwa bazy. Może to być nazwa aplikacji, ze spacjami i wielkimi literami."
+      },
+      "permissions": {
+        "label": "Co aplikacja może robić",
+        "hint": "Odczyt jest zawsze wliczony. Każde z tych uprawnień możesz wyłączyć przed utworzeniem.",
+        "write": "Zapis",
+        "delete": "Usuwanie",
+        "history": "Historia",
+        "attachments": "Załączniki",
+        "views": "Widoki",
+        "directory": "Katalog"
+      }
     }
   },
   "setup": {
@@ -351,7 +373,8 @@
   "flow": {
     "validation": {
       "nameRequired": "Aplikacja potrzebuje nazwy.",
-      "slugInvalid": "Nazwa repozytorium może zawierać tylko małe litery, cyfry i myślniki."
+      "slugInvalid": "Nazwa repozytorium może zawierać tylko małe litery, cyfry i myślniki.",
+      "databaseIdInvalid": "Identyfikator bazy może zawierać tylko małe litery, cyfry, kropki, podkreślenia i myślniki i może mieć co najwyżej 64 znaki."
     },
     "ready": {
       "connectGithub": "Najpierw połącz GitHub.",
@@ -400,6 +423,7 @@
       "originNoAnswer": "Aplikacja jeszcze nie odpowiada.",
       "originHttpStatus": "haven-app.json odpowiedział HTTP {status}.",
       "originNotJson": "haven-app.json to jeszcze nie JSON — wdrożenie prawdopodobnie nadal trwa.",
+      "originBundleMissing": "haven-bundle.json nie jest jeszcze na originie — pierwsza kompilacja prawdopodobnie nadal trwa.",
       "originInvalidDefinition": "haven-app.json nie jest poprawną definicją aplikacji.",
       "originMismatch": "Pod tym adresem działa „{servedAppId}”, a ta aplikacja to „{expectedAppId}”.",
       "originNotChecked": "Jeszcze nie sprawdzono.",

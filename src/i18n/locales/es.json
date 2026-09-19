@@ -106,8 +106,7 @@
       "statusOther": "Última compilación: {status}.",
       "none": "Cloudflare todavía no ha compilado esta aplicación.",
       "buildNow": "Compilar ahora",
-      "refresh": "Comprobar el estado de publicación",
-      "hint": "Cada cambio que llega a GitHub se publica por sí solo. «Compilar ahora» es para cuando lo quieres al instante."
+      "hint": "Cada cambio que llega a GitHub se publica por sí solo."
     },
     "agent": {
       "launch": "Entregarla a la IA",
@@ -160,6 +159,29 @@
     "privateCode": {
       "label": "Mantener el código privado",
       "hint": "Recomendado. La aplicación en sí sigue siendo accesible para cualquiera que tenga el enlace; esto solo oculta el código fuente a los desconocidos."
+    },
+    "database": {
+      "summary": "Base de datos y permisos",
+      "id": {
+        "label": "Id. de la base de datos",
+        "placeholder": "app_notas-del-equipo",
+        "hint": "El almacén en el que escribe esta aplicación. Cada una tiene el suyo, para que dos aplicaciones no compartan documentos por accidente."
+      },
+      "label": {
+        "label": "Nombre que se ve en Haven",
+        "placeholder": "Notas del equipo",
+        "hint": "Un nombre legible para la base de datos. Puede ser el de la aplicación, con espacios y mayúsculas."
+      },
+      "permissions": {
+        "label": "Qué puede hacer la aplicación",
+        "hint": "El acceso de lectura siempre está incluido. Puedes desactivar cualquiera de estos permisos antes de crear.",
+        "write": "Escritura",
+        "delete": "Eliminación",
+        "history": "Historial",
+        "attachments": "Adjuntos",
+        "views": "Vistas",
+        "directory": "Directorio"
+      }
     }
   },
   "setup": {
@@ -351,7 +373,8 @@
   "flow": {
     "validation": {
       "nameRequired": "La aplicación necesita un nombre.",
-      "slugInvalid": "El nombre del repositorio solo puede contener letras minúsculas, dígitos y guiones."
+      "slugInvalid": "El nombre del repositorio solo puede contener letras minúsculas, dígitos y guiones.",
+      "databaseIdInvalid": "El id. de la base de datos solo puede usar letras minúsculas, dígitos, puntos, guiones bajos y guiones, y no puede superar los 64 caracteres."
     },
     "ready": {
       "connectGithub": "Conecta GitHub primero.",
@@ -400,6 +423,7 @@
       "originNoAnswer": "La dirección todavía no responde.",
       "originHttpStatus": "haven-app.json respondió HTTP {status}.",
       "originNotJson": "haven-app.json todavía no es JSON — es probable que el despliegue siga en marcha.",
+      "originBundleMissing": "haven-bundle.json aún no está en el origen — es probable que la primera compilación siga en marcha.",
       "originInvalidDefinition": "haven-app.json no es una definición de aplicación válida.",
       "originMismatch": "La dirección sirve «{servedAppId}», pero esta aplicación es «{expectedAppId}».",
       "originNotChecked": "Aún sin comprobar.",

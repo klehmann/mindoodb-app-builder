@@ -106,8 +106,7 @@
       "statusOther": "Siste bygg: {status}.",
       "none": "Cloudflare har ikke bygget denne appen ennå.",
       "buildNow": "Bygg nå",
-      "refresh": "Sjekk publiseringsstatus",
-      "hint": "Hver endring som pushes til GitHub, publiserer seg selv. «Bygg nå» er for når du vil ha det med én gang."
+      "hint": "Hver endring som pushes til GitHub, publiserer seg selv."
     },
     "agent": {
       "launch": "Gi den til KI-en",
@@ -160,6 +159,29 @@
     "privateCode": {
       "label": "Hold koden privat",
       "hint": "Anbefalt. Selve appen er fortsatt tilgjengelig for alle som har lenken; dette skjuler bare kildekoden for fremmede."
+    },
+    "database": {
+      "summary": "Database og tilgang",
+      "id": {
+        "label": "Database-ID",
+        "placeholder": "app_teamnotater",
+        "hint": "Lageret denne appen skriver til. Hver app får sitt eget, slik at to apper ikke deler dokumenter ved et uhell."
+      },
+      "label": {
+        "label": "Navn som vises i Haven",
+        "placeholder": "Teamnotater",
+        "hint": "Et lesbart navn på databasen. Det kan være appnavnet, med mellomrom og store bokstaver."
+      },
+      "permissions": {
+        "label": "Hva appen får gjøre",
+        "hint": "Lesetilgang er alltid inkludert. Du kan slå av hvilken som helst av disse før du bygger.",
+        "write": "Skrive",
+        "delete": "Slette",
+        "history": "Historikk",
+        "attachments": "Vedlegg",
+        "views": "Visninger",
+        "directory": "Katalog"
+      }
     }
   },
   "setup": {
@@ -351,7 +373,8 @@
   "flow": {
     "validation": {
       "nameRequired": "Appen må ha et navn.",
-      "slugInvalid": "Navnet på repositoriet kan bare inneholde små bokstaver, tall og bindestrek."
+      "slugInvalid": "Navnet på repositoriet kan bare inneholde små bokstaver, tall og bindestrek.",
+      "databaseIdInvalid": "Database-IDen kan bare inneholde små bokstaver, tall, punktum, understrek og bindestrek, og må være på 64 tegn eller færre."
     },
     "ready": {
       "connectGithub": "Koble til GitHub først.",
@@ -400,6 +423,7 @@
       "originNoAnswer": "Appen har ikke svart ennå.",
       "originHttpStatus": "haven-app.json svarte HTTP {status}.",
       "originNotJson": "haven-app.json er ikke JSON ennå — publiseringen kjører sannsynligvis fortsatt.",
+      "originBundleMissing": "haven-bundle.json er ikke på opprinnelsen ennå — den første byggingen kjører sannsynligvis fortsatt.",
       "originInvalidDefinition": "haven-app.json er ikke en gyldig appdefinisjon.",
       "originMismatch": "Adressen leverer «{servedAppId}», men denne appen er «{expectedAppId}».",
       "originNotChecked": "Ikke sjekket ennå.",

@@ -111,6 +111,63 @@ describe("probeOrigin", () => {
     );
   });
 
+  it("waits for haven-bundle.json when the definition asks to be hosted", async () => {
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (String(url).endsWith("haven-bundle.json")) {
+        return new Response("not yet", { status: 404 });
+      }
+      return jsonResponse({ ...definition, hosting: "hosted" });
+    });
+
+    const result = await probeOrigin({
+      url: "https://team-notes.acme.workers.dev",
+      expectedAppId: "team-notes",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    expect(result.state).toBe("not-published");
+    expect(result.detail).toEqual({ code: "originBundleMissing" });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://team-notes.acme.workers.dev/haven-bundle.json",
+      expect.objectContaining({ cache: "no-store" }),
+    );
+  });
+
+  it("is ready for a hosted app once the bundle manifest is there", async () => {
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (String(url).endsWith("haven-bundle.json")) {
+        return jsonResponse({
+          format: "mindoodb.app.bundle",
+          formatVersion: 1,
+          appId: "team-notes",
+          version: "0.1.0",
+          entry: "index.html",
+          archive: {
+            path: "haven-bundle.zip",
+            hash: `sha256-${"a".repeat(64)}`,
+            size: 12,
+          },
+          contentHash: `sha256-${"b".repeat(64)}`,
+          generatedAt: "2026-09-19T00:00:00.000Z",
+          files: [
+            { path: "index.html", hash: `sha256-${"c".repeat(64)}`, size: 4 },
+            { path: "haven-bundle.zip", hash: `sha256-${"a".repeat(64)}`, size: 12 },
+          ],
+        });
+      }
+      return jsonResponse({ ...definition, hosting: "hosted" });
+    });
+
+    const result = await probeOrigin({
+      url: "https://team-notes.acme.workers.dev",
+      expectedAppId: "team-notes",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    expect(result.state).toBe("ready");
+    expect(result.definition?.hosting).toBe("hosted");
+  });
+
   it("does not probe at all without a URL", async () => {
     const fetchImpl = vi.fn();
     const result = await probeOrigin({

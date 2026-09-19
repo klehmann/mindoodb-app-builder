@@ -106,8 +106,7 @@
       "statusOther": "Last build: {status}.",
       "none": "Cloudflare has not built this app yet.",
       "buildNow": "Build now",
-      "refresh": "Check publishing status",
-      "hint": "Every change pushed to GitHub publishes itself. “Build now” is for when you want it immediately."
+      "hint": "Every change pushed to GitHub publishes itself."
     },
     "agent": {
       "launch": "Hand it to the AI",
@@ -160,6 +159,29 @@
     "privateCode": {
       "label": "Keep the code private",
       "hint": "Recommended. The app itself is still reachable by anyone with the link; this only hides the source code from strangers."
+    },
+    "database": {
+      "summary": "Database and access",
+      "id": {
+        "label": "Database id",
+        "placeholder": "app_team-notes",
+        "hint": "The store this app writes to. Each app gets its own, so two apps never share documents by accident."
+      },
+      "label": {
+        "label": "Name shown in Haven",
+        "placeholder": "Team Notes",
+        "hint": "A readable name for the database. This can be the app name, with spaces and capitals."
+      },
+      "permissions": {
+        "label": "What the app may do",
+        "hint": "Read access is always included. You can turn any of these off before you build.",
+        "write": "Write",
+        "delete": "Delete",
+        "history": "History",
+        "attachments": "Attachments",
+        "views": "Views",
+        "directory": "Directory"
+      }
     }
   },
   "setup": {
@@ -351,7 +373,8 @@
   "flow": {
     "validation": {
       "nameRequired": "The app needs a name.",
-      "slugInvalid": "The repository name may only contain lowercase letters, digits, and dashes."
+      "slugInvalid": "The repository name may only contain lowercase letters, digits, and dashes.",
+      "databaseIdInvalid": "The database id may only use lowercase letters, digits, dots, underscores and dashes, and must be 64 characters or fewer."
     },
     "ready": {
       "connectGithub": "Connect GitHub first.",
@@ -400,6 +423,7 @@
       "originNoAnswer": "The origin did not answer yet.",
       "originHttpStatus": "haven-app.json answered HTTP {status}.",
       "originNotJson": "haven-app.json is not JSON yet — the deploy is probably still running.",
+      "originBundleMissing": "haven-bundle.json is not on the origin yet — the first build is probably still running.",
       "originInvalidDefinition": "haven-app.json is not a valid app definition.",
       "originMismatch": "The origin serves “{servedAppId}” but this app is “{expectedAppId}”.",
       "originNotChecked": "Not checked yet.",
