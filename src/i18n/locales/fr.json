@@ -174,13 +174,16 @@
       },
       "permissions": {
         "label": "Ce que l’application peut faire",
-        "hint": "La lecture est toujours incluse. Vous pouvez désactiver n’importe lequel de ces droits avant de créer.",
+        "hint": "La lecture est toujours incluse. Signature, horodatages et canal scellé restent désactivés tant que vous ne les activez pas.",
         "write": "Écriture",
         "delete": "Suppression",
         "history": "Historique",
         "attachments": "Pièces jointes",
         "views": "Vues",
-        "directory": "Annuaire"
+        "sign": "Signer",
+        "timestamps": "Horodatages",
+        "directory": "Annuaire",
+        "sealedchannel": "Sealed channel"
       }
     }
   },

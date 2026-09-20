@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   APP_DATABASE_ID_PREFIX,
+  APP_DATABASE_PERMISSIONS,
   DEFAULT_APP_DATABASE_PERMISSIONS,
   MAX_DATABASE_ID_LENGTH,
   buildIdentityFiles,
@@ -80,6 +81,30 @@ describe("isValidDatabaseId", () => {
       expect(isValidDatabaseId(id)).toBe(false);
     },
   );
+});
+
+describe("APP_DATABASE_PERMISSIONS", () => {
+  it("lists every Haven mapping permission, with sign / timestamps / sealedchannel off by default", () => {
+    expect(APP_DATABASE_PERMISSIONS).toEqual([
+      "write",
+      "delete",
+      "history",
+      "attachments",
+      "views",
+      "sign",
+      "timestamps",
+      "directory",
+      "sealedchannel",
+    ]);
+    expect(DEFAULT_APP_DATABASE_PERMISSIONS).toEqual([
+      "write",
+      "delete",
+      "history",
+      "attachments",
+      "views",
+      "directory",
+    ]);
+  });
 });
 
 describe("resolveAppDatabase", () => {

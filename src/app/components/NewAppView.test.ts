@@ -62,8 +62,13 @@ describe("NewAppView", () => {
     expect(wrapper.text()).toContain("Database and access");
     expect(wrapper.text()).toContain("Write");
     expect(wrapper.text()).toContain("Directory");
+    expect(wrapper.text()).toContain("Sign");
+    expect(wrapper.text()).toContain("Timestamps");
+    expect(wrapper.text()).toContain("Sealed channel");
     const write = wrapper.findAll("input").find((input) => input.attributes("value") === "write")!;
+    const sign = wrapper.findAll("input").find((input) => input.attributes("value") === "sign")!;
     expect((write.element as HTMLInputElement).checked).toBe(true);
+    expect((sign.element as HTMLInputElement).checked).toBe(false);
   });
 
   it("creates an app from one button", async () => {

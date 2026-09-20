@@ -31,8 +31,10 @@ const NEW_DATABASE_ID_REGEX = /^[a-z0-9][a-z0-9._-]*$/;
 export const APP_DATABASE_ID_PREFIX = "app_";
 
 /**
- * Permissions a generated app asks for on its one database. Read is implied by the
- * mapping existing. `sign` / `timestamps` / `sealedchannel` stay off until the app
+ * Permissions a generated app can request on its one database. Matches Haven's
+ * mapping permissions (`MINDOODB_APP_MAPPING_PERMISSIONS`) — `proposeapps` is
+ * registration-level and does not belong here. Read is implied by the mapping
+ * existing. `sign` / `timestamps` / `sealedchannel` stay off until the app
  * actually needs them.
  */
 export const APP_DATABASE_PERMISSIONS = [
@@ -41,13 +43,21 @@ export const APP_DATABASE_PERMISSIONS = [
   "history",
   "attachments",
   "views",
+  "sign",
+  "timestamps",
   "directory",
+  "sealedchannel",
 ] as const;
 
 export type AppDatabasePermission = (typeof APP_DATABASE_PERMISSIONS)[number];
 
 export const DEFAULT_APP_DATABASE_PERMISSIONS: readonly AppDatabasePermission[] = [
-  ...APP_DATABASE_PERMISSIONS,
+  "write",
+  "delete",
+  "history",
+  "attachments",
+  "views",
+  "directory",
 ];
 
 export interface AppIdentity {

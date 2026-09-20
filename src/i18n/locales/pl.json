@@ -174,13 +174,16 @@
       },
       "permissions": {
         "label": "Co aplikacja może robić",
-        "hint": "Odczyt jest zawsze wliczony. Każde z tych uprawnień możesz wyłączyć przed utworzeniem.",
+        "hint": "Odczyt jest zawsze wliczony. Podpisywanie, znaczniki czasu i sealed channel pozostają wyłączone, dopóki ich nie włączysz.",
         "write": "Zapis",
         "delete": "Usuwanie",
         "history": "Historia",
         "attachments": "Załączniki",
         "views": "Widoki",
-        "directory": "Katalog"
+        "sign": "Podpisywanie",
+        "timestamps": "Znaczniki czasu",
+        "directory": "Katalog",
+        "sealedchannel": "Sealed channel"
       }
     }
   },

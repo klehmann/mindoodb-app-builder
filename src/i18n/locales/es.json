@@ -174,13 +174,16 @@
       },
       "permissions": {
         "label": "Qué puede hacer la aplicación",
-        "hint": "El acceso de lectura siempre está incluido. Puedes desactivar cualquiera de estos permisos antes de crear.",
+        "hint": "El acceso de lectura siempre está incluido. Firma, sellos de tiempo y un canal sellado quedan desactivados hasta que los actives.",
         "write": "Escritura",
         "delete": "Eliminación",
         "history": "Historial",
         "attachments": "Adjuntos",
         "views": "Vistas",
-        "directory": "Directorio"
+        "sign": "Firmar",
+        "timestamps": "Sellos de tiempo",
+        "directory": "Directorio",
+        "sealedchannel": "Sealed channel"
       }
     }
   },

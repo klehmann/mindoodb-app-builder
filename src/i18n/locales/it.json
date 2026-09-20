@@ -174,13 +174,16 @@
       },
       "permissions": {
         "label": "Che cosa può fare l’applicazione",
-        "hint": "La lettura è sempre inclusa. Puoi disattivare ciascuno di questi diritti prima di creare.",
+        "hint": "La lettura è sempre inclusa. Firma, marche temporali e canale sigillato restano disattivati finché non li attivi.",
         "write": "Scrittura",
         "delete": "Eliminazione",
         "history": "Cronologia",
         "attachments": "Allegati",
         "views": "Viste",
-        "directory": "Directory"
+        "sign": "Firma",
+        "timestamps": "Marche temporali",
+        "directory": "Directory",
+        "sealedchannel": "Sealed channel"
       }
     }
   },

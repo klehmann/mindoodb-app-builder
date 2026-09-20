@@ -174,13 +174,16 @@
       },
       "permissions": {
         "label": "What the app may do",
-        "hint": "Read access is always included. You can turn any of these off before you build.",
+        "hint": "Read access is always included. Signing, timestamps, and a sealed channel stay off until you turn them on.",
         "write": "Write",
         "delete": "Delete",
         "history": "History",
         "attachments": "Attachments",
         "views": "Views",
-        "directory": "Directory"
+        "sign": "Sign",
+        "timestamps": "Timestamps",
+        "directory": "Directory",
+        "sealedchannel": "Sealed channel"
       }
     }
   },

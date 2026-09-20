@@ -174,13 +174,16 @@
       },
       "permissions": {
         "label": "Wat de app mag doen",
-        "hint": "Lezen hoort er altijd bij. Je kunt elk recht uitzetten voordat je bouwt.",
+        "hint": "Lezen hoort er altijd bij. Ondertekenen, tijdstempels en een sealed channel blijven uit tot je ze aanzet.",
         "write": "Schrijven",
         "delete": "Verwijderen",
         "history": "Geschiedenis",
         "attachments": "Bijlagen",
         "views": "Weergaven",
-        "directory": "Directory"
+        "sign": "Ondertekenen",
+        "timestamps": "Tijdstempels",
+        "directory": "Directory",
+        "sealedchannel": "Sealed channel"
       }
     }
   },

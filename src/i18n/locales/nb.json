@@ -174,13 +174,16 @@
       },
       "permissions": {
         "label": "Hva appen får gjøre",
-        "hint": "Lesetilgang er alltid inkludert. Du kan slå av hvilken som helst av disse før du bygger.",
+        "hint": "Lesetilgang er alltid inkludert. Signering, tidsstempler og en sealed channel forblir av til du slår dem på.",
         "write": "Skrive",
         "delete": "Slette",
         "history": "Historikk",
         "attachments": "Vedlegg",
         "views": "Visninger",
-        "directory": "Katalog"
+        "sign": "Signere",
+        "timestamps": "Tidsstempler",
+        "directory": "Katalog",
+        "sealedchannel": "Sealed channel"
       }
     }
   },

@@ -174,13 +174,16 @@
       },
       "permissions": {
         "label": "Was die App darf",
-        "hint": "Lesen ist immer dabei. Du kannst jedes Recht vor dem Erzeugen abwählen.",
+        "hint": "Lesen ist immer dabei. Signieren, Zeitstempel und ein versiegelter Kanal bleiben aus, bis du sie anhakst.",
         "write": "Schreiben",
         "delete": "Löschen",
         "history": "Verlauf",
         "attachments": "Anhänge",
         "views": "Ansichten",
-        "directory": "Verzeichnis"
+        "sign": "Signieren",
+        "timestamps": "Zeitstempel",
+        "directory": "Verzeichnis",
+        "sealedchannel": "Versiegelter Kanal"
       }
     }
   },
