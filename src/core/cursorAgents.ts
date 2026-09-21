@@ -20,12 +20,12 @@
 const CURSOR_API_BASE = "https://api.cursor.com";
 
 /**
- * Sent on every launch. Omitting `model` lets Cursor pick the account default, which
- * is currently Grok 4.5 — this builder wants 4.6. Override per call via
+ * Sent on every launch. Omitting `model` lets Cursor pick the account default; this
+ * builder pins Grok 4.7. Override per call via
  * {@link LaunchAgentInput.model}. The id is the Cloud Agents catalog value
  * (`GET /v1/models`), not the IDE slug.
  */
-export const CURSOR_DEFAULT_MODEL_ID = "grok-4.6";
+export const CURSOR_DEFAULT_MODEL_ID = "grok-4.7";
 
 export interface CursorModelSelection {
   id: string;

@@ -63,7 +63,7 @@ describe("launchAgent", () => {
     expect(body.workOnCurrentBranch).toBe(true);
     expect(body.autoCreatePR).toBe(false);
     expect(body.model).toEqual({ id: CURSOR_DEFAULT_MODEL_ID });
-    expect(CURSOR_DEFAULT_MODEL_ID).toBe("grok-4.6");
+    expect(CURSOR_DEFAULT_MODEL_ID).toBe("grok-4.7");
     expect(body.repos).toEqual([
       { url: "https://github.com/octocat/team-notes", startingRef: "main" },
     ]);

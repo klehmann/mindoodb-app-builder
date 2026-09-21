@@ -77,8 +77,8 @@ pnpm start
 ```
 
 That serves the app and the API on `http://127.0.0.1:4400`. Add that URL in Haven under
-Applications, and Haven reads `haven-app.json` from it to register the app. A loopback
-address is a secure origin, so an HTTPS Haven can embed it.
+App Store → New app → From URL, and Haven reads `haven-app.json` from it to register the
+app. A loopback address is a secure origin, so an HTTPS Haven can embed it.
 
 For development, two processes — or just the Vite one, which starts the API host on
 4400 when that port is free:
