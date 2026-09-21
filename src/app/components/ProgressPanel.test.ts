@@ -32,6 +32,44 @@ function render(overrides: Partial<CreateAppResult> = {}) {
  * the origin wait on the next, and both land on this panel together. They used to explain
  * the same remedy twice, in different words and with the two options in opposite orders.
  */
+describe("ProgressPanel AI developer link", () => {
+  it("turns the Cursor run URL into a link so the user can watch it work", () => {
+    const steps = createInitialSteps();
+    const launch = steps.find((step) => step.id === "launch-agent")!;
+    launch.status = "done";
+    launch.detail = {
+      code: "agentStarted",
+      params: { url: "https://cursor.com/agents/bc-1" },
+    };
+
+    const panel = mount(ProgressPanel, {
+      props: { steps, result: result(), running: false },
+    });
+
+    const link = panel.find(".step__detail a");
+    expect(link.attributes("href")).toBe("https://cursor.com/agents/bc-1");
+    expect(link.attributes("target")).toBe("_blank");
+    expect(link.text()).toContain("https://cursor.com/agents/bc-1");
+    expect(link.text()).toContain("Watch it work");
+  });
+
+  it("does not link a non-http agent URL", () => {
+    const steps = createInitialSteps();
+    const launch = steps.find((step) => step.id === "launch-agent")!;
+    launch.status = "done";
+    launch.detail = {
+      code: "agentStarted",
+      params: { url: "javascript:alert(1)" },
+    };
+
+    const panel = mount(ProgressPanel, {
+      props: { steps, result: result(), running: false },
+    });
+
+    expect(panel.find(".step__detail a").exists()).toBe(false);
+  });
+});
+
 describe("ProgressPanel repeated advice", () => {
   it("gives the access remedy once when both notes are on screen", () => {
     const panel = render({

@@ -72,6 +72,30 @@ function noteText(note: FlowNote | null): string {
   return flowNoteText(t, note, { accessGrantShown: accessGrantShown.value });
 }
 
+/**
+ * The AI-developer step's detail is the Cursor run URL. Render it as a link so
+ * the user can watch the agent work — that step takes a while, and a plain
+ * string is not something you can open.
+ *
+ * Only `http`/`https` survive, via the URL parser rather than a prefix test:
+ * a `javascript:` value with an embedded tab would defeat `startsWith("http")`.
+ */
+function noteHref(note: FlowNote | null): string {
+  if (note?.code !== "agentStarted") {
+    return "";
+  }
+  const value = note.params?.url;
+  if (typeof value !== "string" || !value) {
+    return "";
+  }
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? value : "";
+  } catch {
+    return "";
+  }
+}
+
 const SYMBOLS: Record<FlowStep["status"], string> = {
   pending: "○",
   running: "◐",
@@ -103,7 +127,15 @@ const shareLink = computed(() => {
         <span class="step__mark" aria-hidden="true">{{ SYMBOLS[step.status] }}</span>
         <span class="step__body">
           <span class="step__label">{{ stepLabel(step.id) }}</span>
-          <span v-if="step.detail" class="step__detail">{{ noteText(step.detail) }}</span>
+          <span v-if="step.detail" class="step__detail">
+            <a
+              v-if="noteHref(step.detail)"
+              :href="noteHref(step.detail)"
+              target="_blank"
+              rel="noopener noreferrer"
+            >{{ noteText(step.detail) }}</a>
+            <template v-else>{{ noteText(step.detail) }}</template>
+          </span>
         </span>
       </li>
     </ol>
@@ -187,6 +219,12 @@ const shareLink = computed(() => {
   font-size: 0.8rem;
   color: var(--app-muted);
   word-break: break-word;
+}
+
+.step__detail a {
+  color: inherit;
+  text-decoration: underline;
+  word-break: break-all;
 }
 
 .step--pending,

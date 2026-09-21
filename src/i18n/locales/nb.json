@@ -444,7 +444,7 @@
       "havenProposeFailed": "Haven kunne ikke bli bedt om å installere appen.",
       "pressRegisterInHaven": "Trykk «{action}» når du er klar.",
       "noCursorKey": "Ingen Cursor-API-nøkkel er koblet til.",
-      "agentStarted": "{url}",
+      "agentStarted": "Se den jobbe: {url}",
       "agentStartFailed": "Cursor-agenten kunne ikke startes."
     }
   },

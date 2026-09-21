@@ -444,7 +444,7 @@
       "havenProposeFailed": "Aan Haven kon niet worden gevraagd de applicatie te installeren.",
       "pressRegisterInHaven": "Druk op ‘{action}’ wanneer je er klaar voor bent.",
       "noCursorKey": "Geen Cursor-API-sleutel verbonden.",
-      "agentStarted": "{url}",
+      "agentStarted": "Kijk mee terwijl het werkt: {url}",
       "agentStartFailed": "De Cursor-agent kon niet worden gestart."
     }
   },

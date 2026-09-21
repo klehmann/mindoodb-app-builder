@@ -444,7 +444,7 @@
       "havenProposeFailed": "Haven konnte nicht gebeten werden, die App zu installieren.",
       "pressRegisterInHaven": "Drücke auf „{action}“, wenn du so weit bist.",
       "noCursorKey": "Kein Cursor-API-Schlüssel verbunden.",
-      "agentStarted": "{url}",
+      "agentStarted": "Beim Arbeiten zusehen: {url}",
       "agentStartFailed": "Der Cursor-Agent konnte nicht gestartet werden."
     }
   },

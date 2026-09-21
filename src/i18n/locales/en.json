@@ -444,7 +444,7 @@
       "havenProposeFailed": "Haven could not be asked to install the app.",
       "pressRegisterInHaven": "Press “{action}” when you are ready.",
       "noCursorKey": "No Cursor API key connected.",
-      "agentStarted": "{url}",
+      "agentStarted": "Watch it work: {url}",
       "agentStartFailed": "The Cursor agent could not be started."
     }
   },

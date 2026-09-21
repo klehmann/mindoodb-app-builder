@@ -444,7 +444,7 @@
       "havenProposeFailed": "Non è stato possibile chiedere a Haven di installare l’applicazione.",
       "pressRegisterInHaven": "Premi «{action}» quando vuoi.",
       "noCursorKey": "Nessuna chiave API di Cursor collegata.",
-      "agentStarted": "{url}",
+      "agentStarted": "Guardalo mentre lavora: {url}",
       "agentStartFailed": "Non è stato possibile avviare l’agente Cursor."
     }
   },
