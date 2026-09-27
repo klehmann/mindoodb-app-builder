@@ -11,8 +11,8 @@ importers:
   .:
     dependencies:
       mindoodb-app-sdk:
-        specifier: ^0.0.47
-        version: 0.0.47(@automerge/automerge@3.4.1)
+        specifier: ^0.0.51
+        version: 0.0.51(@automerge/automerge@3.4.1)(mindoodb@0.0.67)
       vue:
         specifier: ^3.5.31
         version: 3.5.42(typescript@6.0.3)
@@ -1150,33 +1150,36 @@ packages:
   mdn-data@2.27.1:
     resolution: {integrity: sha512-9Yubnt3e8A0OKwxYSXyhLymGW4sCufcLG6VdiDdUGVkPhpqLxlvP5vl1983gQjJl3tqbrM731mjaZaP68AgosQ==}
 
-  mindoodb-app-sdk@0.0.47:
-    resolution: {integrity: sha512-2Lmiu9WBDd0VSlY2EW8BvLa4dDqTIWLA5lGTn5vjQIOQXN8tIKyHguDpj+amIPblepukUTOVEraGWnFEiGFoSA==}
+  mindoodb-app-sdk@0.0.51:
+    resolution: {integrity: sha512-pk9DvIfTubVlRda9FknNQSdYMYvOBbQ+/mY9SQ7cR2S3yW0NFTLmUIDr44mIonrDzsUiHMXI3CdT1rPwfdDCQA==}
     engines: {node: '>=22.13.0'}
     peerDependencies:
       '@automerge/automerge': ^3.3.2
-      mindoodb: '>=0.0.58'
+      mindoodb: '>=0.0.67'
     peerDependenciesMeta:
       '@automerge/automerge':
         optional: true
       mindoodb:
         optional: true
 
-  mindoodb-view-language@0.0.16:
-    resolution: {integrity: sha512-xFgD8YgfcT8AWTLU4WyscUgxrEr1sTWBHf+qqWd+39PMT7bxPoxJrkHcJB5PHO7G8xWLUFG9QYk7HJ9KG+6IVA==}
+  mindoodb-view-language@0.0.18:
+    resolution: {integrity: sha512-9estxqoKL0Lu1QuYfEcoHYgQWEwF0RX71QxCu48j1IHyQ2nwXDSIg4OLtp+Oy5UJ398xcsWGTySttruDe9xShA==}
     engines: {node: '>=22.13.0'}
 
-  mindoodb@0.0.53:
-    resolution: {integrity: sha512-VzZEM/nJwiiKQLJn+/5Hg+ioitBlpfMFlFqzDazmx5eLentDhFNBa5WABzML1V3pwp05Zxl+GTAqcDm9W7oyHQ==}
+  mindoodb@0.0.67:
+    resolution: {integrity: sha512-JC7DiDNhFEtdsZKUTq82ZmNo9TP19I/cDXaZd+QBU/Vm58h/3etenF6Nz121KQh5gBKEatJM10kwxseJLFMS4g==}
     engines: {node: '>=22.13.0'}
     hasBin: true
     peerDependencies:
+      '@number0/iroh': ^1.0.0
       expo-standard-web-crypto: ^3.0.0
       node-forge: ^1.3.1
       react-native-automerge-generated: ^0.1.0
       react-native-quick-crypto: ^1.0.0
       tweetnacl: ^1.0.3
     peerDependenciesMeta:
+      '@number0/iroh':
+        optional: true
       expo-standard-web-crypto:
         optional: true
       node-forge:
@@ -2390,29 +2393,32 @@ snapshots:
 
   mdn-data@2.27.1: {}
 
-  mindoodb-app-sdk@0.0.47(@automerge/automerge@3.4.1):
+  mindoodb-app-sdk@0.0.51(@automerge/automerge@3.4.1)(mindoodb@0.0.67):
     dependencies:
-      mindoodb-view-language: 0.0.16
+      mindoodb-view-language: 0.0.18
     optionalDependencies:
       '@automerge/automerge': 3.4.1
+      mindoodb: 0.0.67
     transitivePeerDependencies:
+      - '@number0/iroh'
       - expo-standard-web-crypto
       - node-forge
       - react-native-automerge-generated
       - react-native-quick-crypto
       - tweetnacl
 
-  mindoodb-view-language@0.0.16:
+  mindoodb-view-language@0.0.18:
     dependencies:
-      mindoodb: 0.0.53
+      mindoodb: 0.0.67
     transitivePeerDependencies:
+      - '@number0/iroh'
       - expo-standard-web-crypto
       - node-forge
       - react-native-automerge-generated
       - react-native-quick-crypto
       - tweetnacl
 
-  mindoodb@0.0.53:
+  mindoodb@0.0.67:
     dependencies:
       '@automerge/automerge': 3.4.1
       minisearch: 7.2.0
