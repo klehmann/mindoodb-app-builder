@@ -210,7 +210,23 @@ export function patchAppDefinition(source: string, identity: AppIdentity): strin
   } else {
     delete parsed.description;
   }
+  // The listing is what the app's landing page and Haven's setup wizard show. The
+  // template's summary describes the template, so it is replaced by the user's own
+  // description or dropped; the icon and anything else in the listing stay.
+  const listing = isRecord(parsed.listing) ? { ...parsed.listing } : null;
+  if (listing) {
+    if (identity.description) {
+      listing.summary = identity.description;
+    } else {
+      delete listing.summary;
+    }
+    parsed.listing = listing;
+  }
   return reindentJson(parsed);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**

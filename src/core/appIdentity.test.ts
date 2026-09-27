@@ -227,6 +227,20 @@ describe("patchAppDefinition", () => {
     expect(parsed.description).toBe("Shared notes for the team.");
   });
 
+  it("replaces the template's listing summary and keeps its icon", () => {
+    const withListing = JSON.stringify({
+      ...JSON.parse(source),
+      listing: { summary: { en: "A new MindooDB Haven application." }, icon: "appicon.svg" },
+    });
+    expect(JSON.parse(patchAppDefinition(withListing, identity)).listing).toEqual({
+      summary: "Shared notes for the team.",
+      icon: "appicon.svg",
+    });
+    expect(JSON.parse(patchAppDefinition(withListing, { ...identity, description: "" })).listing).toEqual({
+      icon: "appicon.svg",
+    });
+  });
+
   it("gives the app its own hosted database instead of the template's main store", () => {
     const parsed = JSON.parse(patchAppDefinition(source, identity));
     expect(parsed.hosting).toBe("hosted");
