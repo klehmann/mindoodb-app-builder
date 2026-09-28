@@ -70,6 +70,16 @@ called from the page either way, and Cloudflare's OAuth exchange is too when COR
 it, so **the Cursor key is the one credential a hosted builder has to see**. If that
 matters to you, run the builder locally — it is the same application.
 
+### Sharing the accounts with colleagues
+
+"Share with colleagues" on the setup page adds people from the Haven directory as
+readers of that sealed document, so a team can build from one set of accounts. It needs
+the `directory` permission on the builder database. Everyone on the list can read the
+tokens and act with them. Taking someone off rotates the document key, so they miss
+later changes, but they keep the tokens they already had: reconnect GitHub and
+Cloudflare and replace the Cursor key afterwards. When a person can read both their own
+credential document and one shared with them, the shared one is used.
+
 ## Running it
 
 ```bash

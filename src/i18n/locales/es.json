@@ -260,6 +260,21 @@
       "save": "Guardar y continuar",
       "start": "Ya está — empezar a crear",
       "blocked": "Conecta antes GitHub y Cloudflare, arriba. Esos dos son los que crean y publican tu aplicación."
+    },
+    "sharing": {
+      "title": "Compartir con colegas",
+      "purpose": "Deja que otras personas creen apps con las cuentas conectadas arriba, en lugar de que cada una conecte las suyas. Elígelas en el directorio de tu Haven.",
+      "you": "tú",
+      "pick": "Elige a una persona…",
+      "noMoreUsers": "No hay nadie más en el directorio",
+      "add": "Añadir",
+      "remove": "Dejar de compartir con {name}",
+      "warning": "Todas las personas de esta lista pueden leer estos tokens y actuar con ellos — en GitHub, Cloudflare y Cursor, en tu nombre. Compártelos solo con quien le darías tus llaves.",
+      "removeWarning": "Quien quites conserva los tokens que ya tiene. Después vuelve a conectar GitHub y Cloudflare y cambia la clave de Cursor, para que los antiguos dejen de funcionar.",
+      "save": "Guardar el uso compartido",
+      "saving": "Guardando…",
+      "cannotStore": "Esta base de datos del App Builder es de solo lectura para ti, así que las cuentas no se guardan y no se pueden compartir.",
+      "needsDirectory": "Para elegir personas, el App Builder necesita leer el directorio de tu Haven. Activa «Directorio» para su base de datos en los ajustes de la app en Haven, o elimina el App Builder y vuelve a instalarlo."
     }
   },
   "connect": {
@@ -515,7 +530,8 @@
   "session": {
     "connectFailed": "No se pudo conectar con Haven. Abre App Builder desde tu espacio de trabajo de Haven en lugar de hacerlo directamente en una pestaña del navegador, y después recarga esta página.",
     "credentialsStoreFailed": "No se pudieron guardar las credenciales.",
-    "notConnected": "El builder no está conectado a Haven."
+    "notConnected": "El builder no está conectado a Haven.",
+    "credentialsShareFailed": "No se pudo guardar el uso compartido."
   },
   "saveDefinition": {
     "noUrl": "Esta aplicación aún no tiene dirección web.",

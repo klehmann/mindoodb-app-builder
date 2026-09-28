@@ -260,6 +260,21 @@
       "save": "Enregistrer et continuer",
       "start": "J’ai terminé — commencer à construire",
       "blocked": "Connectez d’abord GitHub et Cloudflare ci-dessus. Ce sont ces deux services qui créent et publient votre application."
+    },
+    "sharing": {
+      "title": "Partager avec des collègues",
+      "purpose": "Laissez vos collègues créer des apps avec les comptes connectés ci-dessus, au lieu que chacun connecte les siens. Choisissez-les dans l’annuaire de votre Haven.",
+      "you": "vous",
+      "pick": "Choisir une personne…",
+      "noMoreUsers": "Personne d’autre dans l’annuaire",
+      "add": "Ajouter",
+      "remove": "Ne plus partager avec {name}",
+      "warning": "Toutes les personnes de cette liste peuvent lire ces jetons et agir avec eux — sur GitHub, Cloudflare et Cursor, en votre nom. Ne les partagez qu’avec des personnes à qui vous confieriez vos clés.",
+      "removeWarning": "Une personne retirée garde les jetons qu’elle a déjà. Reconnectez ensuite GitHub et Cloudflare et remplacez la clé Cursor, pour que les anciens ne fonctionnent plus.",
+      "save": "Enregistrer le partage",
+      "saving": "Enregistrement…",
+      "cannotStore": "Cette base de données de l’App Builder est en lecture seule pour vous : les comptes ne sont pas enregistrés et ne peuvent pas être partagés.",
+      "needsDirectory": "Pour choisir des personnes, l’App Builder doit pouvoir lire l’annuaire de votre Haven. Activez « Annuaire » pour sa base de données dans les réglages de l’app dans Haven, ou supprimez puis réinstallez l’App Builder."
     }
   },
   "connect": {
@@ -515,7 +530,8 @@
   "session": {
     "connectFailed": "Impossible de se connecter à Haven. Ouvrez l’App Builder depuis votre espace de travail Haven plutôt que directement dans un onglet de navigateur, puis rechargez cette page.",
     "credentialsStoreFailed": "Les identifiants n’ont pas pu être enregistrés.",
-    "notConnected": "Le builder n’est pas connecté à Haven."
+    "notConnected": "Le builder n’est pas connecté à Haven.",
+    "credentialsShareFailed": "Le partage n’a pas pu être enregistré."
   },
   "saveDefinition": {
     "noUrl": "Cette application n’a pas encore d’adresse web.",

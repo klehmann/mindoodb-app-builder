@@ -3,12 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import type { MindooDBAppDatabase } from "mindoodb-app-sdk";
 
 import {
+  chooseCredentialsDocument,
   clearCredentials,
   credentialsFromDocumentData,
   isSetupComplete,
   loadCredentials,
   readCredentialsStatus,
   saveCredentials,
+  shareCredentials,
   CREDENTIALS_DOCUMENT_TYPE,
   EMPTY_CREDENTIALS,
 } from "./credentials";
@@ -182,6 +184,7 @@ describe("loadCredentials", () => {
     await expect(loadCredentials(database)).resolves.toEqual({
       credentials: filled,
       documentId: "cred_1",
+      sharedWith: [],
     });
   });
 
@@ -201,6 +204,7 @@ describe("loadCredentials", () => {
     await expect(loadCredentials(database)).resolves.toEqual({
       credentials: EMPTY_CREDENTIALS,
       documentId: null,
+      sharedWith: [],
     });
   });
 
@@ -216,6 +220,7 @@ describe("loadCredentials", () => {
     await expect(loadCredentials(database)).resolves.toEqual({
       credentials: EMPTY_CREDENTIALS,
       documentId: null,
+      sharedWith: [],
     });
   });
 });
@@ -275,7 +280,7 @@ describe("saveCredentials", () => {
 
     const documentId = await saveCredentials(database, filled);
 
-    await expect(loadCredentials(database)).resolves.toEqual({ credentials: filled, documentId });
+    await expect(loadCredentials(database)).resolves.toEqual({ credentials: filled, documentId, sharedWith: [] });
   });
 
   it("updates the existing document instead of sealing a second one", async () => {
@@ -327,6 +332,59 @@ describe("clearCredentials", () => {
     await expect(loadCredentials(database)).resolves.toEqual({
       credentials: EMPTY_CREDENTIALS,
       documentId,
+      sharedWith: [],
     });
+  });
+});
+
+describe("sharing the credential document", () => {
+  const solo = { documentId: "mine", data: { _encryptFor: { "a#1": { kind: "user", label: "cn=Ann/o=Acme" } } } };
+  const shared = {
+    documentId: "team",
+    data: {
+      _encryptFor: {
+        "a#1": { kind: "user", label: "cn=Ann/o=Acme" },
+        "b#2": { kind: "user", label: "cn=Bob/o=Acme" },
+      },
+    },
+  };
+
+  it("uses the shared document over a newer private one", () => {
+    expect(chooseCredentialsDocument([solo, shared])?.documentId).toBe("team");
+  });
+
+  it("uses the newest when none is shared", () => {
+    expect(chooseCredentialsDocument([solo, { ...solo, documentId: "older" }])?.documentId).toBe("mine");
+    expect(chooseCredentialsDocument([])).toBeNull();
+  });
+
+  it("adds and removes only the difference, and reports who can read it afterwards", async () => {
+    const addRecipients = vi.fn(async () => ({ id: "team", data: shared.data }));
+    const removeRecipients = vi.fn(async () => ({ id: "team", data: shared.data }));
+    const database = { documents: { addRecipients, removeRecipients } } as unknown as MindooDBAppDatabase;
+
+    const after = await shareCredentials(
+      database,
+      "team",
+      ["cn=Cid/o=Acme"],
+      ["Bob/Acme"],
+      "cn=Ann/o=Acme",
+    );
+
+    expect(addRecipients).toHaveBeenCalledWith("team", ["Bob/Acme"]);
+    expect(removeRecipients).toHaveBeenCalledWith("team", ["cn=Cid/o=Acme"]);
+    expect(after).toEqual(["cn=Bob/o=Acme"]);
+  });
+
+  it("touches nothing when the list did not change", async () => {
+    const addRecipients = vi.fn();
+    const removeRecipients = vi.fn();
+    const database = { documents: { addRecipients, removeRecipients } } as unknown as MindooDBAppDatabase;
+
+    await expect(
+      shareCredentials(database, "team", ["cn=Bob/o=Acme"], ["bob/acme"]),
+    ).resolves.toEqual(["cn=Bob/o=Acme"]);
+    expect(addRecipients).not.toHaveBeenCalled();
+    expect(removeRecipients).not.toHaveBeenCalled();
   });
 });

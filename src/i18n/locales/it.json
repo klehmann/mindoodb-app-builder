@@ -260,6 +260,21 @@
       "save": "Salva e continua",
       "start": "Ho finito — iniziamo a creare",
       "blocked": "Collega prima GitHub e Cloudflare qui sopra. Sono loro due a creare e pubblicare la tua applicazione."
+    },
+    "sharing": {
+      "title": "Condividi con i colleghi",
+      "purpose": "Lascia che i colleghi creino app con gli account collegati qui sopra, invece di collegare ognuno i propri. Sceglili dalla directory del tuo Haven.",
+      "you": "tu",
+      "pick": "Scegli una persona…",
+      "noMoreUsers": "Nessun altro nella directory",
+      "add": "Aggiungi",
+      "remove": "Non condividere più con {name}",
+      "warning": "Chiunque sia in questo elenco può leggere questi token e usarli — su GitHub, Cloudflare e Cursor, a tuo nome. Condividili solo con chi affideresti le tue chiavi.",
+      "removeWarning": "Chi rimuovi conserva i token che ha già. Dopo, ricollega GitHub e Cloudflare e sostituisci la chiave di Cursor, così i vecchi smettono di funzionare.",
+      "save": "Salva la condivisione",
+      "saving": "Salvataggio…",
+      "cannotStore": "Questo database dell'App Builder è di sola lettura per te, quindi gli account non vengono salvati e non si possono condividere.",
+      "needsDirectory": "Per scegliere le persone, l'App Builder deve poter leggere la directory del tuo Haven. Attiva \"Directory\" per il suo database nelle impostazioni dell'app in Haven, oppure rimuovi e reinstalla l'App Builder."
     }
   },
   "connect": {
@@ -515,7 +530,8 @@
   "session": {
     "connectFailed": "Non è stato possibile connettersi a Haven. Apri App Builder dal tuo spazio di lavoro Haven invece che direttamente in una scheda del browser, poi ricarica questa pagina.",
     "credentialsStoreFailed": "Non è stato possibile salvare le credenziali.",
-    "notConnected": "Il builder non è connesso a Haven."
+    "notConnected": "Il builder non è connesso a Haven.",
+    "credentialsShareFailed": "Non è stato possibile salvare la condivisione."
   },
   "saveDefinition": {
     "noUrl": "Questa applicazione non ha ancora un indirizzo web.",

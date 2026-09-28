@@ -260,6 +260,21 @@
       "save": "Speichern und weiter",
       "start": "Ich bin fertig — mit dem Bauen loslegen",
       "blocked": "Verbinde zuerst oben GitHub und Cloudflare. Diese beiden sind es, die deine Anwendung erstellen und veröffentlichen."
+    },
+    "sharing": {
+      "title": "Mit Kolleginnen und Kollegen teilen",
+      "purpose": "Lass andere mit den oben verbundenen Konten Anwendungen bauen, statt dass jede Person ihre eigenen verbindet. Du wählst sie aus deinem Haven-Verzeichnis aus.",
+      "you": "du",
+      "pick": "Person auswählen…",
+      "noMoreUsers": "Sonst niemand im Verzeichnis",
+      "add": "Hinzufügen",
+      "remove": "Nicht mehr mit {name} teilen",
+      "warning": "Alle auf dieser Liste können diese Tokens lesen und damit handeln — auf GitHub, Cloudflare und Cursor, in deinem Namen. Teile sie nur mit Personen, denen du auch deine Schlüssel geben würdest.",
+      "removeWarning": "Wen du entfernst, behält die Tokens, die er schon hat. Verbinde danach GitHub und Cloudflare neu und ersetze den Cursor-Schlüssel, damit die alten nicht mehr funktionieren.",
+      "save": "Freigabe speichern",
+      "saving": "Wird gespeichert…",
+      "cannotStore": "Diese App-Builder-Datenbank ist für dich schreibgeschützt, deshalb werden die Konten nicht gespeichert und können nicht geteilt werden.",
+      "needsDirectory": "Um Personen auszuwählen, muss der App Builder dein Haven-Verzeichnis lesen dürfen. Schalte in den App-Einstellungen in Haven für seine Datenbank „Verzeichnis“ ein oder installiere den App Builder neu."
     }
   },
   "connect": {
@@ -515,7 +530,8 @@
   "session": {
     "connectFailed": "Die Verbindung zu Haven ist fehlgeschlagen. Öffne den App Builder aus deinem Haven-Arbeitsbereich heraus statt direkt in einem Browser-Tab und lade diese Seite dann neu.",
     "credentialsStoreFailed": "Die Zugangsdaten konnten nicht gespeichert werden.",
-    "notConnected": "Der Builder ist nicht mit Haven verbunden."
+    "notConnected": "Der Builder ist nicht mit Haven verbunden.",
+    "credentialsShareFailed": "Die Freigabe konnte nicht gespeichert werden."
   },
   "saveDefinition": {
     "noUrl": "Diese Anwendung hat noch keine Web-Adresse.",

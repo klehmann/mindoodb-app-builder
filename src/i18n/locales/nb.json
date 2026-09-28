@@ -260,6 +260,21 @@
       "save": "Lagre og fortsett",
       "start": "Jeg er ferdig — start byggingen",
       "blocked": "Koble til GitHub og Cloudflare ovenfor først. Det er de to som oppretter og publiserer appen din."
+    },
+    "sharing": {
+      "title": "Del med kolleger",
+      "purpose": "La kolleger bygge apper med kontoene som er koblet til ovenfor, i stedet for at alle kobler til sine egne. Velg dem fra katalogen i Haven.",
+      "you": "deg",
+      "pick": "Velg en person…",
+      "noMoreUsers": "Ingen andre i katalogen",
+      "add": "Legg til",
+      "remove": "Slutt å dele med {name}",
+      "warning": "Alle på denne listen kan lese disse tokenene og handle med dem — på GitHub, Cloudflare og Cursor, i ditt navn. Del dem bare med folk du ville gitt nøklene dine.",
+      "removeWarning": "Den du fjerner, beholder tokenene de allerede har. Koble til GitHub og Cloudflare på nytt og bytt Cursor-nøkkelen etterpå, så de gamle slutter å virke.",
+      "save": "Lagre deling",
+      "saving": "Lagrer…",
+      "cannotStore": "Denne App Builder-databasen er skrivebeskyttet for deg, så kontoene lagres ikke og kan ikke deles.",
+      "needsDirectory": "For å velge personer må App Builder kunne lese katalogen i Haven. Slå på «Katalog» for databasen i appens innstillinger i Haven, eller fjern og installer App Builder på nytt."
     }
   },
   "connect": {
@@ -515,7 +530,8 @@
   "session": {
     "connectFailed": "Kunne ikke koble til Haven. Åpne App Builder fra Haven-arbeidsområdet ditt i stedet for direkte i en nettleserfane, og last så denne siden på nytt.",
     "credentialsStoreFailed": "Legitimasjonen kunne ikke lagres.",
-    "notConnected": "Builderen er ikke koblet til Haven."
+    "notConnected": "Builderen er ikke koblet til Haven.",
+    "credentialsShareFailed": "Delingen kunne ikke lagres."
   },
   "saveDefinition": {
     "noUrl": "Denne appen har ingen nettadresse ennå.",

@@ -260,6 +260,21 @@
       "save": "Save and continue",
       "start": "I am done — start building",
       "blocked": "Connect GitHub and Cloudflare above first. Those two are what create and publish your app."
+    },
+    "sharing": {
+      "title": "Share with colleagues",
+      "purpose": "Let colleagues build apps with the accounts connected above, instead of each connecting their own. Pick them from your Haven directory.",
+      "you": "you",
+      "pick": "Choose a person…",
+      "noMoreUsers": "Nobody else in the directory",
+      "add": "Add",
+      "remove": "Stop sharing with {name}",
+      "warning": "Everyone on this list can read these tokens and act with them — on GitHub, Cloudflare and Cursor, as you. Share only with people you would hand the keys to.",
+      "removeWarning": "Someone you take off keeps the tokens they already have. Connect GitHub and Cloudflare again and replace the Cursor key afterwards, so the old ones stop working.",
+      "save": "Save sharing",
+      "saving": "Saving…",
+      "cannotStore": "This App Builder database is read-only for you, so the accounts are not stored and cannot be shared.",
+      "needsDirectory": "To pick colleagues, the App Builder needs to read your Haven directory. Turn on “Directory” for its database in the app's settings in Haven, or remove and reinstall the App Builder."
     }
   },
   "connect": {
@@ -515,7 +530,8 @@
   "session": {
     "connectFailed": "Could not connect to Haven. Open the App Builder from your Haven workspace rather than directly in a browser tab, then reload this page.",
     "credentialsStoreFailed": "The credentials could not be stored.",
-    "notConnected": "The builder is not connected to Haven."
+    "notConnected": "The builder is not connected to Haven.",
+    "credentialsShareFailed": "The sharing could not be saved."
   },
   "saveDefinition": {
     "noUrl": "This app has no web address yet.",

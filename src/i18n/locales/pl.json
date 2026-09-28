@@ -260,6 +260,21 @@
       "save": "Zapisz i kontynuuj",
       "start": "Gotowe — zaczynam budować",
       "blocked": "Najpierw połącz powyżej GitHub i Cloudflare. To one tworzą i publikują Twoją aplikację."
+    },
+    "sharing": {
+      "title": "Udostępnij współpracownikom",
+      "purpose": "Pozwól innym budować aplikacje na kontach połączonych powyżej, zamiast żeby każdy łączył własne. Wybierz ich z katalogu swojego Haven.",
+      "you": "ty",
+      "pick": "Wybierz osobę…",
+      "noMoreUsers": "Nikogo więcej w katalogu",
+      "add": "Dodaj",
+      "remove": "Przestań udostępniać {name}",
+      "warning": "Każdy na tej liście może odczytać te tokeny i działać nimi — na GitHubie, w Cloudflare i Cursorze, w twoim imieniu. Udostępniaj je tylko osobom, którym dałbyś swoje klucze.",
+      "removeWarning": "Usunięta osoba zachowuje tokeny, które już ma. Potem połącz ponownie GitHub i Cloudflare i wymień klucz Cursora, żeby stare przestały działać.",
+      "save": "Zapisz udostępnianie",
+      "saving": "Zapisywanie…",
+      "cannotStore": "Ta baza danych App Buildera jest dla ciebie tylko do odczytu, więc konta nie są zapisywane i nie można ich udostępnić.",
+      "needsDirectory": "Aby wybrać osoby, App Builder musi móc odczytać katalog twojego Haven. Włącz „Katalog” dla jego bazy danych w ustawieniach aplikacji w Haven albo usuń i zainstaluj App Buildera ponownie."
     }
   },
   "connect": {
@@ -515,7 +530,8 @@
   "session": {
     "connectFailed": "Nie udało się połączyć z Haven. Otwórz App Builder ze swojego obszaru roboczego Haven, a nie bezpośrednio w karcie przeglądarki, a potem odśwież tę stronę.",
     "credentialsStoreFailed": "Nie udało się zapisać poświadczeń.",
-    "notConnected": "Builder nie jest połączony z Haven."
+    "notConnected": "Builder nie jest połączony z Haven.",
+    "credentialsShareFailed": "Nie udało się zapisać udostępniania."
   },
   "saveDefinition": {
     "noUrl": "Ta aplikacja nie ma jeszcze adresu internetowego.",

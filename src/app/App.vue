@@ -346,6 +346,15 @@ onMounted(async () => {
         session.credentialsStatus.value.github &&
         session.credentialsStatus.value.cloudflare
       "
+      :sharing="{
+        canReadDirectory: session.canReadDirectory.value,
+        currentUser: session.currentUser.value,
+        sharedWith: session.credentialsSharedWith.value,
+        directoryUsers: session.directoryUsers.value,
+        busy: session.sharingCredentials.value,
+      }"
+      @share="session.shareCredentialsWith"
+      @load-directory-users="session.loadDirectoryUsers"
       @save="saveCredentials"
       @repo-access="setRepoAccess"
       @finish="finishSetup"
@@ -572,6 +581,7 @@ code {
 
 input[type="text"],
 input[type="password"],
+select,
 textarea {
   font: inherit;
   padding: 0.45rem 0.6rem;

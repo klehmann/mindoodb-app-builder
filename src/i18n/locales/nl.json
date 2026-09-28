@@ -260,6 +260,21 @@
       "save": "Opslaan en verdergaan",
       "start": "Ik ben klaar — beginnen met bouwen",
       "blocked": "Verbind eerst GitHub en Cloudflare hierboven. Die twee maken en publiceren je applicatie."
+    },
+    "sharing": {
+      "title": "Delen met collega's",
+      "purpose": "Laat collega's apps bouwen met de accounts die hierboven zijn gekoppeld, in plaats van dat iedereen zijn eigen koppelt. Kies ze uit de directory van je Haven.",
+      "you": "jij",
+      "pick": "Kies een persoon…",
+      "noMoreUsers": "Verder niemand in de directory",
+      "add": "Toevoegen",
+      "remove": "Niet meer delen met {name}",
+      "warning": "Iedereen op deze lijst kan deze tokens lezen en ermee handelen — op GitHub, Cloudflare en Cursor, namens jou. Deel ze alleen met mensen aan wie je ook je sleutels zou geven.",
+      "removeWarning": "Wie je verwijdert, houdt de tokens die hij al heeft. Koppel daarna GitHub en Cloudflare opnieuw en vervang de Cursor-sleutel, zodat de oude niet meer werken.",
+      "save": "Delen opslaan",
+      "saving": "Bezig met opslaan…",
+      "cannotStore": "Deze App Builder-database is voor jou alleen-lezen, dus de accounts worden niet opgeslagen en kunnen niet worden gedeeld.",
+      "needsDirectory": "Om personen te kiezen, moet de App Builder de directory van je Haven kunnen lezen. Zet ‘Directory’ aan voor zijn database in de app-instellingen in Haven, of verwijder de App Builder en installeer hem opnieuw."
     }
   },
   "connect": {
@@ -515,7 +530,8 @@
   "session": {
     "connectFailed": "Er kon geen verbinding met Haven worden gemaakt. Open de App Builder vanuit je Haven-werkruimte in plaats van direct in een browsertabblad, en herlaad deze pagina daarna.",
     "credentialsStoreFailed": "De inloggegevens konden niet worden opgeslagen.",
-    "notConnected": "De builder is niet met Haven verbonden."
+    "notConnected": "De builder is niet met Haven verbonden.",
+    "credentialsShareFailed": "Het delen kon niet worden opgeslagen."
   },
   "saveDefinition": {
     "noUrl": "Deze applicatie heeft nog geen webadres.",
