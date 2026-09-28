@@ -11,11 +11,18 @@
  * makes it safe for the deployed builder's callback page to relay a code to a builder
  * running on loopback: the code alone cannot be exchanged.
  *
- * **The exchange is tried in the browser first.** If the OAuth client registration lists
- * this origin in `allowed_cors_origins`, the call succeeds here and the access token
- * never exists outside the tab — not even in the user's own host process. Only when the
- * browser is refused does it fall back to `/api/cloudflare/oauth/token`. A failed direct
- * attempt is therefore normal and not worth showing.
+ * **The exchange is tried in the browser first — but only where it can be answered.** If
+ * the OAuth client registration lists this origin in `allowed_cors_origins`, the call
+ * succeeds here and the access token never exists outside the tab — not even in the
+ * user's own host process. Otherwise it goes to `/api/cloudflare/oauth/token`.
+ *
+ * "Try and fall back" is not an option for that decision. The token request is a CORS
+ * simple request (a form POST), so the browser sends it without asking first: Cloudflare
+ * redeems the code, and only the *response* is withheld from an origin it does not list.
+ * The host then presented the same code a second time and got "The authorization code
+ * has already been used". The origin that is registered is the one the callback lives
+ * on, so only a builder served from there tries the browser at all; a builder on
+ * loopback, or anywhere else, goes straight to the host.
  */
 import { computed, onBeforeUnmount, onMounted, ref, type ComputedRef, type Ref } from "vue";
 
@@ -98,6 +105,19 @@ function readCallbackMessage(data: unknown): CallbackMessage | null {
   };
 }
 
+/**
+ * Whether the code may be sent to Cloudflare from this page. Only from the origin the
+ * callback is registered on — see the note at the top of the file for why a refused
+ * attempt is not harmless.
+ */
+export function canExchangeInBrowser(pageOrigin: string, redirectUri: string): boolean {
+  try {
+    return new URL(redirectUri).origin === pageOrigin;
+  } catch {
+    return false;
+  }
+}
+
 export function useCloudflareConnect(
   config: Ref<BuilderHostConfig | null>,
   onConnected: (result: CloudflareConnectResult) => Promise<void> | void,
@@ -174,30 +194,28 @@ export function useCloudflareConnect(
     const clientId = config.value?.cloudflareClientId ?? "";
     status.value = "exchanging";
 
+    // One attempt per code: a code Cloudflare has seen once cannot be tried again.
     let tokens: CloudflareOAuthTokens;
     try {
-      tokens = await exchangeAuthorizationCode({
-        clientId,
-        redirectUri: current.redirectUri,
-        code: message.code,
-        codeVerifier: current.verifier,
-      });
-    } catch {
-      // Expected whenever this origin is not in the client's CORS allowlist.
-      try {
-        tokens = await exchangeCloudflareCodeViaHost({
-          code: message.code,
-          codeVerifier: current.verifier,
-          redirectUri: current.redirectUri,
-        });
-      } catch (hostError) {
-        fail(
-          hostError instanceof Error
-            ? hostError.message
-            : t("cloudflareConnect.exchangeFailed"),
-        );
-        return;
-      }
+      tokens = canExchangeInBrowser(window.location.origin, current.redirectUri)
+        ? await exchangeAuthorizationCode({
+            clientId,
+            redirectUri: current.redirectUri,
+            code: message.code,
+            codeVerifier: current.verifier,
+          })
+        : await exchangeCloudflareCodeViaHost({
+            code: message.code,
+            codeVerifier: current.verifier,
+            redirectUri: current.redirectUri,
+          });
+    } catch (exchangeError) {
+      fail(
+        exchangeError instanceof Error
+          ? exchangeError.message
+          : t("cloudflareConnect.exchangeFailed"),
+      );
+      return;
     }
 
     try {
