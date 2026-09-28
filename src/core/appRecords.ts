@@ -20,7 +20,7 @@
  */
 import { createViewLanguage, type MindooDBAppDatabase } from "mindoodb-app-sdk";
 
-import type { AppIdentity } from "./appIdentity";
+import { resolveAppDatabase, type AppIdentity } from "./appIdentity";
 import type { AgentHandle, WorkerDeployment } from "./createAppFlow";
 import type { GitHubRepository } from "./github";
 
@@ -108,6 +108,20 @@ export interface BuilderAppRecord {
 
   /** Set once Haven installed it, which is also how "add again" knows it is a repeat. */
   havenInstanceId: string;
+
+  /**
+   * The physical database id a new app asks Haven for, and the random part of it. Kept
+   * so a resumed run commits the same ids the first attempt chose. Empty on records from
+   * before unique ids, which fall back to `app_<slug>`.
+   */
+  databaseId: string;
+  databaseSuffix: string;
+
+  /** The app this one was copied from, pinned to the commit that was copied. */
+  sourceRepoUrl: string;
+  sourceCommit: string;
+  /** True once the source's files are in this app's repository. */
+  sourceCopied: boolean;
 }
 
 export const EMPTY_APP_RECORD: BuilderAppRecord = {
@@ -134,6 +148,11 @@ export const EMPTY_APP_RECORD: BuilderAppRecord = {
   cursorAgentUrl: "",
   cursorRunId: "",
   havenInstanceId: "",
+  databaseId: "",
+  databaseSuffix: "",
+  sourceRepoUrl: "",
+  sourceCommit: "",
+  sourceCopied: false,
 };
 
 /** A record plus the document it came from, so a later save updates that one. */
@@ -207,6 +226,12 @@ export function appRecordFromIdentity(
     createdAt: now,
     updatedAt: now,
     private: options.private,
+    // A copy's physical ids are derived per database from the suffix; only a new app
+    // has the one id the form showed.
+    databaseId: identity.copiedFrom ? "" : resolveAppDatabase(identity).id,
+    databaseSuffix: identity.databaseSuffix ?? "",
+    sourceRepoUrl: identity.copiedFrom?.htmlUrl ?? "",
+    sourceCommit: identity.copiedFrom?.commitSha ?? "",
   };
 }
 
@@ -218,6 +243,7 @@ export interface FlowOutcome {
   installedAppInstanceId?: string | null;
   cloudflareAccountId?: string;
   identityCommitted?: boolean;
+  sourceCopied?: boolean;
   wiredForBuild?: boolean;
   originReady?: boolean;
 }
@@ -261,6 +287,9 @@ export function applyFlowOutcome(
   }
   if (outcome.identityCommitted) {
     next.identityCommitted = true;
+  }
+  if (outcome.sourceCopied) {
+    next.sourceCopied = true;
   }
   if (outcome.wiredForBuild) {
     next.wiredForBuild = true;
@@ -433,6 +462,11 @@ export function appRecordFromDocumentData(
     cursorAgentUrl: readUrl(body, "cursorAgentUrl"),
     cursorRunId: readString(body, "cursorRunId"),
     havenInstanceId: readString(body, "havenInstanceId"),
+    databaseId: readString(body, "databaseId"),
+    databaseSuffix: readString(body, "databaseSuffix"),
+    sourceRepoUrl: readUrl(body, "sourceRepoUrl"),
+    sourceCommit: readString(body, "sourceCommit"),
+    sourceCopied: readBoolean(body, "sourceCopied"),
   };
 }
 
@@ -461,6 +495,11 @@ function toDocumentData(record: BuilderAppRecord, now: string): Record<string, u
     cursorAgentUrl: record.cursorAgentUrl.trim(),
     cursorRunId: record.cursorRunId.trim(),
     havenInstanceId: record.havenInstanceId.trim(),
+    databaseId: record.databaseId.trim(),
+    databaseSuffix: record.databaseSuffix.trim(),
+    sourceRepoUrl: record.sourceRepoUrl.trim(),
+    sourceCommit: record.sourceCommit.trim(),
+    sourceCopied: record.sourceCopied,
     [BRIEF_FIELD]: { task: record.task.trim() },
   };
 }

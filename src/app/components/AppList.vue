@@ -15,6 +15,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 
 import UiIcon from "@/app/components/UiIcon.vue";
+import { buildAppShare, canShareApp, shareViaSheet, type AppShareContent } from "@/app/shareApp";
 import { appStage, type BuilderAppStage, type StoredAppRecord } from "@/core/appRecords";
 
 const { t } = useI18n();
@@ -30,11 +31,17 @@ const props = defineProps<{
   canStore: boolean;
   /** Whether rows can be removed. False on a database this user may only read. */
   canForget: boolean;
+  /**
+   * Whether each app's repository is public, by document id, as GitHub answered. An app
+   * missing here falls back to what was chosen when it was created.
+   */
+  publicRepositories?: Record<string, boolean>;
 }>();
 
 const emit = defineEmits<{
   open: [StoredAppRecord];
   create: [];
+  copy: [];
   forget: [StoredAppRecord];
 }>();
 
@@ -49,6 +56,7 @@ const emit = defineEmits<{
 const pendingRemoval = ref<string | null>(null);
 
 function askToRemove(documentId: string): void {
+  sharing.value = null;
   pendingRemoval.value = documentId;
 }
 
@@ -59,6 +67,50 @@ function cancelRemoval(): void {
 function confirmRemoval(stored: StoredAppRecord): void {
   pendingRemoval.value = null;
   emit("forget", stored);
+}
+
+/**
+ * Sharing, in the row like removing: the device's share sheet where there is one, and
+ * otherwise the text to copy, right under the app it is about.
+ */
+const sharing = ref<{ documentId: string; content: AppShareContent } | null>(null);
+const copied = ref<"text" | "link" | null>(null);
+const copyFailed = ref(false);
+
+function shareContent(stored: StoredAppRecord): AppShareContent {
+  const known = props.publicRepositories?.[stored.documentId];
+  const repositoryPublic = known ?? !stored.record.private;
+  return buildAppShare(t, stored.record, repositoryPublic);
+}
+
+async function shareApp(stored: StoredAppRecord): Promise<void> {
+  pendingRemoval.value = null;
+  const content = shareContent(stored);
+  const outcome = await shareViaSheet(content);
+  if (outcome !== "unsupported") {
+    return;
+  }
+  copied.value = null;
+  copyFailed.value = false;
+  sharing.value = { documentId: stored.documentId, content };
+}
+
+async function copyShare(kind: "text" | "link"): Promise<void> {
+  const content = sharing.value?.content;
+  if (!content) {
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(kind === "text" ? content.message : content.link);
+    copied.value = kind;
+    copyFailed.value = false;
+  } catch {
+    copyFailed.value = true;
+  }
+}
+
+function closeShare(): void {
+  sharing.value = null;
 }
 
 /**
@@ -113,9 +165,14 @@ function formatDate(iso: string): string {
         Only alongside a list. With nothing built yet the empty state below carries its
         own "Describe an app", and two buttons doing the same thing read as a choice.
       -->
-      <button v-if="rows.length > 0" type="button" class="apps__new" @click="emit('create')">
-        {{ t("list.actions.new") }}
-      </button>
+      <div v-if="rows.length > 0" class="apps__actions">
+        <button type="button" class="ghost apps__new" @click="emit('copy')">
+          {{ t("list.actions.copy") }}
+        </button>
+        <button type="button" class="apps__new" @click="emit('create')">
+          {{ t("list.actions.new") }}
+        </button>
+      </div>
     </header>
 
     <p v-if="loading" class="muted">{{ t("list.loading") }}</p>
@@ -129,6 +186,7 @@ function formatDate(iso: string): string {
       <p class="apps__empty-title">{{ t("list.empty.title") }}</p>
       <p class="muted">{{ t("list.empty.body") }}</p>
       <button type="button" @click="emit('create')">{{ t("list.empty.action") }}</button>
+      <button type="button" class="ghost" @click="emit('copy')">{{ t("list.empty.copyAction") }}</button>
     </div>
 
     <ul v-else class="apps__list">
@@ -155,6 +213,16 @@ function formatDate(iso: string): string {
             inside another is invalid and unclickable.
           -->
           <button
+            v-if="canShareApp(row.stored.record)"
+            type="button"
+            class="ghost apps__share"
+            :aria-label="t('list.row.share', { label: row.label })"
+            :title="t('list.row.share', { label: row.label })"
+            @click="shareApp(row.stored)"
+          >
+            <UiIcon name="share" :size="17" />
+          </button>
+          <button
             v-if="canForget"
             type="button"
             class="ghost apps__remove"
@@ -164,6 +232,29 @@ function formatDate(iso: string): string {
           >
             <UiIcon name="trash" :size="17" />
           </button>
+        </div>
+
+        <div v-if="sharing?.documentId === row.stored.documentId" class="apps__sharing">
+          <p class="hint">{{ t("list.share.dialogIntro") }}</p>
+          <textarea
+            class="apps__share-text"
+            :value="sharing.content.message"
+            readonly
+            rows="8"
+            @focus="($event.target as HTMLTextAreaElement).select()"
+          ></textarea>
+          <p v-if="copyFailed" class="warn">{{ t("list.share.copyFailed") }}</p>
+          <div class="apps__confirm-actions">
+            <button type="button" @click="copyShare('text')">
+              {{ copied === "text" ? t("list.share.copied") : t("list.share.copyText") }}
+            </button>
+            <button type="button" class="ghost" @click="copyShare('link')">
+              {{ copied === "link" ? t("list.share.copied") : t("list.share.copyLink") }}
+            </button>
+            <button type="button" class="ghost" @click="closeShare">
+              {{ t("list.share.close") }}
+            </button>
+          </div>
         </div>
 
         <div v-if="pendingRemoval === row.stored.documentId" class="apps__confirm">
@@ -190,19 +281,29 @@ function formatDate(iso: string): string {
 <style scoped>
 .apps__head {
   flex-direction: row !important;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
 }
 
-.apps__head > div {
-  flex: 1 1 auto;
+.apps__head > div:first-child {
+  flex: 1 1 16rem;
   min-width: 0;
 }
 
 .apps__head h2 {
   margin: 0;
   font-size: 1.05rem;
+}
+
+/* Side by side, or together under the heading when the row runs out of room. */
+.apps__actions {
+  display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .apps__new {
@@ -255,6 +356,39 @@ function formatDate(iso: string): string {
   display: flex;
   align-items: stretch;
   gap: 0.4rem;
+}
+
+/* Icon-only too, and lit in the accent rather than the danger colour. */
+.apps__share {
+  flex: none;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding-inline: 0.6rem;
+  color: var(--app-muted);
+}
+
+.apps__share:hover:not(:disabled) {
+  filter: none;
+  color: var(--app-accent);
+  border-color: var(--app-accent);
+}
+
+.apps__sharing {
+  border: 1px solid var(--app-border);
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.apps__share-text {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 0.85rem;
+  resize: vertical;
 }
 
 /* Icon-only, so it stays quiet next to the row it can destroy. */
@@ -348,6 +482,18 @@ function formatDate(iso: string): string {
 
 .apps__row-side {
   flex: none;
+}
+
+/* On a phone, with share and remove beside it, the badge goes under the name. */
+@media (max-width: 30rem) {
+  .apps__row {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .apps__row-main {
+    flex: 1 1 100%;
+  }
 }
 
 .badge--live {

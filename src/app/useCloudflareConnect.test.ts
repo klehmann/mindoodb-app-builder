@@ -2,7 +2,7 @@ import { ref } from "vue";
 import { describe, expect, it, vi } from "vitest";
 
 import { CLOUDFLARE_PENDING_KEY } from "@/app/cloudflareConnectRelay";
-import { useCloudflareConnect } from "@/app/useCloudflareConnect";
+import { canExchangeInBrowser, useCloudflareConnect } from "@/app/useCloudflareConnect";
 import type { BuilderHostConfig } from "@/app/hostApi";
 
 const hostConfig: BuilderHostConfig = {
@@ -30,5 +30,19 @@ describe("useCloudflareConnect", () => {
     expect(error.value).toBeNull();
     expect(window.sessionStorage.getItem(CLOUDFLARE_PENDING_KEY)).toContain("verifier");
     vi.unstubAllGlobals();
+  });
+});
+
+describe("canExchangeInBrowser", () => {
+  const callback = "https://app-builder.mindoodb.com/oauth/cloudflare/callback";
+
+  it("sends the code from the page only on the origin the callback is registered on", () => {
+    expect(canExchangeInBrowser("https://app-builder.mindoodb.com", callback)).toBe(true);
+  });
+
+  it("leaves every other origin to the host, because a refused attempt still spends the code", () => {
+    expect(canExchangeInBrowser("http://127.0.0.1:4401", callback)).toBe(false);
+    expect(canExchangeInBrowser("https://my-builder.example.com", callback)).toBe(false);
+    expect(canExchangeInBrowser("https://app-builder.mindoodb.com", "not a url")).toBe(false);
   });
 });

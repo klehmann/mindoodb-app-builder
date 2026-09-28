@@ -13,8 +13,9 @@ import { useI18n } from "vue-i18n";
 
 import NewAppPanel from "@/app/components/NewAppPanel.vue";
 import ProgressPanel from "@/app/components/ProgressPanel.vue";
+import SourcePanel from "@/app/components/SourcePanel.vue";
 import type { NewAppForm } from "@/app/useBuilderFlow";
-import type { CreateAppResult, FlowStep } from "@/core/createAppFlow";
+import type { CreateAppResult, FlowNote, FlowStep } from "@/core/createAppFlow";
 
 const { t } = useI18n();
 
@@ -33,6 +34,11 @@ const props = defineProps<{
   narrowAccess: boolean;
   /** True when a build can be started without a push. See `canBuildNow`. */
   canBuildNow: boolean;
+  /** Copy mode only: the source lookup in flight, and why the last one failed. */
+  sourceLoading?: boolean;
+  sourceError?: FlowNote | null;
+  /** Copy mode only: looking up a source needs GitHub. */
+  githubReady?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -44,7 +50,13 @@ const emit = defineEmits<{
   back: [];
   openApp: [];
   buildNow: [];
+  sourceInput: [string];
+  loadSource: [];
 }>();
+
+const copying = computed(() => props.form.mode === "copy");
+/** A copy's form opens once there is something to copy; until then it has nothing to say. */
+const showForm = computed(() => !copying.value || Boolean(props.form.source));
 
 const started = computed(() => props.steps.some((step) => step.status !== "pending"));
 const finished = computed(() => Boolean(props.result?.worker && !props.running));
@@ -58,7 +70,20 @@ const finished = computed(() => Boolean(props.result?.worker && !props.running))
       </button>
     </div>
 
+    <SourcePanel
+      v-if="copying"
+      :source-input="form.sourceInput"
+      :source="form.source"
+      :loading="sourceLoading ?? false"
+      :error="sourceError ?? null"
+      :github-ready="githubReady ?? true"
+      :locked="started"
+      @source-input="emit('sourceInput', $event)"
+      @load="emit('loadSource')"
+    />
+
     <NewAppPanel
+      v-if="showForm"
       :form="form"
       :planned-repository-name="plannedRepositoryName"
       :form-error="formError"
@@ -68,7 +93,7 @@ const finished = computed(() => Boolean(props.result?.worker && !props.running))
       @database-label-input="emit('databaseLabelInput', $event)"
     />
 
-    <section class="panel">
+    <section v-if="showForm" class="panel">
       <button type="button" :disabled="!canCreate" @click="emit('create')">
         {{ running ? t("newApp.build.running") : t("newApp.build.idle") }}
       </button>
@@ -81,7 +106,9 @@ const finished = computed(() => Boolean(props.result?.worker && !props.running))
       -->
       <p v-else-if="!started" class="hint">
         {{ cursorReady ? t("newApp.intro.withAi") : t("newApp.intro.withoutAi") }}
-        <template v-if="!cursorReady">{{ t("newApp.intro.starterOnly") }}</template>
+        <template v-if="!cursorReady">
+          {{ copying ? t("newApp.intro.copyOnly") : t("newApp.intro.starterOnly") }}
+        </template>
       </p>
 
       <!--

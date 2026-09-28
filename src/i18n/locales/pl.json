@@ -29,12 +29,14 @@
     "loading": "Szukanie Twoich aplikacji…",
     "readOnly": "Ta baza App Builder jest dla Ciebie tylko do odczytu, więc gotowe aplikacje nie są zapisywane na tej liście. Wszystko nadal działa — skopiuj adres aplikacji, zanim opuścisz stronę.",
     "actions": {
-      "new": "Nowa aplikacja"
+      "new": "Nowa aplikacja",
+      "copy": "Skopiuj aplikację"
     },
     "empty": {
       "title": "Zbuduj swoją pierwszą aplikację",
       "body": "Napisz, czego brakuje Twojemu zespołowi. Programista AI napisze aplikację, zostanie ona opublikowana w sieci, a Haven ją zainstaluje — a potem możesz ją dalej zmieniać.",
-      "action": "Opisz aplikację"
+      "action": "Opisz aplikację",
+      "copyAction": "Albo skopiuj istniejącą aplikację"
     },
     "stages": {
       "planned": "Jeszcze nie zbudowana",
@@ -46,13 +48,25 @@
     "row": {
       "untitled": "Aplikacja bez nazwy",
       "started": "Rozpoczęto {date}",
-      "remove": "Usuń {label} z tej listy"
+      "remove": "Usuń {label} z tej listy",
+      "share": "Udostępnij {label}"
     },
     "confirm": {
       "title": "Usunąć „{label}” z tej listy?",
       "hint": "Usuwa to tylko dane, które App Builder zapisał o aplikacji tutaj, we własnej bazie. Nic więcej nie zostanie ruszone: projekt zostaje na GitHubie, opublikowana aplikacja nadal działa na Cloudflare, agent Cursora pozostaje tam, gdzie jest, a Haven ma ją dalej zainstalowaną. Zbudowanie nowej aplikacji o tej samej nazwie nie przywróci tego wiersza — kreator zatrzymuje się, gdy widzi, że ten projekt GitHub już istnieje. Opublikowana aplikacja pozostaje dostępna pod swoim adresem. Aby odzyskać wiersz, przywróć usunięty dokument w bazie App Builder w Haven.",
       "remove": "Usuń z listy",
       "keep": "Zachowaj"
+    },
+    "share": {
+      "title": "{appName} dla MindooDB Haven",
+      "message": "Chcę udostępnić Ci aplikację „{appName}”. Działa w MindooDB Haven, przestrzeni roboczej szyfrowanej end-to-end. Otwórz ten link, aby ją skonfigurować:\n\n{link}\n\nKorzystasz już z Haven? Możesz ją też zainstalować w App Store w „Nowa aplikacja” › „Z adresu URL”, podając ten adres:\n{appUrl}",
+      "code": "Kod jest publicznie dostępny na GitHubie:\n{repoUrl}\n\nDzięki „Skopiuj aplikację” w App Builderze możesz zbudować z niego własną wersję.",
+      "dialogIntro": "Skopiuj ten tekst i wyślij go e-mailem lub komunikatorem. Link konfiguruje Haven z aplikacją albo dodaje ją do istniejącego Haven.",
+      "copyText": "Kopiuj tekst",
+      "copyLink": "Kopiuj tylko link",
+      "copied": "Skopiowano",
+      "close": "Zamknij",
+      "copyFailed": "Kopiowanie tu nie zadziałało. Zaznacz tekst i skopiuj go samodzielnie."
     }
   },
   "detail": {
@@ -122,7 +136,8 @@
     "intro": {
       "withAi": "Zajmie to kilka minut. Tworzymy projekt, publikujemy go w sieci i dodajemy do Haven, a potem zaprzęgamy do pracy programistę AI. Każdy krok możesz obserwować.",
       "withoutAi": "Zajmie to kilka minut. Tworzymy projekt, publikujemy go w sieci i dodajemy do Haven. Każdy krok możesz obserwować.",
-      "starterOnly": "Otrzymujesz aplikację startową, działającą i zainstalowaną — kod należy dalej do Ciebie, możesz go zmieniać ręcznie albo dowolnym narzędziem AI."
+      "starterOnly": "Otrzymujesz aplikację startową, działającą i zainstalowaną — kod należy dalej do Ciebie, możesz go zmieniać ręcznie albo dowolnym narzędziem AI.",
+      "copyOnly": "Otrzymujesz kopię tej aplikacji, opublikowaną i zainstalowaną pod nową nazwą — kod należy potem do ciebie i możesz go zmieniać ręcznie albo dowolnym narzędziem AI."
     },
     "narrowAccess": "Skoro repozytoria wskazujesz samodzielnie, po utworzeniu projektu musisz pozwolić Cloudflare (i Cursorowi) zobaczyć go na GitHubie. Zatrzymamy się i powiemy, kiedy to zrobić.",
     "finished": {
@@ -164,8 +179,8 @@
       "summary": "Baza danych i uprawnienia",
       "id": {
         "label": "Identyfikator bazy",
-        "placeholder": "app_notatki-zespolu",
-        "hint": "Magazyn, do którego ta aplikacja zapisuje. Każda ma własny, żeby dwie aplikacje nie dzieliły dokumentów przez przypadek."
+        "placeholder": "app_notatki-zespolu_k7f3q2",
+        "hint": "Magazyn, do którego zapisuje ta aplikacja. Każda aplikacja ma własny, więc dwie aplikacje nigdy przypadkiem nie dzielą dokumentów. Kod aplikacji zawsze otwiera go jako „main”, więc później możesz w ustawieniach aplikacji w Haven wskazać inną bazę danych."
       },
       "label": {
         "label": "Nazwa widoczna w Haven",
@@ -184,6 +199,18 @@
         "timestamps": "Znaczniki czasu",
         "directory": "Katalog",
         "sealedchannel": "Sealed channel"
+      }
+    },
+    "copy": {
+      "title": "Dostosuj ją do siebie",
+      "purpose": "Nazwa i opis pochodzą z kopiowanej aplikacji. Zmień je i opisz, co ma być inaczej — programista AI buduje na istniejącym kodzie.",
+      "task": {
+        "label": "Co ma się zmienić?",
+        "placeholder": "Dodaj do każdego wpisu termin i posortuj listę według niego. Resztę zostaw bez zmian.",
+        "hint": "To zlecenie, na podstawie którego pracuje AI. Napisz, co dodać, usunąć albo zrobić inaczej; to, czego nie wspomnisz, zostaje bez zmian."
+      },
+      "database": {
+        "hint": "Kopia zachowuje bazy danych oryginalnej aplikacji, pod tymi samymi nazwami w kodzie, ale każda dostaje nowy, pusty magazyn. Jeśli wolisz pracować na danych oryginału, po instalacji wskaż je dla tej bazy w ustawieniach aplikacji w Haven."
       }
     }
   },
@@ -233,6 +260,21 @@
       "save": "Zapisz i kontynuuj",
       "start": "Gotowe — zaczynam budować",
       "blocked": "Najpierw połącz powyżej GitHub i Cloudflare. To one tworzą i publikują Twoją aplikację."
+    },
+    "sharing": {
+      "title": "Udostępnij współpracownikom",
+      "purpose": "Pozwól innym budować aplikacje na kontach połączonych powyżej, zamiast żeby każdy łączył własne. Wybierz ich z katalogu swojego Haven.",
+      "you": "ty",
+      "pick": "Wybierz osobę…",
+      "noMoreUsers": "Nikogo więcej w katalogu",
+      "add": "Dodaj",
+      "remove": "Przestań udostępniać {name}",
+      "warning": "Każdy na tej liście może odczytać te tokeny i działać nimi — na GitHubie, w Cloudflare i Cursorze, w twoim imieniu. Udostępniaj je tylko osobom, którym dałbyś swoje klucze.",
+      "removeWarning": "Usunięta osoba zachowuje tokeny, które już ma. Potem połącz ponownie GitHub i Cloudflare i wymień klucz Cursora, żeby stare przestały działać.",
+      "save": "Zapisz udostępnianie",
+      "saving": "Zapisywanie…",
+      "cannotStore": "Ta baza danych App Buildera jest dla ciebie tylko do odczytu, więc konta nie są zapisywane i nie można ich udostępnić.",
+      "needsDirectory": "Aby wybrać osoby, App Builder musi móc odczytać katalog twojego Haven. Włącz „Katalog” dla jego bazy danych w ustawieniach aplikacji w Haven albo usuń i zainstaluj App Buildera ponownie."
     }
   },
   "connect": {
@@ -331,7 +373,8 @@
       "start-build": "Opublikuj aplikację",
       "wait-origin": "Poczekaj, aż aplikacja zacznie działać",
       "propose": "Dodaj aplikację do Haven",
-      "launch-agent": "Uruchom programistę AI"
+      "launch-agent": "Uruchom programistę AI",
+      "copy-source": "Skopiuj kod aplikacji"
     },
     "retry": {
       "button": "Spróbuj opublikować ponownie",
@@ -377,7 +420,8 @@
     "validation": {
       "nameRequired": "Aplikacja potrzebuje nazwy.",
       "slugInvalid": "Nazwa repozytorium może zawierać tylko małe litery, cyfry i myślniki.",
-      "databaseIdInvalid": "Identyfikator bazy może zawierać tylko małe litery, cyfry, kropki, podkreślenia i myślniki i może mieć co najwyżej 64 znaki."
+      "databaseIdInvalid": "Identyfikator bazy może zawierać tylko małe litery, cyfry, kropki, podkreślenia i myślniki i może mieć co najwyżej 64 znaki.",
+      "sourceRequired": "Najpierw wyszukaj aplikację, którą chcesz skopiować."
     },
     "ready": {
       "connectGithub": "Najpierw połącz GitHub.",
@@ -445,7 +489,22 @@
       "pressRegisterInHaven": "Naciśnij „{action}”, kiedy zechcesz.",
       "noCursorKey": "Brak połączonego klucza API Cursora.",
       "agentStarted": "Zobacz, jak pracuje: {url}",
-      "agentStartFailed": "Nie udało się uruchomić agenta Cursora."
+      "agentStartFailed": "Nie udało się uruchomić agenta Cursora.",
+      "sourceInputInvalid": "To nie jest ani repozytorium GitHub, ani adres aplikacji.",
+      "sourceNeedsGitHub": "Najpierw połącz GitHub.",
+      "sourceAppUnreachable": "Nie udało się odczytać {url}. Sprawdź adres albo wklej zamiast tego repozytorium GitHub.",
+      "sourceAppNoRepository": "Aplikacja pod adresem {url} nie podaje, gdzie jest jej kod. Wklej zamiast tego jej repozytorium GitHub.",
+      "sourceRepoNotFound": "Nie znaleziono {fullName} na GitHubie.",
+      "sourceRepoPrivate": "{fullName} jest prywatne. Skopiować można tylko publiczny kod.",
+      "sourceTooLarge": "{fullName} jest za duże, by je tu skopiować (ponad {limit} plików lub 50 MB).",
+      "sourceHasSubmodules": "{fullName} używa submodułów Git, których nie da się tu skopiować.",
+      "sourceMissingFile": "{fullName} nie ma pliku {path}, więc nie jest aplikacją Haven, którą ten builder może skopiować.",
+      "sourceUsesLfs": "{fullName} przechowuje pliki w Git LFS, których nie da się tu skopiować.",
+      "sourceDefinitionInvalid": "Plik haven-app.json w {fullName} nie jest prawidłową definicją aplikacji.",
+      "sourceCopied": "Pliki z {fullName}: {count}.",
+      "sourceCopiedSkipped": "Pominięte w kopii: pliki workflow GitHuba ({count}).",
+      "sourceCopyFailed": "Nie udało się skopiować kodu aplikacji.",
+      "sourceCopyFromEarlierAttempt": "Skopiowane już przy poprzedniej próbie."
     }
   },
   "githubConnect": {
@@ -471,7 +530,8 @@
   "session": {
     "connectFailed": "Nie udało się połączyć z Haven. Otwórz App Builder ze swojego obszaru roboczego Haven, a nie bezpośrednio w karcie przeglądarki, a potem odśwież tę stronę.",
     "credentialsStoreFailed": "Nie udało się zapisać poświadczeń.",
-    "notConnected": "Builder nie jest połączony z Haven."
+    "notConnected": "Builder nie jest połączony z Haven.",
+    "credentialsShareFailed": "Nie udało się zapisać udostępniania."
   },
   "saveDefinition": {
     "noUrl": "Ta aplikacja nie ma jeszcze adresu internetowego.",
@@ -480,5 +540,24 @@
   "hostApi": {
     "unreachable": "Serwer buildera jest nieosiągalny. Uruchom go poleceniem `mindoodb-app-builder`.",
     "badStatus": "Serwer odpowiedział HTTP {status}."
+  },
+  "sourcePanel": {
+    "title": "Od której aplikacji chcesz zacząć?",
+    "purpose": "Wklej adres kodu aplikacji na GitHubie albo adres, pod którym działa aplikacja. Jej kod zostanie skopiowany do nowego, własnego projektu.",
+    "input": {
+      "label": "Repozytorium GitHub lub adres aplikacji",
+      "placeholder": "https://github.com/wlasciciel/aplikacja",
+      "hint": "Kod musi być publiczny. Adres aplikacji działa, gdy aplikacja podaje, gdzie jest jej kod — aplikacje z tego buildera robią to, gdy ich kod jest publiczny."
+    },
+    "load": {
+      "idle": "Wyszukaj",
+      "running": "Wyszukiwanie…"
+    },
+    "needsGithub": "Najpierw połącz GitHub — kod jest odczytywany i kopiowany przez twoje połączenie z GitHubem.",
+    "found": {
+      "files": "Pliki: {count}",
+      "databases": "Bazy danych: {ids}",
+      "skipped": "Nie kopiowane: pliki workflow GitHuba ({count})."
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 
 import { useBuilderFlow } from "@/app/useBuilderFlow";
@@ -81,7 +81,10 @@ describe("database fields", () => {
 
     builder.onLabelInput("Team Notes");
 
-    expect(builder.form.value.databaseId).toBe("app_team-notes");
+    // The slug plus this form's own random part, so two "Team Notes" never share data.
+    const suffix = builder.form.value.databaseSuffix;
+    expect(suffix).toMatch(/^[a-z0-9]{6}$/);
+    expect(builder.form.value.databaseId).toBe(`app_team-notes_${suffix}`);
     expect(builder.form.value.databaseLabel).toBe("Team Notes");
     expect(builder.identity.value.databasePermissions).toEqual([
       "write",
@@ -154,5 +157,120 @@ describe("createAppError", () => {
     const error = unconnected({ github: true, cloudflare: false }).createAppError.value;
 
     expect(error).toContain(t("app.footer.setupLink"));
+  });
+});
+
+describe("copy mode", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function copyFlow() {
+    const session = {
+      credentials: ref({ ...EMPTY_CREDENTIALS, githubToken: "ghu_test" }),
+      credentialsStatus: ref({ github: true, cloudflare: true, cursor: false }),
+    };
+    const builder = useBuilderFlow(session as unknown as ReturnType<typeof useBuilderSession>);
+    builder.reset("copy");
+    return builder;
+  }
+
+  /** GitHub, answering for one public repository. */
+  function stubGitHub() {
+    const definition = {
+      format: "mindoodb.haven.app",
+      formatVersion: 1,
+      appId: "team-poll",
+      label: "Team Poll",
+      description: "Polls for teams.",
+      databases: [{ logicalDatabaseId: "main", permissions: ["write"] }],
+    };
+    const answers: Record<string, unknown> = {
+      "/repos/acme/team-poll": {
+        id: 1,
+        name: "team-poll",
+        full_name: "acme/team-poll",
+        owner: { id: 2, login: "acme" },
+        html_url: "https://github.com/acme/team-poll",
+        default_branch: "main",
+        private: false,
+        description: "",
+      },
+      "/repos/acme/team-poll/commits/main": { sha: "abcdef1234567", commit: { tree: { sha: "tree1" } } },
+      "/repos/acme/team-poll/git/trees/tree1": {
+        truncated: false,
+        tree: ["package.json", "wrangler.jsonc", "public/haven-app.json"].map((path) => ({
+          path,
+          mode: "100644",
+          type: "blob",
+          sha: `sha-${path}`,
+          size: 10,
+        })),
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) => {
+        const url = new URL(input);
+        if (url.pathname === "/repos/acme/team-poll/contents/public/haven-app.json") {
+          return new Response(JSON.stringify(definition));
+        }
+        const body = answers[url.pathname];
+        return body
+          ? new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } })
+          : new Response("{}", { status: 404 });
+      }),
+    );
+  }
+
+  it("cannot build until there is something to copy", () => {
+    const builder = copyFlow();
+    builder.onLabelInput("Our Poll");
+    expect(builder.formError.value).toBe(t("flow.validation.sourceRequired"));
+  });
+
+  it("looks the source up and fills in the name and description from it", async () => {
+    stubGitHub();
+    const builder = copyFlow();
+    builder.onSourceInput("https://github.com/acme/team-poll");
+
+    await builder.loadSource();
+
+    expect(builder.sourceError.value).toBeNull();
+    expect(builder.form.value.source?.fullName).toBe("acme/team-poll");
+    expect(builder.form.value.label).toBe("Team Poll");
+    expect(builder.form.value.slug).toBe("team-poll");
+    expect(builder.form.value.description).toBe("Polls for teams.");
+    expect(builder.identity.value.copiedFrom).toMatchObject({
+      fullName: "acme/team-poll",
+      commitSha: "abcdef1234567",
+      databases: [{ logicalDatabaseId: "main", label: "main" }],
+    });
+    expect(builder.formError.value).toBeNull();
+  });
+
+  it("keeps a name the user already typed", async () => {
+    stubGitHub();
+    const builder = copyFlow();
+    builder.onLabelInput("Our Poll");
+    builder.onSourceInput("acme/team-poll");
+
+    await builder.loadSource();
+
+    expect(builder.form.value.label).toBe("Our Poll");
+  });
+
+  it("says why a source cannot be used", async () => {
+    stubGitHub();
+    const builder = copyFlow();
+    builder.onSourceInput("acme/missing");
+
+    await builder.loadSource();
+
+    expect(builder.form.value.source).toBeNull();
+    expect(builder.sourceError.value).toEqual({
+      code: "sourceRepoNotFound",
+      params: { fullName: "acme/missing" },
+    });
   });
 });

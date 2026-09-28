@@ -29,12 +29,14 @@
     "loading": "Deine Anwendungen werden gesucht…",
     "readOnly": "Diese App-Builder-Datenbank ist für dich schreibgeschützt, fertige Anwendungen werden deshalb nicht in dieser Liste behalten. Alles funktioniert trotzdem — kopiere die Adresse der Anwendung, bevor du die Seite verlässt.",
     "actions": {
-      "new": "Neue App"
+      "new": "Neue App",
+      "copy": "App kopieren"
     },
     "empty": {
       "title": "Bau deine erste App",
       "body": "Sag uns, was deinem Team fehlt. Ein KI-Entwickler schreibt die Anwendung, sie wird im Web veröffentlicht, und Haven installiert sie — ändern kannst du sie danach jederzeit.",
-      "action": "Eine App beschreiben"
+      "action": "Eine App beschreiben",
+      "copyAction": "Oder eine bestehende App kopieren"
     },
     "stages": {
       "planned": "Noch nicht gebaut",
@@ -46,13 +48,25 @@
     "row": {
       "untitled": "Unbenannte App",
       "started": "Begonnen am {date}",
-      "remove": "{label} aus dieser Liste entfernen"
+      "remove": "{label} aus dieser Liste entfernen",
+      "share": "{label} teilen"
     },
     "confirm": {
       "title": "„{label}“ aus dieser Liste entfernen?",
       "hint": "Gelöscht wird nur, was der App Builder über die Anwendung gespeichert hat, hier in seiner eigenen Datenbank. Sonst bleibt alles unberührt: Das Projekt bleibt auf GitHub, die veröffentlichte Anwendung läuft auf Cloudflare weiter, ein Cursor-Agent bleibt, wo er ist, und Haven behält sie installiert. Eine neue App mit demselben Namen holt diesen Eintrag nicht zurück — der Builder bricht ab, sobald er das bestehende GitHub-Projekt sieht. Die veröffentlichte Anwendung bleibt unter ihrer Adresse erreichbar. Wenn du die Zeile wiederhaben willst, stelle das gelöschte Dokument in der App-Builder-Datenbank in Haven wieder her.",
       "remove": "Aus der Liste entfernen",
       "keep": "Behalten"
+    },
+    "share": {
+      "title": "{appName} für MindooDB Haven",
+      "message": "Ich möchte die App „{appName}“ mit dir teilen. Sie läuft in MindooDB Haven, einer Ende-zu-Ende-verschlüsselten Arbeitsumgebung. Öffne diesen Link, um sie einzurichten:\n\n{link}\n\nDu nutzt Haven schon? Dann kannst du sie auch im App Store unter „Neue App“ › „Von URL“ mit dieser Adresse installieren:\n{appUrl}",
+      "code": "Der Code ist öffentlich auf GitHub:\n{repoUrl}\n\nMit „App kopieren“ im App Builder kannst du daraus deine eigene Version bauen.",
+      "dialogIntro": "Kopiere diesen Text und schicke ihn per Mail oder Messenger. Der Link richtet Haven mit der App ein oder fügt die App zu einem vorhandenen Haven hinzu.",
+      "copyText": "Text kopieren",
+      "copyLink": "Nur Link kopieren",
+      "copied": "Kopiert",
+      "close": "Schließen",
+      "copyFailed": "Kopieren hat hier nicht funktioniert. Markiere den Text und kopiere ihn selbst."
     }
   },
   "detail": {
@@ -122,7 +136,8 @@
     "intro": {
       "withAi": "Das dauert ein paar Minuten. Wir erstellen das Projekt, veröffentlichen es im Web und fügen es zu Haven hinzu, dann setzen wir den KI-Entwickler daran. Du kannst jedem Schritt zusehen.",
       "withoutAi": "Das dauert ein paar Minuten. Wir erstellen das Projekt, veröffentlichen es im Web und fügen es zu Haven hinzu. Du kannst jedem Schritt zusehen.",
-      "starterOnly": "Was du bekommst, ist die Startanwendung, live und installiert — der Code gehört dann dir und lässt sich von Hand oder mit einem beliebigen KI-Werkzeug ändern."
+      "starterOnly": "Was du bekommst, ist die Startanwendung, live und installiert — der Code gehört dann dir und lässt sich von Hand oder mit einem beliebigen KI-Werkzeug ändern.",
+      "copyOnly": "Was du bekommst, ist eine Kopie dieser App, live und unter neuem Namen installiert — der Code gehört dann dir und lässt sich von Hand oder mit einem beliebigen KI-Werkzeug ändern."
     },
     "narrowAccess": "Du hast dich dafür entschieden, die Repositories selbst auszuwählen. Nach dem Erstellen des Projekts musst du Cloudflare (und Cursor) auf GitHub also noch erlauben, es zu sehen. Wir halten an und sagen dir, wann es so weit ist.",
     "finished": {
@@ -164,8 +179,8 @@
       "summary": "Datenbank und Rechte",
       "id": {
         "label": "Datenbank-ID",
-        "placeholder": "app_team-notizen",
-        "hint": "Der Speicher, in den diese App schreibt. Jede App bekommt einen eigenen, damit sich zwei Apps nicht in die Quere kommen."
+        "placeholder": "app_team-notizen_k7f3q2",
+        "hint": "Der Speicher, in den diese App schreibt. Jede App bekommt einen eigenen, damit sich zwei Apps nicht in die Quere kommen. Der Code der App öffnet ihn immer als „main“, deshalb kannst du ihn später in den App-Einstellungen in Haven auf eine andere Datenbank umstellen."
       },
       "label": {
         "label": "Name in Haven",
@@ -184,6 +199,18 @@
         "timestamps": "Zeitstempel",
         "directory": "Verzeichnis",
         "sealedchannel": "Versiegelter Kanal"
+      }
+    },
+    "copy": {
+      "title": "Mach sie zu deiner",
+      "purpose": "Name und Beschreibung stammen aus der App, die du kopierst. Ändere sie und beschreibe, was anders werden soll — der KI-Entwickler baut auf dem vorhandenen Code auf.",
+      "task": {
+        "label": "Was soll sich ändern?",
+        "placeholder": "Jeder Eintrag bekommt ein Fälligkeitsdatum, und die Liste wird danach sortiert. Alles andere bleibt, wie es ist.",
+        "hint": "Das ist der Auftrag, mit dem die KI arbeitet. Sag, was dazukommen, wegfallen oder anders werden soll; was du nicht erwähnst, bleibt, wie es ist."
+      },
+      "database": {
+        "hint": "Die Kopie behält die Datenbanken der ursprünglichen App, im Code unter denselben Namen, aber jede bekommt einen neuen, leeren eigenen Speicher. Wenn du stattdessen mit den Daten des Originals arbeiten willst, stelle die Datenbank nach der Installation in den App-Einstellungen in Haven darauf um."
       }
     }
   },
@@ -233,6 +260,21 @@
       "save": "Speichern und weiter",
       "start": "Ich bin fertig — mit dem Bauen loslegen",
       "blocked": "Verbinde zuerst oben GitHub und Cloudflare. Diese beiden sind es, die deine Anwendung erstellen und veröffentlichen."
+    },
+    "sharing": {
+      "title": "Mit Kolleginnen und Kollegen teilen",
+      "purpose": "Lass andere mit den oben verbundenen Konten Anwendungen bauen, statt dass jede Person ihre eigenen verbindet. Du wählst sie aus deinem Haven-Verzeichnis aus.",
+      "you": "du",
+      "pick": "Person auswählen…",
+      "noMoreUsers": "Sonst niemand im Verzeichnis",
+      "add": "Hinzufügen",
+      "remove": "Nicht mehr mit {name} teilen",
+      "warning": "Alle auf dieser Liste können diese Tokens lesen und damit handeln — auf GitHub, Cloudflare und Cursor, in deinem Namen. Teile sie nur mit Personen, denen du auch deine Schlüssel geben würdest.",
+      "removeWarning": "Wen du entfernst, behält die Tokens, die er schon hat. Verbinde danach GitHub und Cloudflare neu und ersetze den Cursor-Schlüssel, damit die alten nicht mehr funktionieren.",
+      "save": "Freigabe speichern",
+      "saving": "Wird gespeichert…",
+      "cannotStore": "Diese App-Builder-Datenbank ist für dich schreibgeschützt, deshalb werden die Konten nicht gespeichert und können nicht geteilt werden.",
+      "needsDirectory": "Um Personen auszuwählen, muss der App Builder dein Haven-Verzeichnis lesen dürfen. Schalte in den App-Einstellungen in Haven für seine Datenbank „Verzeichnis“ ein oder installiere den App Builder neu."
     }
   },
   "connect": {
@@ -331,7 +373,8 @@
       "start-build": "App veröffentlichen",
       "wait-origin": "Warten, bis die App live ist",
       "propose": "App zu Haven hinzufügen",
-      "launch-agent": "KI-Entwickler starten"
+      "launch-agent": "KI-Entwickler starten",
+      "copy-source": "Code der App kopieren"
     },
     "retry": {
       "button": "Veröffentlichung erneut versuchen",
@@ -377,7 +420,8 @@
     "validation": {
       "nameRequired": "Die Anwendung braucht einen Namen.",
       "slugInvalid": "Der Repository-Name darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten.",
-      "databaseIdInvalid": "Die Datenbank-ID darf nur Kleinbuchstaben, Ziffern, Punkte, Unterstriche und Bindestriche enthalten und höchstens 64 Zeichen lang sein."
+      "databaseIdInvalid": "Die Datenbank-ID darf nur Kleinbuchstaben, Ziffern, Punkte, Unterstriche und Bindestriche enthalten und höchstens 64 Zeichen lang sein.",
+      "sourceRequired": "Schlage zuerst die App nach, die du kopieren möchtest."
     },
     "ready": {
       "connectGithub": "Verbinde zuerst GitHub.",
@@ -445,7 +489,22 @@
       "pressRegisterInHaven": "Drücke auf „{action}“, wenn du so weit bist.",
       "noCursorKey": "Kein Cursor-API-Schlüssel verbunden.",
       "agentStarted": "Beim Arbeiten zusehen: {url}",
-      "agentStartFailed": "Der Cursor-Agent konnte nicht gestartet werden."
+      "agentStartFailed": "Der Cursor-Agent konnte nicht gestartet werden.",
+      "sourceInputInvalid": "Das ist weder ein GitHub-Repository noch eine App-Adresse.",
+      "sourceNeedsGitHub": "Verbinde zuerst GitHub.",
+      "sourceAppUnreachable": "{url} konnte nicht gelesen werden. Prüfe die Adresse oder füge stattdessen das GitHub-Repository ein.",
+      "sourceAppNoRepository": "Die App unter {url} gibt nicht an, wo ihr Code liegt. Füge stattdessen ihr GitHub-Repository ein.",
+      "sourceRepoNotFound": "{fullName} wurde auf GitHub nicht gefunden.",
+      "sourceRepoPrivate": "{fullName} ist privat. Nur öffentlicher Code kann kopiert werden.",
+      "sourceTooLarge": "{fullName} ist zu groß, um hier kopiert zu werden (mehr als {limit} Dateien oder 50 MB).",
+      "sourceHasSubmodules": "{fullName} verwendet Git-Submodule, die hier nicht kopiert werden können.",
+      "sourceMissingFile": "{fullName} hat keine Datei {path} und ist daher keine Haven-App, die dieser Builder kopieren kann.",
+      "sourceUsesLfs": "{fullName} speichert Dateien in Git LFS, die hier nicht kopiert werden können.",
+      "sourceDefinitionInvalid": "Die haven-app.json in {fullName} ist keine gültige App-Definition.",
+      "sourceCopied": "{count} Dateien aus {fullName}.",
+      "sourceCopiedSkipped": "Nicht mitkopiert: GitHub-Workflow-Dateien ({count}).",
+      "sourceCopyFailed": "Der Code der App konnte nicht kopiert werden.",
+      "sourceCopyFromEarlierAttempt": "Schon beim vorigen Versuch kopiert."
     }
   },
   "githubConnect": {
@@ -471,7 +530,8 @@
   "session": {
     "connectFailed": "Die Verbindung zu Haven ist fehlgeschlagen. Öffne den App Builder aus deinem Haven-Arbeitsbereich heraus statt direkt in einem Browser-Tab und lade diese Seite dann neu.",
     "credentialsStoreFailed": "Die Zugangsdaten konnten nicht gespeichert werden.",
-    "notConnected": "Der Builder ist nicht mit Haven verbunden."
+    "notConnected": "Der Builder ist nicht mit Haven verbunden.",
+    "credentialsShareFailed": "Die Freigabe konnte nicht gespeichert werden."
   },
   "saveDefinition": {
     "noUrl": "Diese Anwendung hat noch keine Web-Adresse.",
@@ -480,5 +540,24 @@
   "hostApi": {
     "unreachable": "Der Server des Builders ist nicht erreichbar. Starte ihn mit `mindoodb-app-builder`.",
     "badStatus": "Der Server hat mit HTTP {status} geantwortet."
+  },
+  "sourcePanel": {
+    "title": "Von welcher App möchtest du ausgehen?",
+    "purpose": "Füge die Adresse des Codes der App auf GitHub ein oder die Adresse, unter der die App läuft. Der Code wird in ein neues, eigenes Projekt kopiert.",
+    "input": {
+      "label": "GitHub-Repository oder App-Adresse",
+      "placeholder": "https://github.com/besitzer/app",
+      "hint": "Der Code muss öffentlich sein. Eine App-Adresse funktioniert, wenn die App angibt, wo ihr Code liegt — Apps aus diesem Builder tun das, wenn ihr Code öffentlich ist."
+    },
+    "load": {
+      "idle": "Nachschlagen",
+      "running": "Wird nachgeschlagen…"
+    },
+    "needsGithub": "Verbinde zuerst GitHub — der Code wird über deine GitHub-Verbindung gelesen und kopiert.",
+    "found": {
+      "files": "{count} Dateien",
+      "databases": "Datenbanken: {ids}",
+      "skipped": "Nicht kopiert: GitHub-Workflow-Dateien ({count})."
+    }
   }
 }

@@ -21,6 +21,7 @@ import {
 import {
   loadCredentials,
   saveCredentials,
+  shareCredentials,
   readCredentialsStatus,
   EMPTY_CREDENTIALS,
   type BuilderCredentials,
@@ -41,6 +42,11 @@ export function useBuilderSession() {
   const credentials = ref<BuilderCredentials>({ ...EMPTY_CREDENTIALS });
   /** Id of this user's sealed credential document — random, so it has to be remembered. */
   const credentialsDocId = ref<string | null>(null);
+  /** Who else can read the credential document, besides this user. */
+  const credentialsSharedWith = ref<string[]>([]);
+  /** Directory usernames, for picking whom to share with. Empty until asked for. */
+  const directoryUsers = ref<string[]>([]);
+  const sharingCredentials = ref(false);
   const theme = ref<MindooDBAppHostTheme>({ mode: "light", preset: "mindoo" });
   const connecting = ref(false);
   const savingCredentials = ref(false);
@@ -65,6 +71,16 @@ export function useBuilderSession() {
    */
   const canStoreCredentials = computed(
     () => databaseInfo.value?.capabilities.includes("create") === true,
+  );
+  /** The launching user, as MindooDB names readers of a sealed document. */
+  const currentUser = computed(() => launchContext.value?.user.username ?? "");
+  /**
+   * Sharing needs a saved document to share, a way to change its readers, and the
+   * directory to pick them from. An install from before `directory` was requested lacks
+   * the last one, and the page says how to grant it rather than offering a dead list.
+   */
+  const canReadDirectory = computed(
+    () => databaseInfo.value?.capabilities.includes("directory") === true,
   );
   /**
    * Registration-level permission, reported by the host in the launch context. When it
@@ -102,9 +118,10 @@ export function useBuilderSession() {
 
       if (databaseInfo.value) {
         database.value = await nextSession.openDatabase(BUILDER_DATABASE_ID);
-        const loaded = await loadCredentials(database.value);
+        const loaded = await loadCredentials(database.value, currentUser.value);
         credentials.value = loaded.credentials;
         credentialsDocId.value = loaded.documentId;
+        credentialsSharedWith.value = loaded.sharedWith;
       }
     } catch (connectError) {
       /*
@@ -147,6 +164,47 @@ export function useBuilderSession() {
     }
   }
 
+  /** Read the directory's usernames for the sharing list. Empty when it cannot be read. */
+  async function loadDirectoryUsers(): Promise<void> {
+    if (!database.value || !canReadDirectory.value) {
+      directoryUsers.value = [];
+      return;
+    }
+    try {
+      directoryUsers.value = await database.value.directory.listUsers();
+    } catch {
+      directoryUsers.value = [];
+    }
+  }
+
+  /**
+   * Make `next` the people who share this user's credentials. Saves the credentials
+   * first when there is no document yet, because only a stored document has readers.
+   */
+  async function shareCredentialsWith(next: string[]): Promise<void> {
+    if (!database.value || !canStoreCredentials.value) {
+      return;
+    }
+    sharingCredentials.value = true;
+    error.value = null;
+    try {
+      if (!credentialsDocId.value) {
+        credentialsDocId.value = await saveCredentials(database.value, credentials.value, null);
+      }
+      credentialsSharedWith.value = await shareCredentials(
+        database.value,
+        credentialsDocId.value,
+        credentialsSharedWith.value,
+        next,
+        currentUser.value,
+      );
+    } catch (shareError) {
+      error.value = readErrorMessage(shareError, t("session.credentialsShareFailed"));
+    } finally {
+      sharingCredentials.value = false;
+    }
+  }
+
   /**
    * Ask Haven to install an app from its origin.
    *
@@ -174,6 +232,7 @@ export function useBuilderSession() {
     session.value = null;
     database.value = null;
     credentialsDocId.value = null;
+    credentialsSharedWith.value = [];
     if (!current) {
       return;
     }
@@ -190,19 +249,26 @@ export function useBuilderSession() {
 
   return {
     canProposeApps,
+    canReadDirectory,
     canStoreCredentials,
     connect,
     connected,
     connecting,
     credentials,
+    credentialsSharedWith,
     credentialsStatus,
+    currentUser,
+    directoryUsers,
     database,
     databaseInfo,
     disconnect,
     error,
     launchContext,
+    loadDirectoryUsers,
     proposeApp,
     savingCredentials,
+    shareCredentialsWith,
+    sharingCredentials,
     storeCredentials,
     theme,
   };

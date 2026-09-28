@@ -11,6 +11,7 @@ import {
   type FlowStepId,
 } from "@/core/createAppFlow";
 import { externalNote, FlowNoteError, type FlowNote } from "@/core/flowNotes";
+import type { AppSource } from "@/core/appSource";
 import type { GitHubRepository } from "@/core/github";
 
 const identity: AppIdentity = {
@@ -314,7 +315,8 @@ describe("createApp", () => {
     const definition = call.files.find((file) => file.path === "public/haven-app.json")!.content;
     expect(definition).toContain('"appId": "team-notes"');
     expect(definition).toContain('"hosting": "hosted"');
-    expect(definition).toContain('"logicalDatabaseId": "app_team-notes"');
+    expect(definition).toContain('"logicalDatabaseId": "main"');
+    expect(definition).toContain('"databaseId": "app_team-notes"');
   });
 
   it("waits for the expected app on the Worker URL", async () => {
@@ -897,5 +899,147 @@ describe("deployNow", () => {
 
     expect(statusOf(result.steps, "wait-origin")).toBe("failed");
     expect(statusOf(result.steps, "propose")).toBe("skipped");
+  });
+});
+
+describe("starting from an existing app", () => {
+  const source = {
+    owner: "acme",
+    repo: "team-poll",
+    fullName: "acme/team-poll",
+    htmlUrl: "https://github.com/acme/team-poll",
+    branch: "main",
+    commitSha: "abcdef1234567",
+    label: "Team Poll",
+    description: "Polls.",
+    databases: [{ logicalDatabaseId: "main", label: "Polls" }],
+    files: [],
+    skippedPaths: [".github/workflows/ci.yml"],
+  } satisfies AppSource;
+
+  const copyIdentity: AppIdentity = {
+    ...identity,
+    databaseSuffix: "k7f3q2",
+    copiedFrom: {
+      fullName: source.fullName,
+      htmlUrl: source.htmlUrl,
+      commitSha: source.commitSha,
+      databases: source.databases,
+    },
+  };
+
+  it("lists the copy step only for a copy", () => {
+    expect(createInitialSteps().map((step) => step.id)).not.toContain("copy-source");
+    expect(createInitialSteps({ copy: true }).map((step) => step.id).slice(0, 4)).toEqual([
+      "check-name",
+      "create-repo",
+      "copy-source",
+      "commit-identity",
+    ]);
+  });
+
+  it("copies the source after creating the repository and before naming it", async () => {
+    const order: string[] = [];
+    const copySource = vi.fn(async () => {
+      order.push("copy");
+      return { fileCount: 42 };
+    });
+    const commitFiles = vi.fn(async () => {
+      order.push("commit");
+      return "sha";
+    });
+    const deps = makeDeps({
+      github: {
+        getRepository: vi.fn(async () => null),
+        generateFromTemplate: vi.fn(async () => {
+          order.push("create");
+          return repository;
+        }),
+        readTemplateSources: vi.fn(async () => templateSources),
+        commitFiles,
+        copySource,
+      },
+    });
+
+    const result = await createApp({ identity: copyIdentity, owner: "", source, private: false }, deps);
+
+    expect(order).toEqual(["create", "copy", "commit"]);
+    expect(copySource).toHaveBeenCalledWith({ repository, source });
+    expect(result.sourceCopied).toBe(true);
+    expect(statusOf(result.steps, "copy-source")).toBe("done");
+    expect(result.steps.find((step) => step.id === "copy-source")!.detail).toEqual({
+      code: "sourceCopied",
+      params: { fullName: "acme/team-poll", count: 42 },
+    });
+    expect(result.warnings).toContainEqual({ code: "sourceCopiedSkipped", params: { count: 1 } });
+
+    const files = (commitFiles.mock.calls as unknown as Array<[{ files: Array<{ path: string; content: string }> }]>)[0]![0].files;
+    const task = files.find((file) => file.path === "TASK.md")!.content;
+    expect(task).toContain("copy of [acme/team-poll]");
+    // A public repository is named in the definition, so its address finds the code.
+    const definition = JSON.parse(files.find((file) => file.path === "public/haven-app.json")!.content);
+    expect(definition.source).toEqual({ repository: repository.htmlUrl });
+  });
+
+  it("does not name a private repository in the definition", async () => {
+    const commitFiles = vi.fn(async () => "sha");
+    const deps = makeDeps({
+      github: {
+        getRepository: vi.fn(async () => null),
+        generateFromTemplate: vi.fn(async () => repository),
+        readTemplateSources: vi.fn(async () => templateSources),
+        commitFiles,
+      },
+    });
+    await createApp({ identity, owner: "", private: true }, deps);
+    const files = (commitFiles.mock.calls as unknown as Array<[{ files: Array<{ path: string; content: string }> }]>)[0]![0].files;
+    expect(JSON.parse(files.find((file) => file.path === "public/haven-app.json")!.content).source)
+      .toBeUndefined();
+  });
+
+  it("stops before naming the app when the copy fails", async () => {
+    const commitFiles = vi.fn(async () => "sha");
+    const deps = makeDeps({
+      github: {
+        getRepository: vi.fn(async () => null),
+        generateFromTemplate: vi.fn(async () => repository),
+        readTemplateSources: vi.fn(async () => templateSources),
+        commitFiles,
+        copySource: vi.fn(async () => {
+          throw new FlowNoteError({ code: "sourceCopyFailed" });
+        }),
+      },
+    });
+
+    const result = await createApp({ identity: copyIdentity, owner: "", source }, deps);
+
+    expect(statusOf(result.steps, "copy-source")).toBe("failed");
+    expect(statusOf(result.steps, "commit-identity")).toBe("skipped");
+    expect(commitFiles).not.toHaveBeenCalled();
+    // The repository exists, so the record keeps it and a later run can adopt it.
+    expect(result.repository).toEqual(repository);
+    expect(result.sourceCopied).toBe(false);
+  });
+
+  it("does not copy again when resuming a repository the copy already reached", async () => {
+    const copySource = vi.fn(async () => ({ fileCount: 1 }));
+    const deps = makeDeps({
+      github: {
+        getRepository: vi.fn(async () => null),
+        generateFromTemplate: vi.fn(async () => repository),
+        readTemplateSources: vi.fn(async () => templateSources),
+        commitFiles: vi.fn(async () => "sha"),
+        copySource,
+      },
+    });
+
+    const result = await createApp(
+      { identity: copyIdentity, owner: "", source, existingRepository: repository, sourceCopied: true },
+      deps,
+    );
+
+    expect(copySource).not.toHaveBeenCalled();
+    expect(statusOf(result.steps, "copy-source")).toBe("skipped");
+    expect(result.identityCommitted).toBe(true);
   });
 });

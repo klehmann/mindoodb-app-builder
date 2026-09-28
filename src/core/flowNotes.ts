@@ -50,6 +50,23 @@ export const FLOW_NOTE_CODES = [
   "identityCommitted",
   "identityCommitFailed",
 
+  // Starting from an existing app: finding its code, and copying it.
+  "sourceInputInvalid",
+  "sourceNeedsGitHub",
+  "sourceAppUnreachable",
+  "sourceAppNoRepository",
+  "sourceRepoNotFound",
+  "sourceRepoPrivate",
+  "sourceTooLarge",
+  "sourceHasSubmodules",
+  "sourceMissingFile",
+  "sourceUsesLfs",
+  "sourceDefinitionInvalid",
+  "sourceCopied",
+  "sourceCopiedSkipped",
+  "sourceCopyFailed",
+  "sourceCopyFromEarlierAttempt",
+
   // Cloudflare: can it read the repository, and what to do when it cannot.
   "noCloudflareAccount",
   "repoAccessReadable",

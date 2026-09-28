@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AppList from "@/app/components/AppList.vue";
 import { EMPTY_APP_RECORD, type StoredAppRecord } from "@/core/appRecords";
@@ -29,18 +29,30 @@ describe("AppList", () => {
     expect(wrapper.find(".apps__list").exists()).toBe(false);
   });
 
-  it("offers exactly one way to start, whether or not there is a list", () => {
+  it("offers the same two ways to start, whether or not there is a list", () => {
     const starts = (wrapper: ReturnType<typeof render>) =>
       wrapper.findAll("button").filter((button) => button.text() !== "");
 
-    // Empty: the pitch's own button, and nothing in the header repeating it.
-    expect(starts(render()).map((button) => button.text())).toEqual(["Describe an app"]);
+    // Empty: the pitch's own buttons, and nothing in the header repeating them.
+    expect(starts(render()).map((button) => button.text())).toEqual([
+      "Describe an app",
+      "Or copy an existing app",
+    ]);
 
-    // With a list: the header button, plus one row per app.
+    // With a list: the two header buttons, plus one row per app.
     const listed = starts(render({ records: [stored()] })).map((button) => button.text());
-    expect(listed[0]).toBe("New app");
-    expect(listed).toHaveLength(2);
-    expect(render({ records: [stored()] }).find("header .apps__new").text()).toBe("New app");
+    expect(listed.slice(0, 2)).toEqual(["Copy an app", "New app"]);
+    expect(listed).toHaveLength(3);
+  });
+
+  it("asks for a copy from either place", async () => {
+    const empty = render();
+    await empty.findAll("button").find((button) => button.text() === "Or copy an existing app")!.trigger("click");
+    expect(empty.emitted("copy")).toHaveLength(1);
+
+    const listed = render({ records: [stored()] });
+    await listed.findAll("button").find((button) => button.text() === "Copy an app")!.trigger("click");
+    expect(listed.emitted("copy")).toHaveLength(1);
   });
 
   it("does not show the empty pitch while still looking", () => {
@@ -189,5 +201,64 @@ describe("AppList", () => {
 
       expect(wrapper.find(".apps__remove").exists()).toBe(false);
     });
+  });
+});
+
+describe("sharing from the list", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const live = {
+    workerUrl: "https://team-notes.acme.workers.dev",
+    originReady: true,
+    repoUrl: "https://github.com/acme/team-notes",
+    private: true,
+  };
+
+  it("offers sharing only for a live app", () => {
+    expect(render({ records: [stored()] }).find(".apps__share").exists()).toBe(false);
+    expect(render({ records: [stored(live)] }).find(".apps__share").exists()).toBe(true);
+  });
+
+  it("opens the share sheet when there is one", async () => {
+    const share = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { share });
+    const wrapper = render({ records: [stored(live)] });
+
+    await wrapper.find(".apps__share").trigger("click");
+    await Promise.resolve();
+
+    expect(share).toHaveBeenCalledTimes(1);
+    expect(wrapper.find(".apps__sharing").exists()).toBe(false);
+  });
+
+  it("shows the text to copy where there is no share sheet, with the code when it is public", async () => {
+    const writeText = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    const wrapper = render({ records: [stored(live)], publicRepositories: { "doc-1": true } });
+
+    await wrapper.find(".apps__share").trigger("click");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const text = (wrapper.find(".apps__share-text").element as HTMLTextAreaElement).value;
+    expect(text).toContain("https://haven.mindoodb.com/?app=");
+    expect(text).toContain("https://github.com/acme/team-notes");
+
+    await wrapper.findAll(".apps__sharing button")[1]!.trigger("click");
+    expect(writeText).toHaveBeenCalledWith(
+      "https://haven.mindoodb.com/?app=https%3A%2F%2Fteam-notes.acme.workers.dev",
+    );
+  });
+
+  it("falls back to the choice made at creation when GitHub was not asked", async () => {
+    vi.stubGlobal("navigator", {});
+    const wrapper = render({ records: [stored(live)] });
+
+    await wrapper.find(".apps__share").trigger("click");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const text = (wrapper.find(".apps__share-text").element as HTMLTextAreaElement).value;
+    expect(text).not.toContain("github.com");
   });
 });

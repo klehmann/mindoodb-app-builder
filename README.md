@@ -30,10 +30,12 @@ you run a builder that has no applications registered, or you would rather mint 
 scoped your way.
 
 Both flows need to open a window — Cloudflare's consent screen, and GitHub's device page —
-so `haven-app.json` asks for `allowPopups`. The App Builder database also asks for
-`delete`, so a row can be removed from the list. Haven grants both at install time only,
-so a builder installed before either was added keeps the old answer: switch the missing
-permission on in the app's settings in Haven, or remove and reinstall it. Removing an
+so `haven-app.json` asks for `allowPopups`. Copying an app's address or its share text
+needs `allowClipboardWrite`, which Haven only grants to apps that ask for it. The App
+Builder database also asks for `delete`, so a row can be removed from the list. Haven
+grants all of these at install time only, so a builder installed before one was added
+keeps the old answer: switch the missing permission on in the app's settings in Haven,
+or remove and reinstall it. Removing an
 app does not delete its data.
 
 ## What happens to your tokens
@@ -67,6 +69,16 @@ builder it is someone else's server, and the difference is worth knowing: GitHub
 called from the page either way, and Cloudflare's OAuth exchange is too when CORS allows
 it, so **the Cursor key is the one credential a hosted builder has to see**. If that
 matters to you, run the builder locally — it is the same application.
+
+### Sharing the accounts with colleagues
+
+"Share with colleagues" on the setup page adds people from the Haven directory as
+readers of that sealed document, so a team can build from one set of accounts. It needs
+the `directory` permission on the builder database. Everyone on the list can read the
+tokens and act with them. Taking someone off rotates the document key, so they miss
+later changes, but they keep the tokens they already had: reconnect GitHub and
+Cloudflare and replace the Cursor key afterwards. When a person can read both their own
+credential document and one shared with them, the shared one is used.
 
 ## Running it
 
@@ -281,7 +293,8 @@ builders keep working.
 ## The build, step by step
 
 1. Check the repository name is free — failing here costs nothing.
-2. Create the repository from the starter template.
+2. Create the repository from the starter template. When copying an app, replace its
+   files with the source app's (see [Copying an existing app](#copying-an-existing-app)).
 3. Create a placeholder Worker, so the public URL and Cloudflare's script tag exist.
 4. Connect push-to-deploy, before the first push rather than after.
 5. Commit the app's identity (name, `wrangler.jsonc`, `haven-app.json`) and your brief
@@ -294,6 +307,62 @@ builders keep working.
 
 Every step reports its own reason when it fails, and anything already created is named so
 you can continue or clean up by hand.
+
+## Databases
+
+A generated app opens its database by the logical id `main` and nothing else. The
+physical database that id maps to is chosen per app — `app_<name>_<random>`, for example
+`app_team-poll_k7f3q2` — and written into `haven-app.json` as `databaseId`, so Haven
+creates a store of its own for every app, even when two people in one tenant both build a
+"Team Poll". Because the code never sees the physical id, you can point the app at a
+different database later in its settings in Haven without touching the code.
+
+Apps built before this keep `app_<name>` as both ids, so their data stays where it is.
+
+## Copying an existing app
+
+"Copy an app" starts from an existing app's code instead of the starter. Paste either:
+
+- its **GitHub repository** (`https://github.com/owner/repo`, `owner/repo`, a clone URL), or
+- the **address the app runs at**. This works when its `haven-app.json` says where the
+  code is:
+
+  ```json
+  "source": { "repository": "https://github.com/owner/repo" }
+  ```
+
+  The builder writes this field for every app whose repository is public, and removes it
+  for a private one — the file is public, and naming a private repository in it would only
+  publish its name. Apps built elsewhere can add it by hand.
+
+The code has to be public, and the repository needs `package.json`, `wrangler.jsonc` and
+`public/haven-app.json`. The builder then:
+
+1. reads name and description from the source's `haven-app.json` to fill in the form;
+2. creates your repository from the starter template as usual, then replaces its files
+   with the source's in one commit with no history ("Copy of owner/repo at abc1234") —
+   not a fork, so it can be private, and it can be a copy of your own app;
+3. commits the new identity. The copy keeps the source's logical database ids, so its
+   code runs unchanged, but every database gets a new physical id and starts empty. To
+   work on the original's data instead, point the database at it in the app's settings
+   in Haven. `routes`, `route` and `account_id` are removed from `wrangler.jsonc`, so the
+   copy cannot claim the original's domain;
+4. writes what should change into `TASK.md`, and tells the Cursor agent to build on the
+   existing code rather than start over.
+
+Left out of the copy: `.github/workflows/` (writing workflows needs a permission the
+builder's GitHub App does not ask for). Refused: Git submodules, Git LFS, and repositories
+over 2,000 files or 50 MB.
+
+## Sharing an app
+
+A live app has a share button in the list. It opens the device's share sheet, or shows
+the text to copy, with the same invitation Haven's app information dialog sends: a link
+to the public Haven (`https://haven.mindoodb.com/?app=<app address>`) that sets Haven up
+with the app or adds it to an existing one, plus the app's address for "New app" › "From
+URL". When the repository is public — GitHub is asked when the list loads — the message
+also says where the code is, so the recipient can start their own version with "Copy an
+app".
 
 ## Building the same app twice
 

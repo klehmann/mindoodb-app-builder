@@ -17,6 +17,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 
 import ConnectPanel from "@/app/components/ConnectPanel.vue";
+import CredentialsSharingPanel from "@/app/components/CredentialsSharingPanel.vue";
 import PageHeader from "@/app/components/PageHeader.vue";
 import { cloudflareGitHubInstallUrl, cursorGitHubInstallUrl } from "@/app/githubApps";
 import type { BuilderHostConfig } from "@/app/hostApi";
@@ -41,6 +42,14 @@ const props = defineProps<{
   alreadyDone: boolean;
   /** False when there is nothing worth continuing to. */
   canFinish: boolean;
+  /** Sharing the accounts with colleagues; see `CredentialsSharingPanel`. */
+  sharing: {
+    canReadDirectory: boolean;
+    currentUser: string;
+    sharedWith: string[];
+    directoryUsers: string[];
+    busy: boolean;
+  };
 }>();
 
 const { t } = useI18n();
@@ -50,6 +59,8 @@ const emit = defineEmits<{
   repoAccess: ["all" | "selected"];
   finish: [];
   back: [];
+  share: [string[]];
+  loadDirectoryUsers: [];
 }>();
 
 const cloudflareInstallUrl = cloudflareGitHubInstallUrl();
@@ -99,6 +110,17 @@ const grantAll = computed(() => props.credentials.repoAccess !== "selected");
       :cloudflare="cloudflare"
       :cloudflare-accounts="cloudflareAccounts"
       @save="emit('save', $event)"
+    />
+
+    <CredentialsSharingPanel
+      :can-store="canStore"
+      :can-read-directory="sharing.canReadDirectory"
+      :current-user="sharing.currentUser"
+      :shared-with="sharing.sharedWith"
+      :directory-users="sharing.directoryUsers"
+      :busy="sharing.busy"
+      @share="emit('share', $event)"
+      @load-users="emit('loadDirectoryUsers')"
     />
 
     <section class="panel">

@@ -8,14 +8,19 @@
  * ciphertext syncs like any other document, which is how the credentials follow the user
  * to their next device without a server-side vault.
  *
- * The recipient list is `[]` with `includeSelf: true` — the host adds the launching user
- * and nobody else can be added by accident. This is deliberate and load-bearing: a
- * second recipient would mean a second person who can read live API tokens.
+ * The document is created with `[]` recipients and `includeSelf: true` — the host adds
+ * the launching user and nobody else can be added by accident. Every further reader is
+ * one the user named on purpose, in the setup page's sharing list, and each of them can
+ * read live API tokens: that is the whole point of sharing them, and the page says so.
+ * Removing a reader rotates the document key, so they miss later changes but keep the
+ * tokens they already saw — the page says that too.
  *
  * The builder host never sees this document. The app decrypts in the browser and hands
  * a single token to the host for a single job (see `src/host/`).
  */
 import { createViewLanguage, type MindooDBAppDatabase } from "mindoodb-app-sdk";
+
+import { activeRecipients, otherRecipients, recipientDiff } from "./sealedRecipients";
 
 /**
  * Prefix for the random id MindooDB generates for a credential document.
@@ -201,6 +206,30 @@ export function credentialsFromDocumentData(
 export interface LoadedCredentials {
   credentials: BuilderCredentials;
   documentId: string | null;
+  /** Everyone besides the launching user who can read this document. */
+  sharedWith: string[];
+}
+
+/** How many candidates to look at when choosing between a shared and a private document. */
+const CANDIDATE_LIMIT = 10;
+
+/**
+ * Which of several readable credential documents to use: the newest one shared with
+ * other people, else the newest one.
+ *
+ * Shared first, because sharing is a deliberate act and it is what makes a team work
+ * from one set of accounts: someone who is added to a colleague's settings uses them,
+ * rather than whichever of the two documents happened to be saved last. A person who
+ * wants their own again asks to be taken off the list. `candidates` are newest first.
+ */
+export function chooseCredentialsDocument<T extends { data: Record<string, unknown> | undefined }>(
+  candidates: readonly T[],
+): T | null {
+  return (
+    candidates.find((candidate) => activeRecipients(candidate.data).length > 1) ??
+    candidates[0] ??
+    null
+  );
 }
 
 /**
@@ -215,14 +244,29 @@ export interface LoadedCredentials {
 export async function findCredentialsDocument(
   database: MindooDBAppDatabase,
 ): Promise<string | null> {
+  return (await readCredentialsDocument(database))?.documentId ?? null;
+}
+
+/** The chosen credential document, read. See {@link chooseCredentialsDocument}. */
+async function readCredentialsDocument(
+  database: MindooDBAppDatabase,
+): Promise<{ documentId: string; data: Record<string, unknown> | undefined } | null> {
   const result = await database.documents.query({
     filter: v.eq(v.field("type"), CREDENTIALS_DOCUMENT_TYPE),
     sortBy: [{ field: "_lastModified", direction: "descending" }],
     // The tokens are not summarized, but there is no reason to ship any field at all.
     fields: ["type"],
-    limit: 1,
+    limit: CANDIDATE_LIMIT,
   });
-  return result.rows[0]?.docId ?? null;
+  const candidates = await Promise.all(
+    result.rows.map(async (row) => {
+      const document = await database.documents.get(row.docId);
+      return document ? { documentId: row.docId, data: document.data } : null;
+    }),
+  );
+  return chooseCredentialsDocument(
+    candidates.filter((entry): entry is NonNullable<typeof entry> => entry !== null),
+  );
 }
 
 /**
@@ -235,20 +279,49 @@ export async function findCredentialsDocument(
  */
 export async function loadCredentials(
   database: MindooDBAppDatabase,
+  /** The launching user, so the sharing list can leave them out. */
+  self = "",
 ): Promise<LoadedCredentials> {
   try {
-    const documentId = await findCredentialsDocument(database);
-    if (!documentId) {
-      return { credentials: { ...EMPTY_CREDENTIALS }, documentId: null };
+    const found = await readCredentialsDocument(database);
+    if (!found) {
+      return { credentials: { ...EMPTY_CREDENTIALS }, documentId: null, sharedWith: [] };
     }
-    const document = await database.documents.get(documentId);
     return {
-      credentials: credentialsFromDocumentData(document?.data),
-      documentId: document ? documentId : null,
+      credentials: credentialsFromDocumentData(found.data),
+      documentId: found.documentId,
+      sharedWith: otherRecipients(found.data, self),
     };
   } catch {
-    return { credentials: { ...EMPTY_CREDENTIALS }, documentId: null };
+    return { credentials: { ...EMPTY_CREDENTIALS }, documentId: null, sharedWith: [] };
   }
+}
+
+/**
+ * Make `next` the list of people, besides the launching user, who can read the
+ * credential document. Returns who can read it afterwards.
+ *
+ * Adding wraps the document key for the new readers, who can then read its whole
+ * history. Removing rotates the key: the removed reader cannot read later changes, but
+ * keeps whatever tokens they already had — which is why the page tells the user to
+ * reconnect after taking someone off.
+ */
+export async function shareCredentials(
+  database: MindooDBAppDatabase,
+  documentId: string,
+  current: readonly string[],
+  next: readonly string[],
+  self = "",
+): Promise<string[]> {
+  const { added, removed } = recipientDiff(current, next);
+  let document = null;
+  if (added.length > 0) {
+    document = await database.documents.addRecipients(documentId, added);
+  }
+  if (removed.length > 0) {
+    document = await database.documents.removeRecipients(documentId, removed);
+  }
+  return document ? otherRecipients(document.data, self) : [...current];
 }
 
 /**
@@ -287,7 +360,7 @@ export async function saveCredentials(
   const created = await database.documents.create({
     idPrefix: CREDENTIALS_ID_PREFIX,
     set,
-    // Sealed to the launching user alone. Never add recipients here.
+    // Sealed to the launching user alone. Readers are added later, only on request.
     recipients: [],
     recipientOptions: { includeSelf: true },
   });

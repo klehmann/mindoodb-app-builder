@@ -23,13 +23,17 @@ function render(props: Partial<InstanceType<typeof NewAppView>["$props"]> = {}) 
   return mount(NewAppView, {
     props: {
       form: {
+        mode: "new",
+        sourceInput: "",
+        source: null,
+        databaseSuffix: "k7f3q2",
         label: "Team Notes",
         slug: "team-notes",
         slugFollowsLabel: true,
         description: "",
         task: "",
         private: true,
-        databaseId: "app_team-notes",
+        databaseId: "app_team-notes_k7f3q2",
         databaseLabel: "Team Notes",
         databaseIdFollowsSlug: true,
         databaseLabelFollowsLabel: true,

@@ -439,4 +439,44 @@ describe("handleApiRequest", () => {
       expect(result).toEqual({ status: 200, payload: { email: "dev@example.com" } });
     });
   });
+  describe("/api/app-definition", () => {
+    it("reads an app's haven-app.json for the page", async () => {
+      const fetchImpl = vi.fn(async () => json({ appId: "team-poll" }));
+      const result = await handleApiRequest({
+        method: "POST",
+        pathname: "/api/app-definition",
+        body: { url: "https://poll.acme.com" },
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      });
+      expect(result).toEqual({ status: 200, payload: { definition: { appId: "team-poll" } } });
+      expect(fetchImpl).toHaveBeenCalledWith(
+        "https://poll.acme.com/haven-app.json",
+        expect.objectContaining({ redirect: "error" }),
+      );
+    });
+
+    it("reads nothing but an https haven-app.json", async () => {
+      const fetchImpl = vi.fn(async () => json({}));
+      for (const url of ["http://poll.acme.com", "", "not a url"]) {
+        const result = await handleApiRequest({
+          method: "POST",
+          pathname: "/api/app-definition",
+          body: { url },
+          fetchImpl: fetchImpl as unknown as typeof fetch,
+        });
+        expect(result.status).toBe(400);
+      }
+      expect(fetchImpl).not.toHaveBeenCalled();
+    });
+
+    it("passes a failing app on as a failure, not as a definition", async () => {
+      const result = await handleApiRequest({
+        method: "POST",
+        pathname: "/api/app-definition",
+        body: { url: "https://poll.acme.com" },
+        fetchImpl: (async () => new Response("nope", { status: 404 })) as unknown as typeof fetch,
+      });
+      expect(result.status).toBe(502);
+    });
+  });
 });

@@ -14,13 +14,14 @@
     "https://*.workers.dev"
   ],
   "allowPopups": true,
+  "allowClipboardWrite": true,
   "defaultLaunchDatabaseId": "appbuilder",
   "databases": [
     {
       "logicalDatabaseId": "appbuilder",
       "databaseId": "appbuilder",
       "label": "App Builder",
-      "permissions": ["write", "delete"]
+      "permissions": ["write", "delete", "directory"]
     }
   ]
 }
