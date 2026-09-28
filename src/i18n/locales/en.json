@@ -48,13 +48,25 @@
     "row": {
       "untitled": "Untitled app",
       "started": "Started {date}",
-      "remove": "Remove {label} from this list"
+      "remove": "Remove {label} from this list",
+      "share": "Share {label}"
     },
     "confirm": {
       "title": "Remove “{label}” from this list?",
       "hint": "This deletes only what the App Builder saved about the app, here in its own database. Nothing else is touched: the project stays on GitHub, the published app keeps running on Cloudflare, any Cursor agent stays where it is, and Haven keeps it installed. Building a new app with the same name will not bring this row back — the builder stops when it sees that GitHub project already exists. The published app stays reachable at its address. To get the row back, restore the deleted document in Haven’s App Builder database.",
       "remove": "Remove from list",
       "keep": "Keep it"
+    },
+    "share": {
+      "title": "{appName} for MindooDB Haven",
+      "message": "I'd like to share the app \"{appName}\" with you. It runs in MindooDB Haven, an end-to-end encrypted workspace. Open this link to set it up:\n\n{link}\n\nAlready using Haven? You can also install it in the App Store under \"New app\" › \"From URL\" with this address:\n{appUrl}",
+      "code": "The code is public on GitHub:\n{repoUrl}\n\nWith \"Copy an app\" in the App Builder you can start your own version of it.",
+      "dialogIntro": "Copy this text and send it by email or messenger. The link sets up Haven with the app, or adds the app to an existing Haven.",
+      "copyText": "Copy text",
+      "copyLink": "Copy link only",
+      "copied": "Copied",
+      "close": "Close",
+      "copyFailed": "Copying did not work here. Select the text and copy it yourself."
     }
   },
   "detail": {

@@ -48,13 +48,25 @@
     "row": {
       "untitled": "App uten navn",
       "started": "Startet {date}",
-      "remove": "Fjern {label} fra denne listen"
+      "remove": "Fjern {label} fra denne listen",
+      "share": "Del {label}"
     },
     "confirm": {
       "title": "Fjerne «{label}» fra denne listen?",
       "hint": "Dette sletter bare det App Builder har lagret om appen, her i sin egen database. Ingenting annet berøres: prosjektet blir liggende på GitHub, den publiserte appen fortsetter å kjøre på Cloudflare, en eventuell Cursor-agent blir stående der den er, og Haven har den fortsatt installert. Å bygge en ny app med samme navn henter ikke denne raden tilbake — byggeren stopper når den ser at GitHub-prosjektet allerede finnes. Den publiserte appen er fortsatt tilgjengelig på adressen sin. Vil du ha raden tilbake, gjenopprett det slettede dokumentet i App Builder-databasen i Haven.",
       "remove": "Fjern fra listen",
       "keep": "Behold den"
+    },
+    "share": {
+      "title": "{appName} for MindooDB Haven",
+      "message": "Jeg vil dele appen «{appName}» med deg. Den kjører i MindooDB Haven, et ende-til-ende-kryptert arbeidsområde. Åpne denne lenken for å sette den opp:\n\n{link}\n\nBruker du allerede Haven? Da kan du også installere den i App Store under «Ny app» › «Fra URL» med denne adressen:\n{appUrl}",
+      "code": "Koden er offentlig på GitHub:\n{repoUrl}\n\nMed «Kopier en app» i App Builder kan du lage din egen versjon av den.",
+      "dialogIntro": "Kopier teksten og send den på e-post eller i en melding. Lenken setter opp Haven med appen, eller legger appen til i et eksisterende Haven.",
+      "copyText": "Kopier tekst",
+      "copyLink": "Kopier bare lenken",
+      "copied": "Kopiert",
+      "close": "Lukk",
+      "copyFailed": "Kopieringen virket ikke her. Merk teksten og kopier den selv."
     }
   },
   "detail": {

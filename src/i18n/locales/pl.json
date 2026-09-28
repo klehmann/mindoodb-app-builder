@@ -48,13 +48,25 @@
     "row": {
       "untitled": "Aplikacja bez nazwy",
       "started": "Rozpoczęto {date}",
-      "remove": "Usuń {label} z tej listy"
+      "remove": "Usuń {label} z tej listy",
+      "share": "Udostępnij {label}"
     },
     "confirm": {
       "title": "Usunąć „{label}” z tej listy?",
       "hint": "Usuwa to tylko dane, które App Builder zapisał o aplikacji tutaj, we własnej bazie. Nic więcej nie zostanie ruszone: projekt zostaje na GitHubie, opublikowana aplikacja nadal działa na Cloudflare, agent Cursora pozostaje tam, gdzie jest, a Haven ma ją dalej zainstalowaną. Zbudowanie nowej aplikacji o tej samej nazwie nie przywróci tego wiersza — kreator zatrzymuje się, gdy widzi, że ten projekt GitHub już istnieje. Opublikowana aplikacja pozostaje dostępna pod swoim adresem. Aby odzyskać wiersz, przywróć usunięty dokument w bazie App Builder w Haven.",
       "remove": "Usuń z listy",
       "keep": "Zachowaj"
+    },
+    "share": {
+      "title": "{appName} dla MindooDB Haven",
+      "message": "Chcę udostępnić Ci aplikację „{appName}”. Działa w MindooDB Haven, przestrzeni roboczej szyfrowanej end-to-end. Otwórz ten link, aby ją skonfigurować:\n\n{link}\n\nKorzystasz już z Haven? Możesz ją też zainstalować w App Store w „Nowa aplikacja” › „Z adresu URL”, podając ten adres:\n{appUrl}",
+      "code": "Kod jest publicznie dostępny na GitHubie:\n{repoUrl}\n\nDzięki „Skopiuj aplikację” w App Builderze możesz zbudować z niego własną wersję.",
+      "dialogIntro": "Skopiuj ten tekst i wyślij go e-mailem lub komunikatorem. Link konfiguruje Haven z aplikacją albo dodaje ją do istniejącego Haven.",
+      "copyText": "Kopiuj tekst",
+      "copyLink": "Kopiuj tylko link",
+      "copied": "Skopiowano",
+      "close": "Zamknij",
+      "copyFailed": "Kopiowanie tu nie zadziałało. Zaznacz tekst i skopiuj go samodzielnie."
     }
   },
   "detail": {

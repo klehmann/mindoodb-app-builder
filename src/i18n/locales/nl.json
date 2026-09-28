@@ -48,13 +48,25 @@
     "row": {
       "untitled": "Naamloze applicatie",
       "started": "Gestart op {date}",
-      "remove": "{label} uit deze lijst verwijderen"
+      "remove": "{label} uit deze lijst verwijderen",
+      "share": "{label} delen"
     },
     "confirm": {
       "title": "‘{label}’ uit deze lijst verwijderen?",
       "hint": "Hiermee verdwijnt alleen wat de App Builder over de applicatie heeft bewaard, hier in zijn eigen database. Aan de rest verandert niets: het project blijft op GitHub staan, de gepubliceerde applicatie blijft draaien op Cloudflare, een eventuele Cursor-agent blijft waar hij is, en Haven houdt hem geïnstalleerd. Een nieuwe app met dezelfde naam brengt deze rij niet terug — de builder stopt zodra hij ziet dat dat GitHub-project al bestaat. De gepubliceerde applicatie blijft bereikbaar op haar adres. Wil je de rij terug, herstel dan het verwijderde document in de App Builder-database in Haven.",
       "remove": "Uit lijst verwijderen",
       "keep": "Laten staan"
+    },
+    "share": {
+      "title": "{appName} voor MindooDB Haven",
+      "message": "Ik wil de app ‘{appName}’ met je delen. Hij draait in MindooDB Haven, een end-to-end versleutelde werkomgeving. Open deze link om hem in te stellen:\n\n{link}\n\nGebruik je Haven al? Dan kun je hem ook in de App Store onder ‘Nieuwe applicatie’ › ‘Vanaf een URL’ installeren met dit adres:\n{appUrl}",
+      "code": "De code staat openbaar op GitHub:\n{repoUrl}\n\nMet ‘App kopiëren’ in de App Builder kun je er je eigen versie van maken.",
+      "dialogIntro": "Kopieer deze tekst en stuur hem per e-mail of messenger. De link richt Haven in met de app, of voegt de app toe aan een bestaande Haven.",
+      "copyText": "Tekst kopiëren",
+      "copyLink": "Alleen link kopiëren",
+      "copied": "Gekopieerd",
+      "close": "Sluiten",
+      "copyFailed": "Kopiëren werkte hier niet. Selecteer de tekst en kopieer hem zelf."
     }
   },
   "detail": {

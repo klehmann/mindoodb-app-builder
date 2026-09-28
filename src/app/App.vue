@@ -14,7 +14,7 @@
  *   from the footer forever after, because a token that expires is the one thing that
  *   sends a user back.
  */
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 
 import AppDetail from "@/app/components/AppDetail.vue";
@@ -32,7 +32,7 @@ import { useGitHubConnect } from "@/app/useGitHubConnect";
 import { appDefinitionUrl, type StoredAppRecord } from "@/core/appRecords";
 import type { WorkerBuild } from "@/core/cloudflare";
 import { isSetupComplete, type BuilderCredentials } from "@/core/credentials";
-import { getAuthenticatedUser } from "@/core/github";
+import { getAuthenticatedUser, getRepositoryDetails } from "@/core/github";
 import { setUiLanguage } from "@/i18n";
 
 type BuilderViewId = "home" | "new" | "app" | "setup";
@@ -110,6 +110,44 @@ const cloudflare = useCloudflareConnect(
 );
 
 const activeRecord = computed(() => records.active.value);
+
+/**
+ * Whether each listed app's repository is public right now, asked of GitHub once per
+ * list. The record only knows what was chosen at creation, and "share" mentions the
+ * code only when anyone can actually open it. Asked ahead of time rather than on the
+ * click, because a share sheet has to open straight from the click that asked for it.
+ */
+const publicRepositories = ref<Record<string, boolean>>({});
+
+watch(
+  () => [records.records.value, session.credentials.value.githubToken] as const,
+  async ([list, token]) => {
+    if (!token) {
+      publicRepositories.value = {};
+      return;
+    }
+    const answers = await Promise.all(
+      list
+        .filter((stored) => stored.record.repoOwner && stored.record.repoName && stored.record.originReady)
+        .map(async (stored) => {
+          try {
+            const details = await getRepositoryDetails(
+              token,
+              stored.record.repoOwner,
+              stored.record.repoName,
+            );
+            return details ? ([stored.documentId, !details.private] as const) : null;
+          } catch {
+            return null;
+          }
+        }),
+    );
+    publicRepositories.value = Object.fromEntries(
+      answers.filter((entry): entry is readonly [string, boolean] => entry !== null),
+    );
+  },
+  { immediate: true },
+);
 
 function clearTransient(): void {
   statusMessage.value = null;
@@ -369,6 +407,7 @@ onMounted(async () => {
       :loading="records.loading.value"
       :can-store="records.canStore.value"
       :can-forget="records.canForget.value"
+      :public-repositories="publicRepositories"
       @open="openApp"
       @create="startNewApp"
       @copy="startCopyApp"

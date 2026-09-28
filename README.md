@@ -342,6 +342,16 @@ Left out of the copy: `.github/workflows/` (writing workflows needs a permission
 builder's GitHub App does not ask for). Refused: Git submodules, Git LFS, and repositories
 over 2,000 files or 50 MB.
 
+## Sharing an app
+
+A live app has a share button in the list. It opens the device's share sheet, or shows
+the text to copy, with the same invitation Haven's app information dialog sends: a link
+to the public Haven (`https://haven.mindoodb.com/?app=<app address>`) that sets Haven up
+with the app or adds it to an existing one, plus the app's address for "New app" › "From
+URL". When the repository is public — GitHub is asked when the list loads — the message
+also says where the code is, so the recipient can start their own version with "Copy an
+app".
+
 ## Building the same app twice
 
 Re-running the flow for an app that is already in Haven updates its description and its
