@@ -213,16 +213,38 @@ export function explainCursorLaunchError(message: string, status: number): strin
  * ships with the template, so it stays correct as the SDK changes, while a prompt
  * baked into this builder would drift the moment either side moves.
  */
-export function buildLaunchPrompt(branch = "main"): string {
+export function buildLaunchPrompt(
+  branch = "main",
+  options: { copy?: boolean } = {},
+): string {
+  /*
+   * A copy already works and already has an icon. The brief says what to change, and
+   * the one thing worth saying up front is that the rest should stay as it is — an
+   * agent handed a working app and a short wish list otherwise tends to rewrite it.
+   */
+  const work = options.copy
+    ? [
+        "Read AGENTS.md in the repository root first, if there is one: it states the",
+        "platform rules and links the documentation that matches the pinned SDK version.",
+        "",
+        "This repository is a copy of an existing, working app. TASK.md says what should",
+        "change; build on the existing code and keep everything else as it is. Keep",
+        "public/haven-app.json in step with the databases the app actually opens, and",
+        "leave the physical databaseId values in it alone. Run `pnpm test` and",
+        "`pnpm build` before you finish, and commit the lockfile if the install changes it.",
+      ]
+    : [
+        "Read AGENTS.md in the repository root first: it states the platform rules and links",
+        "the documentation that matches the pinned SDK version.",
+        "",
+        "Then implement TASK.md. Keep public/haven-app.json in step with the databases the",
+        "app actually opens. Generate a 512×512 PNG that matches the app's theme and write",
+        "it to public/appicon.png — Haven uses that file as the workspace icon after a",
+        "hosted-bundle install. Run `pnpm test` and `pnpm build` before you finish, and",
+        "commit the pnpm lockfile that the first install produces.",
+      ];
   return [
-    "Read AGENTS.md in the repository root first: it states the platform rules and links",
-    "the documentation that matches the pinned SDK version.",
-    "",
-    "Then implement TASK.md. Keep public/haven-app.json in step with the databases the",
-    "app actually opens. Generate a 512×512 PNG that matches the app's theme and write",
-    "it to public/appicon.png — Haven uses that file as the workspace icon after a",
-    "hosted-bundle install. Run `pnpm test` and `pnpm build` before you finish, and",
-    "commit the pnpm lockfile that the first install produces.",
+    ...work,
     "",
     // Said in the prompt as well as in the launch options because the agent can reach
     // for `gh pr create` on its own. Cloudflare deploys this app on a push to the

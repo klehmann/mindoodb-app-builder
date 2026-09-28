@@ -29,12 +29,14 @@
     "loading": "Zoeken naar je applicaties…",
     "readOnly": "Deze App Builder-database is voor jou alleen-lezen, dus afgeronde applicaties worden niet in deze lijst bewaard. Alles werkt gewoon — kopieer het adres van de applicatie voordat je de pagina verlaat.",
     "actions": {
-      "new": "Nieuwe applicatie"
+      "new": "Nieuwe applicatie",
+      "copy": "App kopiëren"
     },
     "empty": {
       "title": "Bouw je eerste applicatie",
       "body": "Vertel ons wat je team mist. Een AI-programmeur schrijft de applicatie, hij wordt op het web gepubliceerd en Haven installeert hem — daarna kun je hem blijven veranderen.",
-      "action": "Beschrijf een applicatie"
+      "action": "Beschrijf een applicatie",
+      "copyAction": "Of kopieer een bestaande app"
     },
     "stages": {
       "planned": "Nog niet gebouwd",
@@ -122,7 +124,8 @@
     "intro": {
       "withAi": "Dit duurt een paar minuten. We maken het project aan, publiceren het op het web en voegen het toe aan Haven, en zetten daarna de AI-programmeur aan het werk. Je kunt elke stap volgen.",
       "withoutAi": "Dit duurt een paar minuten. We maken het project aan, publiceren het op het web en voegen het toe aan Haven. Je kunt elke stap volgen.",
-      "starterOnly": "Wat je krijgt is de startapplicatie, live en geïnstalleerd — de code is daarna van jou om te wijzigen, met de hand of met een AI-hulpmiddel naar keuze."
+      "starterOnly": "Wat je krijgt is de startapplicatie, live en geïnstalleerd — de code is daarna van jou om te wijzigen, met de hand of met een AI-hulpmiddel naar keuze.",
+      "copyOnly": "Je krijgt een kopie van die app, live en geïnstalleerd onder de nieuwe naam — de code is daarna van jou om aan te passen, met de hand of met elke AI-tool."
     },
     "narrowAccess": "Je hebt ervoor gekozen om zelf repository's te kiezen, dus nadat het project is aangemaakt moet je Cloudflare (en Cursor) op GitHub toegang geven. We stoppen dan en laten je weten wanneer.",
     "finished": {
@@ -164,8 +167,8 @@
       "summary": "Database en rechten",
       "id": {
         "label": "Database-id",
-        "placeholder": "app_teamnotities",
-        "hint": "De opslag waarin deze app schrijft. Elke app krijgt een eigen, zodat twee apps nooit per ongeluk documenten delen."
+        "placeholder": "app_teamnotities_k7f3q2",
+        "hint": "De opslag waarin deze app schrijft. Elke app krijgt een eigen, zodat twee apps nooit per ongeluk documenten delen. De code van de app opent hem altijd als ‘main’, dus je kunt hem later in de app-instellingen in Haven naar een andere database laten verwijzen."
       },
       "label": {
         "label": "Naam in Haven",
@@ -184,6 +187,18 @@
         "timestamps": "Tijdstempels",
         "directory": "Directory",
         "sealedchannel": "Sealed channel"
+      }
+    },
+    "copy": {
+      "title": "Maak hem van jou",
+      "purpose": "De naam en de beschrijving komen uit de app die je kopieert. Pas ze aan en beschrijf wat er anders moet — de AI-ontwikkelaar bouwt voort op de bestaande code.",
+      "task": {
+        "label": "Wat moet er veranderen?",
+        "placeholder": "Geef elk item een vervaldatum en sorteer de lijst daarop. Laat al het andere zoals het is.",
+        "hint": "Dit is de opdracht waarmee de AI werkt. Zeg wat erbij moet, eraf moet of anders moet; wat je niet noemt, blijft zoals het is."
+      },
+      "database": {
+        "hint": "De kopie houdt de databases van de oorspronkelijke app, onder dezelfde namen in de code, maar elke database krijgt een nieuwe, lege eigen opslag. Wil je liever met de gegevens van het origineel werken, laat de database daar dan na de installatie naar verwijzen in de app-instellingen in Haven."
       }
     }
   },
@@ -331,7 +346,8 @@
       "start-build": "De applicatie publiceren",
       "wait-origin": "Wachten tot de applicatie live is",
       "propose": "De applicatie aan Haven toevoegen",
-      "launch-agent": "De AI-programmeur starten"
+      "launch-agent": "De AI-programmeur starten",
+      "copy-source": "De code van de app kopiëren"
     },
     "retry": {
       "button": "Publiceren opnieuw proberen",
@@ -377,7 +393,8 @@
     "validation": {
       "nameRequired": "De applicatie heeft een naam nodig.",
       "slugInvalid": "De naam van de repository mag alleen kleine letters, cijfers en streepjes bevatten.",
-      "databaseIdInvalid": "De database-id mag alleen kleine letters, cijfers, punten, underscores en streepjes bevatten en maximaal 64 tekens lang zijn."
+      "databaseIdInvalid": "De database-id mag alleen kleine letters, cijfers, punten, underscores en streepjes bevatten en maximaal 64 tekens lang zijn.",
+      "sourceRequired": "Zoek eerst de app op die je wilt kopiëren."
     },
     "ready": {
       "connectGithub": "Verbind eerst GitHub.",
@@ -445,7 +462,22 @@
       "pressRegisterInHaven": "Druk op ‘{action}’ wanneer je er klaar voor bent.",
       "noCursorKey": "Geen Cursor-API-sleutel verbonden.",
       "agentStarted": "Kijk mee terwijl het werkt: {url}",
-      "agentStartFailed": "De Cursor-agent kon niet worden gestart."
+      "agentStartFailed": "De Cursor-agent kon niet worden gestart.",
+      "sourceInputInvalid": "Dat is geen GitHub-repository en ook geen app-adres.",
+      "sourceNeedsGitHub": "Koppel eerst GitHub.",
+      "sourceAppUnreachable": "{url} kon niet worden gelezen. Controleer het adres, of plak in plaats daarvan de GitHub-repository.",
+      "sourceAppNoRepository": "De app op {url} geeft niet aan waar de code staat. Plak in plaats daarvan de GitHub-repository.",
+      "sourceRepoNotFound": "{fullName} is niet gevonden op GitHub.",
+      "sourceRepoPrivate": "{fullName} is privé. Alleen openbare code kan worden gekopieerd.",
+      "sourceTooLarge": "{fullName} is te groot om hier te kopiëren (meer dan {limit} bestanden of 50 MB).",
+      "sourceHasSubmodules": "{fullName} gebruikt Git-submodules, die hier niet kunnen worden gekopieerd.",
+      "sourceMissingFile": "{fullName} heeft geen {path}, dus het is geen Haven-app die deze builder kan kopiëren.",
+      "sourceUsesLfs": "{fullName} bewaart bestanden in Git LFS, die hier niet kunnen worden gekopieerd.",
+      "sourceDefinitionInvalid": "De haven-app.json in {fullName} is geen geldige app-definitie.",
+      "sourceCopied": "{count} bestanden uit {fullName}.",
+      "sourceCopiedSkipped": "Niet meegekopieerd: GitHub-workflowbestanden ({count}).",
+      "sourceCopyFailed": "De code van de app kon niet worden gekopieerd.",
+      "sourceCopyFromEarlierAttempt": "Al gekopieerd bij de vorige poging."
     }
   },
   "githubConnect": {
@@ -480,5 +512,24 @@
   "hostApi": {
     "unreachable": "De server van de builder is niet bereikbaar. Start hem met `mindoodb-app-builder`.",
     "badStatus": "De server antwoordde HTTP {status}."
+  },
+  "sourcePanel": {
+    "title": "Van welke app wil je uitgaan?",
+    "purpose": "Plak het adres van de code van de app op GitHub, of het adres waarop de app draait. De code wordt gekopieerd naar een nieuw, eigen project.",
+    "input": {
+      "label": "GitHub-repository of app-adres",
+      "placeholder": "https://github.com/eigenaar/app",
+      "hint": "De code moet openbaar zijn. Een app-adres werkt als de app aangeeft waar de code staat — apps uit deze builder doen dat als hun code openbaar is."
+    },
+    "load": {
+      "idle": "Opzoeken",
+      "running": "Bezig met opzoeken…"
+    },
+    "needsGithub": "Koppel eerst GitHub — de code wordt gelezen en gekopieerd via je GitHub-koppeling.",
+    "found": {
+      "files": "{count} bestanden",
+      "databases": "Databases: {ids}",
+      "skipped": "Niet gekopieerd: GitHub-workflowbestanden ({count})."
+    }
   }
 }

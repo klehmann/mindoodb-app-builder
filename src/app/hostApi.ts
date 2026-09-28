@@ -243,3 +243,9 @@ export function readCursorStatus(input: {
 }): Promise<{ agent: CursorAgent; run: CursorRun | null }> {
   return post("/api/cursor/status", { ...input });
 }
+
+/** An app's `haven-app.json`, read by the host for origins the page cannot reach. */
+export async function readAppDefinitionViaHost(url: string): Promise<unknown> {
+  const payload = await post<{ definition: unknown }>("/api/app-definition", { url });
+  return payload.definition;
+}

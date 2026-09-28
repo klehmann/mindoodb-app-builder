@@ -6,6 +6,7 @@
  * it becomes the repository name, the Worker name, the `appId`, and therefore the public
  * URL. Showing that URL while they type is cheaper than explaining it.
  */
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 
 import { APP_DATABASE_PERMISSIONS, type NewAppForm } from "@/app/useBuilderFlow";
@@ -14,11 +15,18 @@ import PageHeader from "@/app/components/PageHeader.vue";
 
 const { t } = useI18n();
 
-defineProps<{
+const props = defineProps<{
   form: NewAppForm;
   plannedRepositoryName: string;
   formError: string | null;
 }>();
+
+/**
+ * A copy asks a different question — what should change, not what to build — and has no
+ * database to design: the source's databases come along, each with a new id of its own.
+ */
+const copying = computed(() => props.form.mode === "copy" && Boolean(props.form.source));
+const copiedDatabases = computed(() => props.form.source?.databases ?? []);
 
 const emit = defineEmits<{
   labelInput: [string];
@@ -30,7 +38,11 @@ const emit = defineEmits<{
 
 <template>
   <section class="panel">
-    <PageHeader icon="details" :title="t('newAppForm.title')" :purpose="t('newAppForm.purpose')" />
+    <PageHeader
+      icon="details"
+      :title="copying ? t('newAppForm.copy.title') : t('newAppForm.title')"
+      :purpose="copying ? t('newAppForm.copy.purpose') : t('newAppForm.purpose')"
+    />
 
     <div class="field">
       <label for="app-label">{{ t("newAppForm.name.label") }}</label>
@@ -55,15 +67,17 @@ const emit = defineEmits<{
     </div>
 
     <div class="field">
-      <label for="app-task">{{ t("newAppForm.task.label") }}</label>
+      <label for="app-task">
+        {{ copying ? t("newAppForm.copy.task.label") : t("newAppForm.task.label") }}
+      </label>
       <textarea
         id="app-task"
         v-model="form.task"
         rows="6"
-        :placeholder="t('newAppForm.task.placeholder')"
+        :placeholder="copying ? t('newAppForm.copy.task.placeholder') : t('newAppForm.task.placeholder')"
       ></textarea>
       <p class="hint">
-        {{ t("newAppForm.task.hint") }}
+        {{ copying ? t("newAppForm.copy.task.hint") : t("newAppForm.task.hint") }}
       </p>
     </div>
 
@@ -99,7 +113,20 @@ const emit = defineEmits<{
       </div>
     </details>
 
-    <details class="advanced">
+    <details v-if="copying" class="advanced">
+      <summary>{{ t("newAppForm.database.summary") }}</summary>
+      <div class="advanced__body">
+        <p class="hint">{{ t("newAppForm.copy.database.hint") }}</p>
+        <ul v-if="copiedDatabases.length > 0" class="copied-databases">
+          <li v-for="database in copiedDatabases" :key="database.logicalDatabaseId">
+            <code>{{ database.logicalDatabaseId }}</code>
+            <span v-if="database.label !== database.logicalDatabaseId"> · {{ database.label }}</span>
+          </li>
+        </ul>
+      </div>
+    </details>
+
+    <details v-else class="advanced">
       <summary>{{ t("newAppForm.database.summary") }}</summary>
       <div class="advanced__body">
         <div class="field">
@@ -164,6 +191,11 @@ const emit = defineEmits<{
   flex-direction: column;
   gap: 0.6rem;
   padding-top: 0.75rem;
+}
+
+.copied-databases {
+  margin: 0;
+  padding-left: 1.1rem;
 }
 
 .permissions {

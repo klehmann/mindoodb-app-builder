@@ -263,6 +263,55 @@ describe("appRecordFromIdentity", () => {
     expect(appStage(created)).toBe("planned");
     expect(created.createdAt).not.toBe("");
   });
+
+  it("remembers the physical database id a new app will ask for", () => {
+    const created = appRecordFromIdentity(
+      { label: "Team Notes", slug: "team-notes", description: "", task: "", databaseSuffix: "k7f3q2" },
+      { private: true },
+    );
+    expect(created).toMatchObject({
+      databaseId: "app_team-notes_k7f3q2",
+      databaseSuffix: "k7f3q2",
+      sourceRepoUrl: "",
+    });
+  });
+
+  it("remembers what a copy was copied from, pinned to the commit", () => {
+    const created = appRecordFromIdentity(
+      {
+        label: "Our Poll",
+        slug: "our-poll",
+        description: "",
+        task: "",
+        databaseSuffix: "k7f3q2",
+        copiedFrom: {
+          fullName: "acme/team-poll",
+          htmlUrl: "https://github.com/acme/team-poll",
+          commitSha: "abcdef1234567",
+          databases: [{ logicalDatabaseId: "main", label: "Polls" }],
+        },
+      },
+      { private: false },
+    );
+    expect(created).toMatchObject({
+      databaseId: "",
+      databaseSuffix: "k7f3q2",
+      sourceRepoUrl: "https://github.com/acme/team-poll",
+      sourceCommit: "abcdef1234567",
+      sourceCopied: false,
+    });
+    expect(applyFlowOutcome(created, { sourceCopied: true }).sourceCopied).toBe(true);
+  });
+
+  it("reads the new fields back, and a javascript: source as nothing", () => {
+    expect(
+      appRecordFromDocumentData({
+        databaseId: "app_x_k7f3q2",
+        sourceRepoUrl: "javascript:alert(1)",
+        sourceCopied: true,
+      }),
+    ).toMatchObject({ databaseId: "app_x_k7f3q2", sourceRepoUrl: "", sourceCopied: true });
+  });
 });
 
 describe("applyFlowOutcome", () => {

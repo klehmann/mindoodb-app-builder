@@ -29,18 +29,30 @@ describe("AppList", () => {
     expect(wrapper.find(".apps__list").exists()).toBe(false);
   });
 
-  it("offers exactly one way to start, whether or not there is a list", () => {
+  it("offers the same two ways to start, whether or not there is a list", () => {
     const starts = (wrapper: ReturnType<typeof render>) =>
       wrapper.findAll("button").filter((button) => button.text() !== "");
 
-    // Empty: the pitch's own button, and nothing in the header repeating it.
-    expect(starts(render()).map((button) => button.text())).toEqual(["Describe an app"]);
+    // Empty: the pitch's own buttons, and nothing in the header repeating them.
+    expect(starts(render()).map((button) => button.text())).toEqual([
+      "Describe an app",
+      "Or copy an existing app",
+    ]);
 
-    // With a list: the header button, plus one row per app.
+    // With a list: the two header buttons, plus one row per app.
     const listed = starts(render({ records: [stored()] })).map((button) => button.text());
-    expect(listed[0]).toBe("New app");
-    expect(listed).toHaveLength(2);
-    expect(render({ records: [stored()] }).find("header .apps__new").text()).toBe("New app");
+    expect(listed.slice(0, 2)).toEqual(["Copy an app", "New app"]);
+    expect(listed).toHaveLength(3);
+  });
+
+  it("asks for a copy from either place", async () => {
+    const empty = render();
+    await empty.findAll("button").find((button) => button.text() === "Or copy an existing app")!.trigger("click");
+    expect(empty.emitted("copy")).toHaveLength(1);
+
+    const listed = render({ records: [stored()] });
+    await listed.findAll("button").find((button) => button.text() === "Copy an app")!.trigger("click");
+    expect(listed.emitted("copy")).toHaveLength(1);
   });
 
   it("does not show the empty pitch while still looking", () => {

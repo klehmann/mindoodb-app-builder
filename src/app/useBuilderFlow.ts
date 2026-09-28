@@ -20,12 +20,20 @@ import {
   isValidDatabaseId,
   isValidSlug,
   normalizeDatabaseIdInput,
+  physicalDatabaseId,
+  randomDatabaseSuffix,
   resolveAppDatabase,
   slugifyAppName,
   type AppDatabasePermission,
   type AppIdentity,
 } from "@/core/appIdentity";
+import {
+  copySourceFiles,
+  resolveAppSource,
+  type AppSource,
+} from "@/core/appSource";
 import { isCloudflareTokenStale } from "@/core/credentials";
+import { buildLaunchPrompt } from "@/core/cursorAgents";
 import {
   CLOUDFLARE_PHASE_STEP_IDS,
   CURSOR_PHASE_STEP_IDS,
@@ -59,9 +67,14 @@ import {
 import type { useAppRecords } from "@/app/useAppRecords";
 import {
   commitFiles,
+  createBlobBase64,
   generateRepositoryFromTemplate,
   getFileText,
   getRepository,
+  getRepositoryDetails,
+  readBlobBase64,
+  readRepositoryTree,
+  replaceBranchContent,
   waitForRepositoryContent,
   type GitHubRepository,
 } from "@/core/github";
@@ -71,6 +84,7 @@ import {
   connectCloudflarePushToDeploy,
   ensureCloudflareWorker,
   launchCursorAgent,
+  readAppDefinitionViaHost,
   refreshCloudflareTokenViaHost,
   startCloudflareBuild,
   type BuilderHostConfig,
@@ -78,7 +92,20 @@ import {
 import type { useBuilderSession } from "@/app/useBuilderSession";
 import { t } from "@/i18n";
 
+/** A brand-new app from the starter, or a copy of an existing one. */
+export type NewAppMode = "new" | "copy";
+
 export interface NewAppForm {
+  mode: NewAppMode;
+  /** What the user pasted to name the app to copy: a repository or an app URL. */
+  sourceInput: string;
+  /** The checked source, once `sourceInput` was looked up. Null until then. */
+  source: AppSource | null;
+  /**
+   * The random part of this app's physical database ids. Chosen once, when the form
+   * opens, so the id shown while typing is the id that gets committed.
+   */
+  databaseSuffix: string;
   label: string;
   slug: string;
   /** True while the user has not edited the slug, so it keeps following the label. */
@@ -95,8 +122,12 @@ export interface NewAppForm {
   permissions: AppDatabasePermission[];
 }
 
-export function createEmptyForm(): NewAppForm {
+export function createEmptyForm(mode: NewAppMode = "new"): NewAppForm {
   return {
+    mode,
+    sourceInput: "",
+    source: null,
+    databaseSuffix: randomDatabaseSuffix(),
     label: "",
     slug: "",
     slugFollowsLabel: true,
@@ -136,6 +167,9 @@ export function useBuilderFlow(
   /** Survives later phase step lists that no longer include `wait-origin`. */
   const originReady = ref(false);
   const wiredForBuild = ref(false);
+  /** A source lookup in flight, and why the last one failed. */
+  const sourceLoading = ref(false);
+  const sourceError = ref<FlowNote | null>(null);
 
   const identity = computed<AppIdentity>(() => ({
     label: form.value.label.trim(),
@@ -145,6 +179,16 @@ export function useBuilderFlow(
     databaseId: form.value.databaseId.trim(),
     databaseLabel: form.value.databaseLabel.trim(),
     databasePermissions: [...form.value.permissions],
+    databaseSuffix: form.value.databaseSuffix || undefined,
+    copiedFrom:
+      form.value.mode === "copy" && form.value.source
+        ? {
+            fullName: form.value.source.fullName,
+            htmlUrl: form.value.source.htmlUrl,
+            commitSha: form.value.source.commitSha,
+            databases: form.value.source.databases,
+          }
+        : undefined,
   }));
 
   /**
@@ -166,13 +210,16 @@ export function useBuilderFlow(
   });
 
   const formError = computed(() => {
+    if (form.value.mode === "copy" && !form.value.source) {
+      return t("flow.validation.sourceRequired");
+    }
     if (!identity.value.label) {
       return t("flow.validation.nameRequired");
     }
     if (!isValidSlug(identity.value.slug)) {
       return t("flow.validation.slugInvalid");
     }
-    if (!isValidDatabaseId(resolveAppDatabase(identity.value).id)) {
+    if (!identity.value.copiedFrom && !isValidDatabaseId(resolveAppDatabase(identity.value).id)) {
       return t("flow.validation.databaseIdInvalid");
     }
     return null;
@@ -263,7 +310,7 @@ export function useBuilderFlow(
     }
     if (form.value.databaseIdFollowsSlug) {
       const slug = form.value.slug.trim();
-      form.value.databaseId = slug ? databaseIdFromSlug(slug) : "";
+      form.value.databaseId = slug ? physicalDatabaseId(slug, form.value.databaseSuffix) : "";
     }
   }
 
@@ -290,6 +337,82 @@ export function useBuilderFlow(
   function onDatabaseLabelInput(value: string): void {
     form.value.databaseLabel = value;
     form.value.databaseLabelFollowsLabel = false;
+  }
+
+  /**
+   * An app's `haven-app.json`: read directly where the page may, through the host where
+   * it may not. Haven only lets this builder reach the origins it declared, so an app on
+   * its own domain is out of the page's reach, but not the host's.
+   */
+  async function fetchAppDefinition(definitionUrl: string): Promise<unknown> {
+    try {
+      const response = await fetch(definitionUrl, { cache: "no-store" });
+      if (response.ok) {
+        return (await response.json()) as unknown;
+      }
+    } catch {
+      // Blocked or unreachable from here; the host may still get through.
+    }
+    return readAppDefinitionViaHost(definitionUrl);
+  }
+
+  async function lookUpSource(input: string, commitSha?: string): Promise<AppSource> {
+    const token = session.credentials.value.githubToken;
+    return resolveAppSource(
+      input,
+      {
+        fetchAppDefinition,
+        getRepositoryDetails: (owner, repo) => getRepositoryDetails(token, owner, repo),
+        readTree: (owner, repo, ref) => readRepositoryTree({ token, owner, repo, ref }),
+        readFile: (owner, repo, path, ref) => getFileText({ token, owner, repo, path, ref }),
+      },
+      { commitSha },
+    );
+  }
+
+  /**
+   * Look up what the user pasted and, when it is a copyable app, fill in the form from
+   * it: the name and the one-line description. The brief stays empty — what should
+   * change is the user's to say.
+   *
+   * The name is taken over only while the user has not typed one of their own, so a
+   * second lookup does not overwrite a name they already changed.
+   */
+  async function loadSource(): Promise<void> {
+    const input = form.value.sourceInput.trim();
+    if (!input || sourceLoading.value) {
+      return;
+    }
+    if (!session.credentialsStatus.value.github) {
+      sourceError.value = { code: "sourceNeedsGitHub" };
+      return;
+    }
+    sourceLoading.value = true;
+    sourceError.value = null;
+    try {
+      const source = await lookUpSource(input);
+      const previous = form.value.source;
+      form.value.source = source;
+      if (!form.value.label.trim() || form.value.label === previous?.label) {
+        onLabelInput(source.label || source.repo);
+      }
+      if (!form.value.description.trim() || form.value.description === previous?.description) {
+        form.value.description = source.description;
+      }
+    } catch (error) {
+      form.value.source = null;
+      sourceError.value =
+        error instanceof FlowNoteError
+          ? error.note
+          : { code: "external", params: { message: error instanceof Error ? error.message : String(error) } };
+    } finally {
+      sourceLoading.value = false;
+    }
+  }
+
+  function onSourceInput(value: string): void {
+    form.value.sourceInput = value;
+    sourceError.value = null;
   }
 
   function buildDependencies(): DeployNowDependencies {
@@ -355,6 +478,27 @@ export function useBuilderFlow(
           ]);
           return { packageJson, wranglerConfig, appDefinition };
         },
+        copySource: ({ repository, source }) =>
+          copySourceFiles(source, {
+            readBlob: (sha) =>
+              readBlobBase64({ token: githubToken, owner: source.owner, repo: source.repo, sha }),
+            createBlob: (content) =>
+              createBlobBase64({
+                token: githubToken,
+                owner: repository.owner,
+                repo: repository.name,
+                content,
+              }),
+            replaceBranch: (entries, message) =>
+              replaceBranchContent({
+                token: githubToken,
+                owner: repository.owner,
+                repo: repository.name,
+                branch: repository.defaultBranch,
+                message,
+                entries,
+              }),
+          }),
         commitFiles: (input) =>
           commitFiles({
             token: githubToken,
@@ -455,6 +599,10 @@ export function useBuilderFlow(
                   cursorToken: credentials.cursorToken,
                   repositoryUrl: repository.htmlUrl,
                   branch: repository.defaultBranch,
+                  // Only a copy gets its own wording; a new app keeps the host's default.
+                  ...(isCopy()
+                    ? { prompt: buildLaunchPrompt(repository.defaultBranch, { copy: true }) }
+                    : {}),
                 });
                 return {
                   id: launched.agent.id,
@@ -485,6 +633,7 @@ export function useBuilderFlow(
           installedAppInstanceId: next.installedAppInstanceId,
           cloudflareAccountId: credentials.cloudflareAccountId,
           identityCommitted: next.identityCommitted,
+          sourceCopied: next.sourceCopied,
           wiredForBuild: next.steps.some(
             (step) => step.id === "connect-builds" && step.status === "done",
           ),
@@ -543,12 +692,17 @@ export function useBuilderFlow(
     steps.value = next.steps.map((step) => ({ ...step }));
   }
 
+  /** True for an app that started, or is starting, from an existing app. */
+  function isCopy(): boolean {
+    return form.value.mode === "copy" || Boolean(records?.active.value?.sourceRepoUrl);
+  }
+
   async function createGitHubProject(): Promise<void> {
     if (!canCreateRepo.value) {
       return;
     }
     running.value = true;
-    steps.value = createGitHubPhaseSteps();
+    steps.value = createGitHubPhaseSteps({ copy: Boolean(form.value.source) });
 
     try {
       mergeOutcome(
@@ -557,6 +711,7 @@ export function useBuilderFlow(
             identity: identity.value,
             owner: session.credentials.value.githubOwner,
             private: form.value.private,
+            ...(form.value.source ? { source: form.value.source } : {}),
           },
           buildDependencies(),
         ),
@@ -650,7 +805,8 @@ export function useBuilderFlow(
   async function runSequence(existingRepository?: GitHubRepository): Promise<void> {
     await refreshCloudflareIfStale();
     running.value = true;
-    steps.value = createInitialSteps();
+    const source = form.value.mode === "copy" ? form.value.source : null;
+    steps.value = createInitialSteps({ copy: Boolean(source) });
 
     try {
       mergeOutcome(
@@ -660,6 +816,9 @@ export function useBuilderFlow(
             owner: session.credentials.value.githubOwner,
             private: form.value.private,
             ...(existingRepository ? { existingRepository } : {}),
+            ...(source
+              ? { source, sourceCopied: Boolean(records?.active.value?.sourceCopied) }
+              : {}),
           },
           buildDependencies(),
         ),
@@ -696,6 +855,11 @@ export function useBuilderFlow(
     records?.resume(stored);
 
     form.value = {
+      mode: record.sourceRepoUrl ? "copy" : "new",
+      sourceInput: record.sourceRepoUrl,
+      // Looked up again only if the run has to go back to GitHub; see `continueApp`.
+      source: null,
+      databaseSuffix: record.databaseSuffix,
       label: record.label,
       slug: record.appId,
       // The name is settled: it is in the repository, the Worker, and haven-app.json.
@@ -703,7 +867,8 @@ export function useBuilderFlow(
       description: record.description,
       task: record.task,
       private: record.private,
-      databaseId: databaseIdFromSlug(record.appId),
+      // Records from before unique ids never stored one; `app_<slug>` is what they used.
+      databaseId: record.databaseId || databaseIdFromSlug(record.appId),
       databaseLabel: record.label,
       databaseIdFollowsSlug: false,
       databaseLabelFollowsLabel: false,
@@ -720,6 +885,7 @@ export function useBuilderFlow(
       agent: storedAgent,
       installedAppInstanceId: record.havenInstanceId || null,
       identityCommitted: record.identityCommitted,
+      sourceCopied: record.sourceCopied,
       warnings: [],
       error: null,
     };
@@ -741,7 +907,32 @@ export function useBuilderFlow(
       return;
     }
 
-    switch (nextAppAction(record)) {
+    const action = nextAppAction(record);
+    // A copy that has not been named yet still needs its source — to copy it, or to
+    // know its databases for the identity commit. Looked up at the commit that was
+    // copied the first time, so a resumed run cannot pick up newer code.
+    if ((action === "create" || action === "commit") && record.sourceRepoUrl && !form.value.source) {
+      sourceLoading.value = true;
+      try {
+        form.value.source = await lookUpSource(record.sourceRepoUrl, record.sourceCommit || undefined);
+      } catch (error) {
+        // Shown where the app's page shows every other stop: on the step it stopped at.
+        const note: FlowNote =
+          error instanceof FlowNoteError ? error.note : { code: "sourceCopyFailed" };
+        sourceError.value = note;
+        steps.value = createInitialSteps({ copy: true }).map((step) =>
+          step.id === "copy-source" ? { ...step, status: "failed", detail: note } : step,
+        );
+        if (result.value) {
+          result.value = { ...result.value, error: note };
+        }
+        return;
+      } finally {
+        sourceLoading.value = false;
+      }
+    }
+
+    switch (action) {
       case "create":
         // The name was reserved in the list but nothing was built. Run the sequence on
         // the existing record rather than beginning a second one for the same app.
@@ -826,8 +1017,10 @@ export function useBuilderFlow(
     }
   }
 
-  function reset(): void {
-    form.value = createEmptyForm();
+  function reset(mode: NewAppMode = "new"): void {
+    form.value = createEmptyForm(mode);
+    sourceError.value = null;
+    sourceLoading.value = false;
     steps.value = createInitialSteps();
     result.value = null;
     agent.value = null;
@@ -861,16 +1054,20 @@ export function useBuilderFlow(
     identity,
     identityValid,
     launchCursor,
+    loadSource,
     onDatabaseIdInput,
     onDatabaseLabelInput,
     onLabelInput,
     onSlugInput,
+    onSourceInput,
     originReady,
     plannedRepositoryName,
     registerHaven,
     reset,
     result,
     running,
+    sourceError,
+    sourceLoading,
     steps,
   };
 }

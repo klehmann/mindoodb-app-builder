@@ -131,6 +131,8 @@ interface RawRepository {
   owner: { id: number; login: string };
   html_url: string;
   default_branch: string;
+  private?: boolean;
+  description?: string | null;
 }
 
 function toRepository(raw: RawRepository): GitHubRepository {
@@ -545,6 +547,180 @@ export async function commitFiles(options: {
     method: "PATCH",
     path: `${base}/git/refs/heads/${encodeURIComponent(branch)}`,
     body: { sha: commit.sha },
+  });
+
+  return commit.sha;
+}
+
+/** A repository plus the two facts a copy needs that {@link GitHubRepository} leaves out. */
+export interface GitHubRepositoryDetails {
+  repository: GitHubRepository;
+  private: boolean;
+  description: string;
+}
+
+/** `null` when the repository does not exist or this token cannot see it. */
+export async function getRepositoryDetails(
+  token: string,
+  owner: string,
+  name: string,
+): Promise<GitHubRepositoryDetails | null> {
+  const raw = await githubRequest<RawRepository>({
+    token,
+    path: `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`,
+    emptyOn: [404],
+  });
+  if (!raw) {
+    return null;
+  }
+  return {
+    repository: toRepository(raw),
+    // Absent means GitHub did not say, and "not public" is the safe reading of that.
+    private: raw.private !== false,
+    description: typeof raw.description === "string" ? raw.description.trim() : "",
+  };
+}
+
+export interface GitHubTreeEntry {
+  path: string;
+  /** `100644`, `100755`, `120000` (symlink), `040000` (tree) or `160000` (submodule). */
+  mode: string;
+  type: "blob" | "tree" | "commit";
+  sha: string;
+  /** Blobs only. */
+  size?: number;
+}
+
+export interface GitHubTree {
+  /** The commit the tree was read at, so a copy can say exactly what it copied. */
+  commitSha: string;
+  entries: GitHubTreeEntry[];
+  /** GitHub stops listing past a limit; a truncated tree cannot be copied faithfully. */
+  truncated: boolean;
+}
+
+/** Every entry of a branch or commit, recursively, in one call. */
+export async function readRepositoryTree(options: {
+  token: string;
+  owner: string;
+  repo: string;
+  ref: string;
+}): Promise<GitHubTree> {
+  const { token, owner, repo, ref } = options;
+  const base = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+
+  const commit = await githubRequest<{ sha: string; commit: { tree: { sha: string } } }>({
+    token,
+    path: `${base}/commits/${encodeURIComponent(ref)}`,
+  });
+  if (!commit) {
+    throw new GitHubError(`${owner}/${repo} has no commit at ${ref}.`, 404);
+  }
+
+  const tree = await githubRequest<{ tree: GitHubTreeEntry[]; truncated?: boolean }>({
+    token,
+    path: `${base}/git/trees/${commit.commit.tree.sha}?recursive=1`,
+  });
+  if (!tree) {
+    throw new GitHubError(`The file list of ${owner}/${repo} could not be read.`, 500);
+  }
+  return { commitSha: commit.sha, entries: tree.tree, truncated: tree.truncated === true };
+}
+
+/** One blob's bytes, as the base64 GitHub sends them (line breaks removed). */
+export async function readBlobBase64(options: {
+  token: string;
+  owner: string;
+  repo: string;
+  sha: string;
+}): Promise<string> {
+  const { token, owner, repo, sha } = options;
+  const blob = await githubRequest<{ content: string; encoding: string }>({
+    token,
+    path: `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/blobs/${sha}`,
+  });
+  if (!blob || blob.encoding !== "base64") {
+    throw new GitHubError(`File ${sha} of ${owner}/${repo} could not be read.`, 500);
+  }
+  return blob.content.replace(/\s+/g, "");
+}
+
+export async function createBlobBase64(options: {
+  token: string;
+  owner: string;
+  repo: string;
+  content: string;
+}): Promise<string> {
+  const { token, owner, repo, content } = options;
+  const blob = await githubRequest<{ sha: string }>({
+    token,
+    method: "POST",
+    path: `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/blobs`,
+    body: { content, encoding: "base64" },
+  });
+  if (!blob) {
+    throw new GitHubError("A file could not be stored on GitHub.", 500);
+  }
+  return blob.sha;
+}
+
+/**
+ * One entry of a replacement tree: either text GitHub stores for us (`content`), or a
+ * blob that already exists in the target repository (`sha`).
+ */
+export type ReplacementTreeEntry =
+  | { path: string; mode: string; content: string }
+  | { path: string; mode: string; sha: string };
+
+/**
+ * Make `branch` consist of exactly these files, as one commit with no parent.
+ *
+ * No parent on purpose: the branch starts over with this commit as its whole history,
+ * which is what a copy should look like — the starter template the repository was
+ * generated from is not part of the app. The ref moves with `force`, because the new
+ * commit is not a descendant of the old one.
+ */
+export async function replaceBranchContent(options: {
+  token: string;
+  owner: string;
+  repo: string;
+  branch: string;
+  message: string;
+  entries: ReplacementTreeEntry[];
+}): Promise<string> {
+  const { token, owner, repo, branch, message, entries } = options;
+  if (entries.length === 0) {
+    throw new GitHubError("A commit needs at least one file.", 400);
+  }
+  const base = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+
+  const tree = await githubRequest<{ sha: string }>({
+    token,
+    method: "POST",
+    path: `${base}/git/trees`,
+    body: {
+      tree: entries.map((entry) => ({ ...entry, type: "blob" })),
+    },
+  });
+  if (!tree) {
+    throw new GitHubError("The commit tree could not be created.", 500);
+  }
+
+  const commit = await githubRequest<{ sha: string }>({
+    token,
+    method: "POST",
+    path: `${base}/git/commits`,
+    body: { message, tree: tree.sha, parents: [] },
+  });
+  if (!commit) {
+    throw new GitHubError("The commit could not be created.", 500);
+  }
+
+  await githubRequest({
+    token,
+    method: "PATCH",
+    path: `${base}/git/refs/heads/${encodeURIComponent(branch)}`,
+    body: { sha: commit.sha, force: true },
   });
 
   return commit.sha;

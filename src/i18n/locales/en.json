@@ -29,12 +29,14 @@
     "loading": "Looking for your apps…",
     "readOnly": "This App Builder database is read-only for you, so finished apps are not kept in this list. Everything still works — copy the app’s address before you leave the page.",
     "actions": {
-      "new": "New app"
+      "new": "New app",
+      "copy": "Copy an app"
     },
     "empty": {
       "title": "Build your first app",
       "body": "Tell us what your team is missing. An AI developer writes it, it gets published to the web, and Haven installs it — you can keep changing it afterwards.",
-      "action": "Describe an app"
+      "action": "Describe an app",
+      "copyAction": "Or copy an existing app"
     },
     "stages": {
       "planned": "Not built yet",
@@ -122,7 +124,8 @@
     "intro": {
       "withAi": "This takes a couple of minutes. We create the project, publish it to the web, and add it to Haven, then set the AI developer to work on it. You can watch each step.",
       "withoutAi": "This takes a couple of minutes. We create the project, publish it to the web, and add it to Haven. You can watch each step.",
-      "starterOnly": "What you get is the starter app, live and installed — the code is then yours to change, by hand or with any AI tool."
+      "starterOnly": "What you get is the starter app, live and installed — the code is then yours to change, by hand or with any AI tool.",
+      "copyOnly": "What you get is a copy of that app, live and installed under its new name — the code is then yours to change, by hand or with any AI tool."
     },
     "narrowAccess": "You chose to pick repositories yourself, so after the project is created you will need to allow Cloudflare (and Cursor) to see it on GitHub. We will stop and tell you when.",
     "finished": {
@@ -164,8 +167,8 @@
       "summary": "Database and access",
       "id": {
         "label": "Database id",
-        "placeholder": "app_team-notes",
-        "hint": "The store this app writes to. Each app gets its own, so two apps never share documents by accident."
+        "placeholder": "app_team-notes_k7f3q2",
+        "hint": "The store this app writes to. Each app gets its own, so two apps never share documents by accident. The app's code always opens it as “main”, so you can point it at another database later in Haven's app settings."
       },
       "label": {
         "label": "Name shown in Haven",
@@ -184,6 +187,18 @@
         "timestamps": "Timestamps",
         "directory": "Directory",
         "sealedchannel": "Sealed channel"
+      }
+    },
+    "copy": {
+      "title": "Make it yours",
+      "purpose": "The name and description come from the app you copy. Change them, and describe what should be different — the AI developer builds on the existing code.",
+      "task": {
+        "label": "What should change?",
+        "placeholder": "Add a due date to every entry and sort the list by it. Keep everything else as it is.",
+        "hint": "This is the brief the AI works from. Say what to add, remove or do differently; anything you do not mention stays as it is."
+      },
+      "database": {
+        "hint": "The copy keeps the databases the original app uses, under the same names in its code, but each one gets a new, empty store of its own. To work on the original's data instead, point the database at it in the app's settings in Haven after installing."
       }
     }
   },
@@ -331,7 +346,8 @@
       "start-build": "Publish the app",
       "wait-origin": "Wait for the app to go live",
       "propose": "Add the app to Haven",
-      "launch-agent": "Start the AI developer"
+      "launch-agent": "Start the AI developer",
+      "copy-source": "Copy the app's code"
     },
     "retry": {
       "button": "Try publishing again",
@@ -377,7 +393,8 @@
     "validation": {
       "nameRequired": "The app needs a name.",
       "slugInvalid": "The repository name may only contain lowercase letters, digits, and dashes.",
-      "databaseIdInvalid": "The database id may only use lowercase letters, digits, dots, underscores and dashes, and must be 64 characters or fewer."
+      "databaseIdInvalid": "The database id may only use lowercase letters, digits, dots, underscores and dashes, and must be 64 characters or fewer.",
+      "sourceRequired": "Look up the app you want to copy first."
     },
     "ready": {
       "connectGithub": "Connect GitHub first.",
@@ -445,7 +462,22 @@
       "pressRegisterInHaven": "Press “{action}” when you are ready.",
       "noCursorKey": "No Cursor API key connected.",
       "agentStarted": "Watch it work: {url}",
-      "agentStartFailed": "The Cursor agent could not be started."
+      "agentStartFailed": "The Cursor agent could not be started.",
+      "sourceInputInvalid": "That is neither a GitHub repository nor an app address.",
+      "sourceNeedsGitHub": "Connect GitHub first.",
+      "sourceAppUnreachable": "{url} could not be read. Check the address, or paste the GitHub repository instead.",
+      "sourceAppNoRepository": "The app at {url} does not say where its code is. Paste its GitHub repository instead.",
+      "sourceRepoNotFound": "{fullName} was not found on GitHub.",
+      "sourceRepoPrivate": "{fullName} is private. Only public code can be copied.",
+      "sourceTooLarge": "{fullName} is too large to copy here (more than {limit} files or 50 MB).",
+      "sourceHasSubmodules": "{fullName} uses Git submodules, which cannot be copied here.",
+      "sourceMissingFile": "{fullName} has no {path}, so it is not a Haven app this builder can copy.",
+      "sourceUsesLfs": "{fullName} keeps files in Git LFS, which cannot be copied here.",
+      "sourceDefinitionInvalid": "The haven-app.json in {fullName} is not a valid app definition.",
+      "sourceCopied": "{count} files from {fullName}.",
+      "sourceCopiedSkipped": "Left out of the copy: GitHub workflow files ({count}).",
+      "sourceCopyFailed": "The app's code could not be copied.",
+      "sourceCopyFromEarlierAttempt": "Already copied by the earlier attempt."
     }
   },
   "githubConnect": {
@@ -480,5 +512,24 @@
   "hostApi": {
     "unreachable": "The builder host is not reachable. Start it with `mindoodb-app-builder`.",
     "badStatus": "The host answered HTTP {status}."
+  },
+  "sourcePanel": {
+    "title": "Which app do you want to start from?",
+    "purpose": "Paste the address of the app's code on GitHub, or the address the app runs at. Its code is copied into a new project of your own.",
+    "input": {
+      "label": "GitHub repository or app address",
+      "placeholder": "https://github.com/owner/app",
+      "hint": "The code has to be public. An app address works when the app says where its code is — apps from this builder do when their code is public."
+    },
+    "load": {
+      "idle": "Look it up",
+      "running": "Looking it up…"
+    },
+    "needsGithub": "Connect GitHub first — the code is read and copied with your GitHub connection.",
+    "found": {
+      "files": "{count} files",
+      "databases": "Databases: {ids}",
+      "skipped": "Not copied: GitHub workflow files ({count})."
+    }
   }
 }

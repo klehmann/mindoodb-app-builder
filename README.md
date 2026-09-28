@@ -281,7 +281,8 @@ builders keep working.
 ## The build, step by step
 
 1. Check the repository name is free — failing here costs nothing.
-2. Create the repository from the starter template.
+2. Create the repository from the starter template. When copying an app, replace its
+   files with the source app's (see [Copying an existing app](#copying-an-existing-app)).
 3. Create a placeholder Worker, so the public URL and Cloudflare's script tag exist.
 4. Connect push-to-deploy, before the first push rather than after.
 5. Commit the app's identity (name, `wrangler.jsonc`, `haven-app.json`) and your brief
@@ -294,6 +295,52 @@ builders keep working.
 
 Every step reports its own reason when it fails, and anything already created is named so
 you can continue or clean up by hand.
+
+## Databases
+
+A generated app opens its database by the logical id `main` and nothing else. The
+physical database that id maps to is chosen per app — `app_<name>_<random>`, for example
+`app_team-poll_k7f3q2` — and written into `haven-app.json` as `databaseId`, so Haven
+creates a store of its own for every app, even when two people in one tenant both build a
+"Team Poll". Because the code never sees the physical id, you can point the app at a
+different database later in its settings in Haven without touching the code.
+
+Apps built before this keep `app_<name>` as both ids, so their data stays where it is.
+
+## Copying an existing app
+
+"Copy an app" starts from an existing app's code instead of the starter. Paste either:
+
+- its **GitHub repository** (`https://github.com/owner/repo`, `owner/repo`, a clone URL), or
+- the **address the app runs at**. This works when its `haven-app.json` says where the
+  code is:
+
+  ```json
+  "source": { "repository": "https://github.com/owner/repo" }
+  ```
+
+  The builder writes this field for every app whose repository is public, and removes it
+  for a private one — the file is public, and naming a private repository in it would only
+  publish its name. Apps built elsewhere can add it by hand.
+
+The code has to be public, and the repository needs `package.json`, `wrangler.jsonc` and
+`public/haven-app.json`. The builder then:
+
+1. reads name and description from the source's `haven-app.json` to fill in the form;
+2. creates your repository from the starter template as usual, then replaces its files
+   with the source's in one commit with no history ("Copy of owner/repo at abc1234") —
+   not a fork, so it can be private, and it can be a copy of your own app;
+3. commits the new identity. The copy keeps the source's logical database ids, so its
+   code runs unchanged, but every database gets a new physical id and starts empty. To
+   work on the original's data instead, point the database at it in the app's settings
+   in Haven. `routes`, `route` and `account_id` are removed from `wrangler.jsonc`, so the
+   copy cannot claim the original's domain;
+4. writes what should change into `TASK.md`, and tells the Cursor agent to build on the
+   existing code rather than start over.
+
+Left out of the copy: `.github/workflows/` (writing workflows needs a permission the
+builder's GitHub App does not ask for). Refused: Git submodules, Git LFS, and repositories
+over 2,000 files or 50 MB.
 
 ## Building the same app twice
 

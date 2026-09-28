@@ -35,6 +35,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   open: [StoredAppRecord];
   create: [];
+  copy: [];
   forget: [StoredAppRecord];
 }>();
 
@@ -113,9 +114,14 @@ function formatDate(iso: string): string {
         Only alongside a list. With nothing built yet the empty state below carries its
         own "Describe an app", and two buttons doing the same thing read as a choice.
       -->
-      <button v-if="rows.length > 0" type="button" class="apps__new" @click="emit('create')">
-        {{ t("list.actions.new") }}
-      </button>
+      <div v-if="rows.length > 0" class="apps__actions">
+        <button type="button" class="ghost apps__new" @click="emit('copy')">
+          {{ t("list.actions.copy") }}
+        </button>
+        <button type="button" class="apps__new" @click="emit('create')">
+          {{ t("list.actions.new") }}
+        </button>
+      </div>
     </header>
 
     <p v-if="loading" class="muted">{{ t("list.loading") }}</p>
@@ -129,6 +135,7 @@ function formatDate(iso: string): string {
       <p class="apps__empty-title">{{ t("list.empty.title") }}</p>
       <p class="muted">{{ t("list.empty.body") }}</p>
       <button type="button" @click="emit('create')">{{ t("list.empty.action") }}</button>
+      <button type="button" class="ghost" @click="emit('copy')">{{ t("list.empty.copyAction") }}</button>
     </div>
 
     <ul v-else class="apps__list">
@@ -203,6 +210,14 @@ function formatDate(iso: string): string {
 .apps__head h2 {
   margin: 0;
   font-size: 1.05rem;
+}
+
+.apps__actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .apps__new {

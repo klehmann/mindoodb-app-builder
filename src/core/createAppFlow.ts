@@ -17,6 +17,7 @@
  * whole sequence — including every failure path — is testable without a network.
  */
 import type { AppIdentity, TemplateSources } from "./appIdentity";
+import type { AppSource } from "./appSource";
 import { buildIdentityFiles } from "./appIdentity";
 import type { RepoReadableResult } from "./cloudflare";
 import {
@@ -42,6 +43,7 @@ export {
 export type FlowStepId =
   | "check-name"
   | "create-repo"
+  | "copy-source"
   | "commit-identity"
   | "check-repo-access"
   | "create-worker"
@@ -66,8 +68,17 @@ export interface FlowStep {
 export const GITHUB_PHASE_STEP_IDS: FlowStepId[] = [
   "check-name",
   "create-repo",
+  "copy-source",
   "commit-identity",
 ];
+
+/** Only a run that starts from an existing app copies anything. */
+const COPY_ONLY_STEP_IDS: FlowStepId[] = ["copy-source"];
+
+export interface StepListOptions {
+  /** True for a run that starts from an existing app's code. */
+  copy?: boolean;
+}
 
 export const CLOUDFLARE_PHASE_STEP_IDS: FlowStepId[] = [
   "check-repo-access",
@@ -100,16 +111,18 @@ export const DEPLOY_NOW_STEP_IDS: FlowStepId[] = [
 
 export const REGISTER_HAVEN_STEP_IDS: FlowStepId[] = ["propose"];
 
-function createSteps(ids: FlowStepId[]): FlowStep[] {
-  return ids.map((id) => ({ id, status: "pending", detail: null }));
+function createSteps(ids: FlowStepId[], options: StepListOptions = {}): FlowStep[] {
+  return ids
+    .filter((id) => options.copy || !COPY_ONLY_STEP_IDS.includes(id))
+    .map((id) => ({ id, status: "pending", detail: null }));
 }
 
-export function createInitialSteps(): FlowStep[] {
-  return createSteps(FLOW_STEP_IDS);
+export function createInitialSteps(options: StepListOptions = {}): FlowStep[] {
+  return createSteps(FLOW_STEP_IDS, options);
 }
 
-export function createGitHubPhaseSteps(): FlowStep[] {
-  return createSteps(GITHUB_PHASE_STEP_IDS);
+export function createGitHubPhaseSteps(options: StepListOptions = {}): FlowStep[] {
+  return createSteps(GITHUB_PHASE_STEP_IDS, options);
 }
 
 export function createCloudflarePhaseSteps(): FlowStep[] {
@@ -152,6 +165,14 @@ export interface CreateAppDependencies {
       private: boolean;
     }) => Promise<GitHubRepository>;
     readTemplateSources: (repository: GitHubRepository) => Promise<TemplateSources>;
+    /**
+     * Replace the new repository's files with the source app's. Optional: only a run
+     * that starts from an existing app needs it, and one without it cannot start.
+     */
+    copySource?: (input: {
+      repository: GitHubRepository;
+      source: AppSource;
+    }) => Promise<{ fileCount: number }>;
     commitFiles: (input: {
       repository: GitHubRepository;
       message: string;
@@ -233,6 +254,13 @@ export interface CreateAppInput {
    * carrying the template's name and no way to finish it.
    */
   existingRepository?: GitHubRepository;
+  /** The app to start from. Without it the starter template is used. */
+  source?: AppSource;
+  /**
+   * True when an earlier attempt already copied the source into `existingRepository`.
+   * Copying again would be harmless but slow, and would replace nothing new.
+   */
+  sourceCopied?: boolean;
 }
 
 export interface CreateAppResult {
@@ -250,6 +278,8 @@ export interface CreateAppResult {
    * live under the template's identity.
    */
   identityCommitted: boolean;
+  /** Whether the source app's files are in the repository. Always false for new apps. */
+  sourceCopied?: boolean;
   /** Non-fatal problems worth showing: a skipped agent, a declined install, warnings. */
   warnings: FlowNote[];
   /** Set when the flow stopped early. The step list says where. */
@@ -312,6 +342,7 @@ function createRunner(steps: FlowStep[], onStep?: (steps: FlowStep[]) => void): 
     agent: null,
     installedAppInstanceId: null,
     identityCommitted: false,
+    sourceCopied: false,
     warnings: [],
     error: null,
   };
@@ -514,11 +545,21 @@ async function runGitHubPhase(
     }
   }
 
+  if (input.source && !(await copySourceStep(run, input, deps))) {
+    return false;
+  }
+
   try {
     update("commit-identity", "running");
     const repository = result.repository!;
     const sources = await deps.github.readTemplateSources(repository);
-    const files = buildIdentityFiles(sources, identity);
+    // Only a public repository is named in `haven-app.json`, where anyone can read it.
+    // Its URL is known only now that it exists, so it is added here rather than by the
+    // caller, which does not know yet what GitHub will call it.
+    const stamped: AppIdentity = input.private
+      ? { ...identity, sourceRepositoryUrl: undefined }
+      : { ...identity, sourceRepositoryUrl: repository.htmlUrl };
+    const files = buildIdentityFiles(sources, stamped);
     await deps.github.commitFiles({
       repository,
       message: `chore: set up ${identity.label}`,
@@ -535,6 +576,47 @@ async function runGitHubPhase(
   }
 
   return true;
+}
+
+/**
+ * Put the source app's files into the new repository, in place of the starter's.
+ *
+ * The repository is still created from the starter template first, on purpose: that is
+ * the one way of creating a repository this builder's GitHub App is known to be allowed,
+ * and it grants the app access to the result. The copy then replaces the starter's
+ * files with one parentless commit, so the template leaves no trace in the history.
+ */
+async function copySourceStep(
+  run: StepRunner,
+  input: CreateAppInput,
+  deps: CreateAppDependencies,
+): Promise<boolean> {
+  const source = input.source!;
+  if (input.sourceCopied) {
+    run.result.sourceCopied = true;
+    run.update("copy-source", "skipped", { code: "sourceCopyFromEarlierAttempt" });
+    return true;
+  }
+  if (!deps.github.copySource) {
+    run.abort("copy-source", { code: "sourceCopyFailed" });
+    return false;
+  }
+  try {
+    run.update("copy-source", "running");
+    const copied = await deps.github.copySource({ repository: run.result.repository!, source });
+    run.result.sourceCopied = true;
+    run.update("copy-source", "done", {
+      code: "sourceCopied",
+      params: { fullName: source.fullName, count: copied.fileCount },
+    });
+    if (source.skippedPaths.length > 0) {
+      run.warn({ code: "sourceCopiedSkipped", params: { count: source.skippedPaths.length } });
+    }
+    return true;
+  } catch (error) {
+    run.abort("copy-source", readErrorMessage(error, "sourceCopyFailed"));
+    return false;
+  }
 }
 
 /**
@@ -677,7 +759,7 @@ export async function createGitHubProject(
   input: CreateAppInput,
   deps: CreateAppDependencies,
 ): Promise<CreateAppResult> {
-  const run = createRunner(createGitHubPhaseSteps(), deps.onStep);
+  const run = createRunner(createGitHubPhaseSteps({ copy: Boolean(input.source) }), deps.onStep);
   await runGitHubPhase(run, input, deps);
   await checkpoint(deps, run.result);
   return run.result;
@@ -742,7 +824,7 @@ export async function createApp(
   input: CreateAppInput,
   deps: CreateAppDependencies,
 ): Promise<CreateAppResult> {
-  const run = createRunner(createInitialSteps(), deps.onStep);
+  const run = createRunner(createInitialSteps({ copy: Boolean(input.source) }), deps.onStep);
 
   const created = await runGitHubPhase(run, input, deps);
   // Checkpointed even on failure: a run that died after `create-repo` but before the

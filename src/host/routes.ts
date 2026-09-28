@@ -8,6 +8,8 @@
  * Every route takes the credential it needs in the request body and uses it for that
  * one call. There is no route that stores a token and none that returns one.
  */
+import { resolveMindooDBAppDefinitionUrl } from "mindoodb-app-sdk";
+
 import {
   checkRepoReadable,
   connectPushToDeploy,
@@ -42,6 +44,9 @@ import {
   verifyApiKey,
   CursorApiError,
 } from "../core/cursorAgents";
+
+/** Far above any real `haven-app.json`; a guard, not a format rule. */
+const APP_DEFINITION_MAX_CHARS = 256 * 1024;
 
 export interface ApiRequest {
   method: string;
@@ -397,6 +402,39 @@ export async function handleApiRequest(request: ApiRequest): Promise<ApiResponse
         return { status: 200, payload: connection };
       } catch (error) {
         return toErrorResponse(error);
+      }
+    }
+
+    // An app's `haven-app.json`, for "start from an existing app". The page reads it
+    // directly when it can; this exists for app addresses the page may not reach — any
+    // origin outside the builder's network allowlist. Public metadata only, no credential,
+    // and only ever a `haven-app.json` over HTTPS, so it cannot be pointed at anything else.
+    case "/api/app-definition": {
+      const definitionUrl = resolveMindooDBAppDefinitionUrl(readBodyString(body, "url"));
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(definitionUrl);
+      } catch {
+        return badRequest("An app URL is required.");
+      }
+      if (parsedUrl.protocol !== "https:" || !parsedUrl.pathname.endsWith("/haven-app.json")) {
+        return badRequest("Only an https:// app address can be read.");
+      }
+      try {
+        const response = await (fetchImpl ?? fetch)(parsedUrl.href, {
+          headers: { Accept: "application/json" },
+          redirect: "error",
+        });
+        if (!response.ok) {
+          return { status: 502, payload: { error: `The app answered HTTP ${response.status}.` } };
+        }
+        const text = await response.text();
+        if (text.length > APP_DEFINITION_MAX_CHARS) {
+          return { status: 502, payload: { error: "The app definition is too large." } };
+        }
+        return { status: 200, payload: { definition: JSON.parse(text) as unknown } };
+      } catch {
+        return { status: 502, payload: { error: "The app definition could not be read." } };
       }
     }
 

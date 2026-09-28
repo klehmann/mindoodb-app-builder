@@ -29,12 +29,14 @@
     "loading": "Ser etter appene dine…",
     "readOnly": "Denne App Builder-databasen er skrivebeskyttet for deg, så ferdige apper blir ikke tatt vare på i denne listen. Alt fungerer likevel — kopier adressen til appen før du forlater siden.",
     "actions": {
-      "new": "Ny app"
+      "new": "Ny app",
+      "copy": "Kopier en app"
     },
     "empty": {
       "title": "Bygg din første app",
       "body": "Fortell oss hva teamet ditt mangler. En KI-utvikler skriver appen, den publiseres på nettet, og Haven installerer den — og du kan endre den videre etterpå.",
-      "action": "Beskriv en app"
+      "action": "Beskriv en app",
+      "copyAction": "Eller kopier en eksisterende app"
     },
     "stages": {
       "planned": "Ikke bygget ennå",
@@ -122,7 +124,8 @@
     "intro": {
       "withAi": "Dette tar et par minutter. Vi oppretter prosjektet, publiserer det på nettet og legger det inn i Haven, og setter så KI-utvikleren i arbeid på det. Du kan følge hvert trinn.",
       "withoutAi": "Dette tar et par minutter. Vi oppretter prosjektet, publiserer det på nettet og legger det inn i Haven. Du kan følge hvert trinn.",
-      "starterOnly": "Det du får, er startappen, i drift og installert — koden er så din å endre, for hånd eller med et KI-verktøy du selv velger."
+      "starterOnly": "Det du får, er startappen, i drift og installert — koden er så din å endre, for hånd eller med et KI-verktøy du selv velger.",
+      "copyOnly": "Det du får, er en kopi av den appen, publisert og installert under det nye navnet – koden er deretter din å endre, for hånd eller med et hvilket som helst KI-verktøy."
     },
     "narrowAccess": "Du valgte å velge repositorier selv, så når prosjektet er opprettet, må du gi Cloudflare (og Cursor) tilgang til å se det på GitHub. Vi stopper og sier når.",
     "finished": {
@@ -164,8 +167,8 @@
       "summary": "Database og tilgang",
       "id": {
         "label": "Database-ID",
-        "placeholder": "app_teamnotater",
-        "hint": "Lageret denne appen skriver til. Hver app får sitt eget, slik at to apper ikke deler dokumenter ved et uhell."
+        "placeholder": "app_teamnotater_k7f3q2",
+        "hint": "Lageret denne appen skriver til. Hver app får sitt eget, så to apper aldri deler dokumenter ved et uhell. Appens kode åpner det alltid som «main», så du kan senere peke det mot en annen database i appens innstillinger i Haven."
       },
       "label": {
         "label": "Navn som vises i Haven",
@@ -184,6 +187,18 @@
         "timestamps": "Tidsstempler",
         "directory": "Katalog",
         "sealedchannel": "Sealed channel"
+      }
+    },
+    "copy": {
+      "title": "Gjør den til din",
+      "purpose": "Navnet og beskrivelsen kommer fra appen du kopierer. Endre dem, og beskriv hva som skal være annerledes – KI-utvikleren bygger videre på den eksisterende koden.",
+      "task": {
+        "label": "Hva skal endres?",
+        "placeholder": "Gi hver oppføring en forfallsdato og sorter listen etter den. La alt annet være som det er.",
+        "hint": "Dette er oppdraget KI-en jobber ut fra. Si hva som skal legges til, fjernes eller gjøres annerledes; det du ikke nevner, blir som det er."
+      },
+      "database": {
+        "hint": "Kopien beholder databasene den opprinnelige appen bruker, under de samme navnene i koden, men hver av dem får et nytt, tomt lager for seg selv. Vil du heller jobbe med originalens data, pek databasen dit i appens innstillinger i Haven etter installasjonen."
       }
     }
   },
@@ -331,7 +346,8 @@
       "start-build": "Publiser appen",
       "wait-origin": "Vent til appen er i drift",
       "propose": "Legg appen inn i Haven",
-      "launch-agent": "Start KI-utvikleren"
+      "launch-agent": "Start KI-utvikleren",
+      "copy-source": "Kopier appens kode"
     },
     "retry": {
       "button": "Prøv å publisere på nytt",
@@ -377,7 +393,8 @@
     "validation": {
       "nameRequired": "Appen må ha et navn.",
       "slugInvalid": "Navnet på repositoriet kan bare inneholde små bokstaver, tall og bindestrek.",
-      "databaseIdInvalid": "Database-IDen kan bare inneholde små bokstaver, tall, punktum, understrek og bindestrek, og må være på 64 tegn eller færre."
+      "databaseIdInvalid": "Database-IDen kan bare inneholde små bokstaver, tall, punktum, understrek og bindestrek, og må være på 64 tegn eller færre.",
+      "sourceRequired": "Slå opp appen du vil kopiere, først."
     },
     "ready": {
       "connectGithub": "Koble til GitHub først.",
@@ -445,7 +462,22 @@
       "pressRegisterInHaven": "Trykk «{action}» når du er klar.",
       "noCursorKey": "Ingen Cursor-API-nøkkel er koblet til.",
       "agentStarted": "Se den jobbe: {url}",
-      "agentStartFailed": "Cursor-agenten kunne ikke startes."
+      "agentStartFailed": "Cursor-agenten kunne ikke startes.",
+      "sourceInputInvalid": "Det er verken et GitHub-repository eller en appadresse.",
+      "sourceNeedsGitHub": "Koble til GitHub først.",
+      "sourceAppUnreachable": "{url} kunne ikke leses. Sjekk adressen, eller lim inn GitHub-repositoryet i stedet.",
+      "sourceAppNoRepository": "Appen på {url} oppgir ikke hvor koden ligger. Lim inn GitHub-repositoryet i stedet.",
+      "sourceRepoNotFound": "{fullName} ble ikke funnet på GitHub.",
+      "sourceRepoPrivate": "{fullName} er privat. Bare offentlig kode kan kopieres.",
+      "sourceTooLarge": "{fullName} er for stort til å kopieres her (mer enn {limit} filer eller 50 MB).",
+      "sourceHasSubmodules": "{fullName} bruker Git-submoduler, som ikke kan kopieres her.",
+      "sourceMissingFile": "{fullName} har ingen {path}, så det er ikke en Haven-app denne builderen kan kopiere.",
+      "sourceUsesLfs": "{fullName} lagrer filer i Git LFS, som ikke kan kopieres her.",
+      "sourceDefinitionInvalid": "haven-app.json i {fullName} er ikke en gyldig appdefinisjon.",
+      "sourceCopied": "{count} filer fra {fullName}.",
+      "sourceCopiedSkipped": "Utelatt fra kopien: GitHub-arbeidsflytfiler ({count}).",
+      "sourceCopyFailed": "Appens kode kunne ikke kopieres.",
+      "sourceCopyFromEarlierAttempt": "Allerede kopiert i forrige forsøk."
     }
   },
   "githubConnect": {
@@ -480,5 +512,24 @@
   "hostApi": {
     "unreachable": "Builderens server er ikke tilgjengelig. Start den med `mindoodb-app-builder`.",
     "badStatus": "Serveren svarte HTTP {status}."
+  },
+  "sourcePanel": {
+    "title": "Hvilken app vil du ta utgangspunkt i?",
+    "purpose": "Lim inn adressen til appens kode på GitHub, eller adressen appen kjører på. Koden kopieres inn i et nytt prosjekt som er ditt eget.",
+    "input": {
+      "label": "GitHub-repository eller appadresse",
+      "placeholder": "https://github.com/eier/app",
+      "hint": "Koden må være offentlig. En appadresse fungerer når appen oppgir hvor koden ligger – apper fra denne builderen gjør det når koden deres er offentlig."
+    },
+    "load": {
+      "idle": "Slå opp",
+      "running": "Slår opp…"
+    },
+    "needsGithub": "Koble til GitHub først – koden leses og kopieres med GitHub-tilkoblingen din.",
+    "found": {
+      "files": "{count} filer",
+      "databases": "Databaser: {ids}",
+      "skipped": "Ikke kopiert: GitHub-arbeidsflytfiler ({count})."
+    }
   }
 }

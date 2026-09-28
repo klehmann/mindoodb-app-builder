@@ -130,6 +130,14 @@ function startNewApp(): void {
   view.value = "new";
 }
 
+/** The same page, starting from an existing app's code instead of the starter. */
+function startCopyApp(): void {
+  clearTransient();
+  flow.reset("copy");
+  records.clearActive();
+  view.value = "new";
+}
+
 function openApp(stored: StoredAppRecord): void {
   clearTransient();
   flow.openRecord(stored);
@@ -319,6 +327,11 @@ onMounted(async () => {
       :cursor-ready="session.credentialsStatus.value.cursor"
       :narrow-access="session.credentials.value.repoAccess === 'selected'"
       :can-build-now="flow.canBuildNow.value"
+      :source-loading="flow.sourceLoading.value"
+      :source-error="flow.sourceError.value"
+      :github-ready="session.credentialsStatus.value.github"
+      @source-input="flow.onSourceInput"
+      @load-source="flow.loadSource"
       @label-input="flow.onLabelInput"
       @slug-input="flow.onSlugInput"
       @database-id-input="flow.onDatabaseIdInput"
@@ -358,6 +371,7 @@ onMounted(async () => {
       :can-forget="records.canForget.value"
       @open="openApp"
       @create="startNewApp"
+      @copy="startCopyApp"
       @forget="forgetListedApp"
     />
 
