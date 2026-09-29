@@ -154,13 +154,32 @@
       "hint": "Dette er navnet du ser i Haven."
     },
     "description": {
-      "label": "Hva skal den brukes til, i én setning?",
-      "placeholder": "Delte notater for teamet."
+      "label": "Kort beskrivelse",
+      "placeholder": "Delte notater for teamet.",
+      "hint": "Én setning, vist stort under appnavnet. Den blir også beskrivelsen av GitHub-repositoriet og første linje i oppdraget til KI-en."
     },
     "task": {
       "label": "Beskriv hva den skal gjøre",
       "placeholder": "La folk skrive notater, sette tagger på dem og søke i alle sammen. Én skjerm med listen over notater, én for å skrive. Alle på teamet kan se og redigere dem.",
       "hint": "Dette er oppdraget KI-en jobber ut fra — jo mer konkret, jo bedre. Tenk på hvem som bruker appen, hva de ser på skjermen, og hva de kan gjøre. Du kan alltid be om endringer etterpå."
+    },
+    "listing": {
+      "summary": "Det folk ser før de installerer",
+      "publicNote": "Alt i denne delen er offentlig: Det vises på appens egen side og for alle som installerer appen i Haven.",
+      "description": {
+        "label": "Utfyllende beskrivelse",
+        "placeholder": "Felles notater for teamet.\n\n- Merk og søk i notater\n- Alle ser endringer med en gang\n\nMer på [nettstedet vårt](https://example.com).",
+        "hint": "En tom linje starter et nytt avsnitt. Du kan bruke **fet**, _kursiv_, lister med \"-\" og lenker som [nettstedet vårt](https://example.com). Bare https:- og mailto:-lenker virker."
+      },
+      "publisherName": {
+        "label": "Utgitt av",
+        "placeholder": "Navnet ditt eller firmaet ditt"
+      },
+      "publisherUrl": {
+        "label": "Utgiverens nettsted",
+        "placeholder": "https://example.com",
+        "hint": "Gjør utgivernavnet til en lenke. Må starte med https://."
+      }
     },
     "advanced": {
       "summary": "Nettadresse og synlighet"
@@ -421,7 +440,8 @@
       "nameRequired": "Appen må ha et navn.",
       "slugInvalid": "Navnet på repositoriet kan bare inneholde små bokstaver, tall og bindestrek.",
       "databaseIdInvalid": "Database-IDen kan bare inneholde små bokstaver, tall, punktum, understrek og bindestrek, og må være på 64 tegn eller færre.",
-      "sourceRequired": "Slå opp appen du vil kopiere, først."
+      "sourceRequired": "Slå opp appen du vil kopiere, først.",
+      "publisherUrlInvalid": "Utgiverens nettsted må være en https://-adresse."
     },
     "ready": {
       "connectGithub": "Koble til GitHub først.",

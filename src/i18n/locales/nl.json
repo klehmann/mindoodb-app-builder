@@ -154,13 +154,32 @@
       "hint": "Dit is de naam die je in Haven ziet."
     },
     "description": {
-      "label": "Waar is hij voor, in één zin?",
-      "placeholder": "Gedeelde notities voor het team."
+      "label": "Korte beschrijving",
+      "placeholder": "Gedeelde notities voor het team.",
+      "hint": "Eén zin, groot getoond onder de naam van de app. Hij wordt ook de beschrijving van de GitHub-repository en de eerste regel van de opdracht aan de AI."
     },
     "task": {
       "label": "Beschrijf wat hij moet doen",
       "placeholder": "Mensen kunnen notities schrijven, ze labelen en erin zoeken. Eén scherm met de lijst met notities, één om te schrijven. Iedereen in het team kan ze zien en bewerken.",
       "hint": "Dit is de opdracht waarmee de AI werkt — hoe concreter, hoe beter. Denk aan wie hem gebruikt, wat ze op het scherm zien en wat ze kunnen doen. Je kunt later altijd om wijzigingen vragen."
+    },
+    "listing": {
+      "summary": "Wat mensen zien voordat ze installeren",
+      "publicNote": "Alles in dit onderdeel is openbaar: het staat op de eigen pagina van de app en wordt getoond aan iedereen die de app in Haven installeert.",
+      "description": {
+        "label": "Uitgebreide beschrijving",
+        "placeholder": "Gedeelde notities voor het team.\n\n- Notities taggen en doorzoeken\n- Iedereen ziet wijzigingen meteen\n\nMeer op [onze website](https://example.com).",
+        "hint": "Een lege regel begint een nieuwe alinea. Je kunt **vet**, _cursief_, lijsten met \"-\" en links zoals [onze website](https://example.com) gebruiken. Alleen https:- en mailto:-links werken."
+      },
+      "publisherName": {
+        "label": "Uitgegeven door",
+        "placeholder": "Je naam of bedrijf"
+      },
+      "publisherUrl": {
+        "label": "Website van de uitgever",
+        "placeholder": "https://example.com",
+        "hint": "Maakt van de naam van de uitgever een link. Moet beginnen met https://."
+      }
     },
     "advanced": {
       "summary": "Webadres en privacy"
@@ -421,7 +440,8 @@
       "nameRequired": "De applicatie heeft een naam nodig.",
       "slugInvalid": "De naam van de repository mag alleen kleine letters, cijfers en streepjes bevatten.",
       "databaseIdInvalid": "De database-id mag alleen kleine letters, cijfers, punten, underscores en streepjes bevatten en maximaal 64 tekens lang zijn.",
-      "sourceRequired": "Zoek eerst de app op die je wilt kopiëren."
+      "sourceRequired": "Zoek eerst de app op die je wilt kopiëren.",
+      "publisherUrlInvalid": "De website van de uitgever moet een https://-adres zijn."
     },
     "ready": {
       "connectGithub": "Verbind eerst GitHub.",

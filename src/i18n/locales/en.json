@@ -154,13 +154,32 @@
       "hint": "This is the name you will see in Haven."
     },
     "description": {
-      "label": "In one sentence, what is it for?",
-      "placeholder": "Shared notes for the team."
+      "label": "Short description",
+      "placeholder": "Shared notes for the team.",
+      "hint": "One sentence, shown large under the app's name. It also becomes the GitHub repository's description and the first line of the AI's brief."
     },
     "task": {
       "label": "Describe what it should do",
       "placeholder": "Let people write notes, tag them, and search across them. One screen with the list of notes, one for writing. Everyone on the team can see and edit them.",
       "hint": "This is the brief the AI works from — the more concrete, the better. Think about who uses it, what they see on screen, and what they can do. You can always ask for changes afterwards."
+    },
+    "listing": {
+      "summary": "What people see before installing",
+      "publicNote": "Everything in this section is public: it is shown on the app's own page and to everyone who installs the app in Haven.",
+      "description": {
+        "label": "Detailed description",
+        "placeholder": "Keep notes together as a team.\n\n- Tag and search notes\n- Everyone sees changes right away\n\nMore at [our website](https://example.com).",
+        "hint": "Blank lines start a new paragraph. You can use **bold**, _italic_, lists starting with \"-\" and links like [our website](https://example.com). Only https: and mailto: links work."
+      },
+      "publisherName": {
+        "label": "Published by",
+        "placeholder": "Your name or company"
+      },
+      "publisherUrl": {
+        "label": "Publisher website",
+        "placeholder": "https://example.com",
+        "hint": "Makes the publisher name a link. Must start with https://."
+      }
     },
     "advanced": {
       "summary": "Web address and privacy"
@@ -421,7 +440,8 @@
       "nameRequired": "The app needs a name.",
       "slugInvalid": "The repository name may only contain lowercase letters, digits, and dashes.",
       "databaseIdInvalid": "The database id may only use lowercase letters, digits, dots, underscores and dashes, and must be 64 characters or fewer.",
-      "sourceRequired": "Look up the app you want to copy first."
+      "sourceRequired": "Look up the app you want to copy first.",
+      "publisherUrlInvalid": "The publisher website must be an https:// address."
     },
     "ready": {
       "connectGithub": "Connect GitHub first.",

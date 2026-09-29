@@ -10,6 +10,11 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 
 import { APP_DATABASE_PERMISSIONS, type NewAppForm } from "@/app/useBuilderFlow";
+import {
+  MAX_PUBLISHER_NAME_LENGTH,
+  MAX_STORE_DESCRIPTION_LENGTH,
+  MAX_SUMMARY_LENGTH,
+} from "@/core/appIdentity";
 
 import PageHeader from "@/app/components/PageHeader.vue";
 
@@ -18,7 +23,6 @@ const { t } = useI18n();
 const props = defineProps<{
   form: NewAppForm;
   plannedRepositoryName: string;
-  formError: string | null;
 }>();
 
 /**
@@ -57,16 +61,6 @@ const emit = defineEmits<{
     </div>
 
     <div class="field">
-      <label for="app-description">{{ t("newAppForm.description.label") }}</label>
-      <input
-        id="app-description"
-        v-model="form.description"
-        type="text"
-        :placeholder="t('newAppForm.description.placeholder')"
-      />
-    </div>
-
-    <div class="field">
       <label for="app-task">
         {{ copying ? t("newAppForm.copy.task.label") : t("newAppForm.task.label") }}
       </label>
@@ -80,6 +74,60 @@ const emit = defineEmits<{
         {{ copying ? t("newAppForm.copy.task.hint") : t("newAppForm.task.hint") }}
       </p>
     </div>
+
+    <!-- Everything in here is copied into haven-app.json and shown to strangers, which
+         is the one thing the form must not let the user miss. -->
+    <details class="advanced" open>
+      <summary>{{ t("newAppForm.listing.summary") }}</summary>
+      <div class="advanced__body">
+        <p class="hint hint--public">{{ t("newAppForm.listing.publicNote") }}</p>
+        <div class="field">
+          <label for="app-description">{{ t("newAppForm.description.label") }}</label>
+          <input
+            id="app-description"
+            v-model="form.description"
+            type="text"
+            :maxlength="MAX_SUMMARY_LENGTH"
+            :placeholder="t('newAppForm.description.placeholder')"
+          />
+          <p class="hint">{{ t("newAppForm.description.hint") }}</p>
+        </div>
+        <div class="field">
+          <label for="app-store-description">{{ t("newAppForm.listing.description.label") }}</label>
+          <textarea
+            id="app-store-description"
+            v-model="form.storeDescription"
+            rows="6"
+            :maxlength="MAX_STORE_DESCRIPTION_LENGTH"
+            :placeholder="t('newAppForm.listing.description.placeholder')"
+          ></textarea>
+          <p class="hint">{{ t("newAppForm.listing.description.hint") }}</p>
+        </div>
+        <div class="field">
+          <label for="app-publisher-name">{{ t("newAppForm.listing.publisherName.label") }}</label>
+          <input
+            id="app-publisher-name"
+            v-model="form.publisherName"
+            type="text"
+            :maxlength="MAX_PUBLISHER_NAME_LENGTH"
+            :placeholder="t('newAppForm.listing.publisherName.placeholder')"
+          />
+        </div>
+        <div class="field">
+          <label for="app-publisher-url">{{ t("newAppForm.listing.publisherUrl.label") }}</label>
+          <input
+            id="app-publisher-url"
+            v-model="form.publisherUrl"
+            type="url"
+            inputmode="url"
+            spellcheck="false"
+            autocomplete="url"
+            :placeholder="t('newAppForm.listing.publisherUrl.placeholder')"
+          />
+          <p class="hint">{{ t("newAppForm.listing.publisherUrl.hint") }}</p>
+        </div>
+      </div>
+    </details>
 
     <details class="advanced">
       <summary>{{ t("newAppForm.advanced.summary") }}</summary>
@@ -167,8 +215,6 @@ const emit = defineEmits<{
         </fieldset>
       </div>
     </details>
-
-    <p v-if="formError" class="warn">{{ formError }}</p>
   </section>
 </template>
 
@@ -191,6 +237,12 @@ const emit = defineEmits<{
   flex-direction: column;
   gap: 0.6rem;
   padding-top: 0.75rem;
+}
+
+.hint--public {
+  margin: 0;
+  font-weight: 600;
+  color: var(--app-text, inherit);
 }
 
 .copied-databases {

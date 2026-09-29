@@ -365,7 +365,6 @@ onMounted(async () => {
       v-else-if="view === 'new'"
       :form="flow.form.value"
       :planned-repository-name="flow.plannedRepositoryName.value"
-      :form-error="flow.formError.value"
       :create-error="flow.createAppError.value"
       :can-create="flow.canCreateApp.value"
       :running="flow.running.value"
@@ -462,6 +461,16 @@ onMounted(async () => {
 </template>
 
 <style>
+/*
+ * No rubber band on the document root, also inside the Haven iframe. `!important`
+ * because older mindoodb-app-sdk versions set `overscroll-behavior: contain` inline
+ * on <html> at connect time, and `contain` still lets iOS bounce the root: a drag
+ * on a non-scrollable area (e.g. a dialog header) then slides fixed overlays along.
+ */
+html {
+  overscroll-behavior: none !important;
+}
+
 :root {
   color-scheme: light;
   --app-background: #f5f7fb;
@@ -580,6 +589,7 @@ code {
 }
 
 input[type="text"],
+input[type="url"],
 input[type="password"],
 select,
 textarea {

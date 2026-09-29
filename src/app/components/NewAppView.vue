@@ -22,7 +22,7 @@ const { t } = useI18n();
 const props = defineProps<{
   form: NewAppForm;
   plannedRepositoryName: string;
-  formError: string | null;
+  /** Includes the form's own problems (`formError`), so they are shown only once. */
   createError: string | null;
   canCreate: boolean;
   running: boolean;
@@ -86,7 +86,6 @@ const finished = computed(() => Boolean(props.result?.worker && !props.running))
       v-if="showForm"
       :form="form"
       :planned-repository-name="plannedRepositoryName"
-      :form-error="formError"
       @label-input="emit('labelInput', $event)"
       @slug-input="emit('slugInput', $event)"
       @database-id-input="emit('databaseIdInput', $event)"
@@ -98,6 +97,7 @@ const finished = computed(() => Boolean(props.result?.worker && !props.running))
         {{ running ? t("newApp.build.running") : t("newApp.build.idle") }}
       </button>
 
+      <!-- The one place a form problem is shown: next to the button it disables. -->
       <p v-if="createError" class="warn">{{ createError }}</p>
       <!--
         Two whole sentences rather than one assembled from a shared head and a clause,

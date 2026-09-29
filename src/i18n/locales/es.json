@@ -154,13 +154,32 @@
       "hint": "Es el nombre que verás en Haven."
     },
     "description": {
-      "label": "En una frase, ¿para qué sirve?",
-      "placeholder": "Notas compartidas para el equipo."
+      "label": "Descripción breve",
+      "placeholder": "Notas compartidas para el equipo.",
+      "hint": "Una frase, que se muestra en grande bajo el nombre de la app. También se usa como descripción del repositorio de GitHub y como primera línea del encargo a la IA."
     },
     "task": {
       "label": "Describe lo que debería hacer",
       "placeholder": "Que la gente pueda escribir notas, etiquetarlas y buscar en todas ellas. Una pantalla con la lista de notas y otra para escribir. Todo el equipo puede verlas y editarlas.",
       "hint": "Este es el encargo con el que trabaja la IA — cuanto más concreto, mejor. Piensa en quién la usa, qué ve en pantalla y qué puede hacer. Siempre puedes pedir cambios después."
+    },
+    "listing": {
+      "summary": "Lo que se ve antes de instalar",
+      "publicNote": "Todo lo de esta sección es público: aparece en la página de la app y a todas las personas que la instalen en Haven.",
+      "description": {
+        "label": "Descripción detallada",
+        "placeholder": "Notas compartidas en equipo.\n\n- Etiqueta y busca notas\n- Todos ven los cambios al instante\n\nMás en [nuestra web](https://example.com).",
+        "hint": "Una línea en blanco empieza un párrafo nuevo. Puedes usar **negrita**, _cursiva_, listas con \"-\" y enlaces como [nuestra web](https://example.com). Solo funcionan enlaces https: y mailto:."
+      },
+      "publisherName": {
+        "label": "Publicado por",
+        "placeholder": "Tu nombre o empresa"
+      },
+      "publisherUrl": {
+        "label": "Web del editor",
+        "placeholder": "https://example.com",
+        "hint": "Convierte el nombre del editor en un enlace. Debe empezar por https://."
+      }
     },
     "advanced": {
       "summary": "Dirección web y privacidad"
@@ -421,7 +440,8 @@
       "nameRequired": "La aplicación necesita un nombre.",
       "slugInvalid": "El nombre del repositorio solo puede contener letras minúsculas, dígitos y guiones.",
       "databaseIdInvalid": "El id. de la base de datos solo puede usar letras minúsculas, dígitos, puntos, guiones bajos y guiones, y no puede superar los 64 caracteres.",
-      "sourceRequired": "Busca primero la app que quieres copiar."
+      "sourceRequired": "Busca primero la app que quieres copiar.",
+      "publisherUrlInvalid": "La web del editor debe ser una dirección https://."
     },
     "ready": {
       "connectGithub": "Conecta GitHub primero.",

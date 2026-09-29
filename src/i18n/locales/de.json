@@ -154,13 +154,32 @@
       "hint": "Unter diesem Namen siehst du die Anwendung in Haven."
     },
     "description": {
-      "label": "Wofür ist sie da, in einem Satz?",
-      "placeholder": "Gemeinsame Notizen für das Team."
+      "label": "Kurzbeschreibung",
+      "placeholder": "Gemeinsame Notizen für das Team.",
+      "hint": "Ein Satz, groß unter dem App-Namen angezeigt. Er wird außerdem die Beschreibung des GitHub-Repositorys und die erste Zeile des Auftrags an die KI."
     },
     "task": {
       "label": "Beschreibe, was sie können soll",
       "placeholder": "Notizen schreiben, mit Tags versehen und darin suchen. Ein Bildschirm mit der Liste der Notizen, einer zum Schreiben. Alle im Team können sie sehen und bearbeiten.",
       "hint": "Das ist der Auftrag, mit dem die KI arbeitet — je konkreter, desto besser. Denk daran, wer die Anwendung nutzt, was diese Person auf dem Bildschirm sieht und was sie tun kann. Änderungen kannst du jederzeit später anfordern."
+    },
+    "listing": {
+      "summary": "Was Nutzer vor der Installation sehen",
+      "publicNote": "Alles in diesem Abschnitt ist öffentlich: Es erscheint auf der Seite der App und bei allen, die die App in Haven installieren.",
+      "description": {
+        "label": "Ausführliche Beschreibung",
+        "placeholder": "Notizen gemeinsam im Team führen.\n\n- Notizen verschlagworten und durchsuchen\n- Alle sehen Änderungen sofort\n\nMehr auf [unserer Website](https://example.com).",
+        "hint": "Leerzeilen beginnen einen neuen Absatz. Möglich sind **fett**, _kursiv_, Listen mit \"-\" und Links wie [unsere Website](https://example.com). Nur https:- und mailto:-Links funktionieren."
+      },
+      "publisherName": {
+        "label": "Herausgeber",
+        "placeholder": "Dein Name oder deine Firma"
+      },
+      "publisherUrl": {
+        "label": "Website des Herausgebers",
+        "placeholder": "https://example.com",
+        "hint": "Macht den Herausgebernamen zum Link. Muss mit https:// beginnen."
+      }
     },
     "advanced": {
       "summary": "Web-Adresse und Sichtbarkeit"
@@ -421,7 +440,8 @@
       "nameRequired": "Die Anwendung braucht einen Namen.",
       "slugInvalid": "Der Repository-Name darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten.",
       "databaseIdInvalid": "Die Datenbank-ID darf nur Kleinbuchstaben, Ziffern, Punkte, Unterstriche und Bindestriche enthalten und höchstens 64 Zeichen lang sein.",
-      "sourceRequired": "Schlage zuerst die App nach, die du kopieren möchtest."
+      "sourceRequired": "Schlage zuerst die App nach, die du kopieren möchtest.",
+      "publisherUrlInvalid": "Die Website des Herausgebers muss eine https://-Adresse sein."
     },
     "ready": {
       "connectGithub": "Verbinde zuerst GitHub.",

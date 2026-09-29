@@ -154,13 +154,32 @@
       "hint": "C’est le nom que vous verrez dans Haven."
     },
     "description": {
-      "label": "En une phrase, à quoi sert-elle ?",
-      "placeholder": "Des notes partagées pour l’équipe."
+      "label": "Description courte",
+      "placeholder": "Des notes partagées pour l’équipe.",
+      "hint": "Une phrase, affichée en grand sous le nom de l’app. Elle devient aussi la description du dépôt GitHub et la première ligne de la consigne donnée à l’IA."
     },
     "task": {
       "label": "Décrivez ce qu’elle doit faire",
       "placeholder": "Permettre d’écrire des notes, de les étiqueter et de les rechercher. Un écran avec la liste des notes, un autre pour les rédiger. Toute l’équipe peut les voir et les modifier.",
       "hint": "C’est le cahier des charges sur lequel l’IA travaille — plus il est concret, mieux c’est. Pensez à qui s’en sert, à ce que ces personnes voient à l’écran et à ce qu’elles peuvent faire. Vous pourrez toujours demander des modifications ensuite."
+    },
+    "listing": {
+      "summary": "Ce que lâon voit avant lâinstallation",
+      "publicNote": "Tout ce qui figure dans cette section est public : câest affiché sur la page de lâapp et à toute personne qui lâinstalle dans Haven.",
+      "description": {
+        "label": "Description détaillée",
+        "placeholder": "Des notes partagées en équipe.\n\n- Étiqueter et rechercher les notes\n- Chacun voit les modifications immédiatement\n\nPlus dâinfos sur [notre site](https://example.com).",
+        "hint": "Une ligne vide commence un nouveau paragraphe. Vous pouvez utiliser **gras**, _italique_, des listes avec « - » et des liens comme [notre site](https://example.com). Seuls les liens https: et mailto: fonctionnent."
+      },
+      "publisherName": {
+        "label": "Publié par",
+        "placeholder": "Votre nom ou votre entreprise"
+      },
+      "publisherUrl": {
+        "label": "Site web de l’éditeur",
+        "placeholder": "https://example.com",
+        "hint": "Transforme le nom de l’éditeur en lien. Doit commencer par https://."
+      }
     },
     "advanced": {
       "summary": "Adresse web et confidentialité"
@@ -421,7 +440,8 @@
       "nameRequired": "L’application a besoin d’un nom.",
       "slugInvalid": "Le nom du dépôt ne peut contenir que des lettres minuscules, des chiffres et des tirets.",
       "databaseIdInvalid": "L’identifiant de la base ne peut contenir que des lettres minuscules, des chiffres, des points, des tirets bas et des tirets, et 64 caractères au plus.",
-      "sourceRequired": "Recherchez d’abord l’app que vous voulez copier."
+      "sourceRequired": "Recherchez d’abord l’app que vous voulez copier.",
+      "publisherUrlInvalid": "Le site web de lâéditeur doit être une adresse https://."
     },
     "ready": {
       "connectGithub": "Connectez d’abord GitHub.",

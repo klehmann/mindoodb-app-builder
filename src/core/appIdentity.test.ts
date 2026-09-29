@@ -8,6 +8,7 @@ import {
   buildIdentityFiles,
   databaseIdFromSlug,
   isValidDatabaseId,
+  isValidPublisherUrl,
   isValidSlug,
   patchAppDefinition,
   patchPackageJson,
@@ -246,6 +247,50 @@ describe("patchAppDefinition", () => {
     });
   });
 
+  it("writes the store description and publisher, replacing whatever the source listed", () => {
+    const withListing = JSON.stringify({
+      ...JSON.parse(source),
+      listing: {
+        description: "The original's text.",
+        descriptionMarkdown: "The original's **text**.",
+        publisher: { name: "Someone Else", url: "https://else.example" },
+        icon: "appicon.svg",
+      },
+    });
+    const patched = JSON.parse(
+      patchAppDefinition(withListing, {
+        ...identity,
+        storeDescription: "  Notes **together**.\n\n- [Site](https://notes.example)  ",
+        publisherName: " Mindoo GmbH ",
+        publisherUrl: "https://mindoo.de",
+      }),
+    );
+    expect(patched.listing).toEqual({
+      summary: "Shared notes for the team.",
+      descriptionMarkdown: "Notes **together**.\n\n- [Site](https://notes.example)",
+      publisher: { name: "Mindoo GmbH", url: "https://mindoo.de" },
+      icon: "appicon.svg",
+    });
+
+    const bare = JSON.parse(patchAppDefinition(withListing, { ...identity, description: "" }));
+    expect(bare.listing).toEqual({ icon: "appicon.svg" });
+  });
+
+  it("creates a listing when the template had none, and keeps only an https publisher URL", () => {
+    const patched = JSON.parse(
+      patchAppDefinition(source, {
+        ...identity,
+        publisherName: "Mindoo",
+        publisherUrl: "javascript:alert(1)",
+      }),
+    );
+    expect(patched.listing).toEqual({
+      summary: "Shared notes for the team.",
+      publisher: { name: "Mindoo" },
+    });
+    expect(JSON.parse(patchAppDefinition(source, { ...identity, description: "" })).listing).toBeUndefined();
+  });
+
   it("gives the app its own hosted database instead of the template's main store", () => {
     const parsed = JSON.parse(patchAppDefinition(source, identity));
     expect(parsed.hosting).toBe("hosted");
@@ -264,6 +309,17 @@ describe("patchAppDefinition", () => {
   it("drops the template placeholder description when the user gave none", () => {
     const parsed = JSON.parse(patchAppDefinition(source, { ...identity, description: "" }));
     expect(parsed.description).toBeUndefined();
+  });
+});
+
+describe("isValidPublisherUrl", () => {
+  it("accepts empty and https URLs only", () => {
+    expect(isValidPublisherUrl("")).toBe(true);
+    expect(isValidPublisherUrl(" https://mindoo.de ")).toBe(true);
+    expect(isValidPublisherUrl("http://mindoo.de")).toBe(false);
+    expect(isValidPublisherUrl("mindoo.de")).toBe(false);
+    expect(isValidPublisherUrl("java\tscript:alert(1)")).toBe(false);
+    expect(isValidPublisherUrl("https://mindoo.de/\nx")).toBe(false);
   });
 });
 
