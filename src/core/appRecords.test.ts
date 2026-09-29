@@ -264,6 +264,34 @@ describe("appRecordFromIdentity", () => {
     expect(created.createdAt).not.toBe("");
   });
 
+  it("keeps the store description and publisher so a resumed run commits them", () => {
+    const created = appRecordFromIdentity(
+      {
+        label: "Team Notes",
+        slug: "team-notes",
+        description: "",
+        task: "",
+        storeDescription: "Notes **together**.",
+        publisherName: "Mindoo GmbH",
+        publisherUrl: "https://mindoo.de",
+      },
+      { private: true },
+    );
+    expect(created).toMatchObject({
+      storeDescription: "Notes **together**.",
+      publisherName: "Mindoo GmbH",
+      publisherUrl: "https://mindoo.de",
+    });
+    expect(
+      appRecordFromDocumentData({
+        appId: "team-notes",
+        publisherName: "Mindoo GmbH",
+        publisherUrl: "http://mindoo.de",
+        brief: { task: "Do it", storeDescription: " Notes. " },
+      }),
+    ).toMatchObject({ publisherName: "Mindoo GmbH", publisherUrl: "", storeDescription: "Notes." });
+  });
+
   it("remembers the physical database id a new app will ask for", () => {
     const created = appRecordFromIdentity(
       { label: "Team Notes", slug: "team-notes", description: "", task: "", databaseSuffix: "k7f3q2" },

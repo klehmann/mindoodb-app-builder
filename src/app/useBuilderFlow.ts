@@ -18,6 +18,7 @@ import {
   DEFAULT_APP_DATABASE_PERMISSIONS,
   databaseIdFromSlug,
   isValidDatabaseId,
+  isValidPublisherUrl,
   isValidSlug,
   normalizeDatabaseIdInput,
   physicalDatabaseId,
@@ -111,6 +112,10 @@ export interface NewAppForm {
   /** True while the user has not edited the slug, so it keeps following the label. */
   slugFollowsLabel: boolean;
   description: string;
+  /** Markdown; what end users read before they install the app. */
+  storeDescription: string;
+  publisherName: string;
+  publisherUrl: string;
   task: string;
   private: boolean;
   databaseId: string;
@@ -132,6 +137,9 @@ export function createEmptyForm(mode: NewAppMode = "new"): NewAppForm {
     slug: "",
     slugFollowsLabel: true,
     description: "",
+    storeDescription: "",
+    publisherName: "",
+    publisherUrl: "",
     task: "",
     // Private by default. An unfinished app's plan is in TASK.md from the first commit,
     // and the cost of publishing it by accident is not symmetric with the cost of
@@ -175,6 +183,9 @@ export function useBuilderFlow(
     label: form.value.label.trim(),
     slug: form.value.slug.trim() || slugifyAppName(form.value.label),
     description: form.value.description.trim(),
+    storeDescription: form.value.storeDescription.trim(),
+    publisherName: form.value.publisherName.trim(),
+    publisherUrl: form.value.publisherUrl.trim(),
     task: form.value.task,
     databaseId: form.value.databaseId.trim(),
     databaseLabel: form.value.databaseLabel.trim(),
@@ -221,6 +232,9 @@ export function useBuilderFlow(
     }
     if (!identity.value.copiedFrom && !isValidDatabaseId(resolveAppDatabase(identity.value).id)) {
       return t("flow.validation.databaseIdInvalid");
+    }
+    if (!isValidPublisherUrl(form.value.publisherUrl)) {
+      return t("flow.validation.publisherUrlInvalid");
     }
     return null;
   });
@@ -865,6 +879,9 @@ export function useBuilderFlow(
       // The name is settled: it is in the repository, the Worker, and haven-app.json.
       slugFollowsLabel: false,
       description: record.description,
+      storeDescription: record.storeDescription,
+      publisherName: record.publisherName,
+      publisherUrl: record.publisherUrl,
       task: record.task,
       private: record.private,
       // Records from before unique ids never stored one; `app_<slug>` is what they used.

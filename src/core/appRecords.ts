@@ -20,7 +20,7 @@
  */
 import { createViewLanguage, type MindooDBAppDatabase } from "mindoodb-app-sdk";
 
-import { resolveAppDatabase, type AppIdentity } from "./appIdentity";
+import { publisherUrlOrEmpty, resolveAppDatabase, type AppIdentity } from "./appIdentity";
 import type { AgentHandle, WorkerDeployment } from "./createAppFlow";
 import type { GitHubRepository } from "./github";
 
@@ -68,6 +68,11 @@ export interface BuilderAppRecord {
   description: string;
   /** The long brief handed to the Cursor agent. Empty when the user wrote none. */
   task: string;
+  /** The Markdown description people see before installing. Empty when none. */
+  storeDescription: string;
+  publisherName: string;
+  /** Always `https:` or empty. */
+  publisherUrl: string;
   /** ISO timestamps. `createdAt` orders the list; `updatedAt` is for humans. */
   createdAt: string;
   updatedAt: string;
@@ -129,6 +134,9 @@ export const EMPTY_APP_RECORD: BuilderAppRecord = {
   label: "",
   description: "",
   task: "",
+  storeDescription: "",
+  publisherName: "",
+  publisherUrl: "",
   createdAt: "",
   updatedAt: "",
   private: true,
@@ -223,6 +231,9 @@ export function appRecordFromIdentity(
     label: identity.label,
     description: identity.description,
     task: identity.task,
+    storeDescription: identity.storeDescription ?? "",
+    publisherName: identity.publisherName ?? "",
+    publisherUrl: publisherUrlOrEmpty(identity.publisherUrl),
     createdAt: now,
     updatedAt: now,
     private: options.private,
@@ -443,6 +454,10 @@ export function appRecordFromDocumentData(
     // Not trimmed through `readString` alone: the brief is prose, and trailing structure
     // inside it is the user's. Only the outer padding goes.
     task: typeof briefData.task === "string" ? briefData.task.trim() : "",
+    storeDescription:
+      typeof briefData.storeDescription === "string" ? briefData.storeDescription.trim() : "",
+    publisherName: readString(body, "publisherName"),
+    publisherUrl: publisherUrlOrEmpty(readString(body, "publisherUrl")),
     createdAt: readString(body, "createdAt"),
     updatedAt: readString(body, "updatedAt"),
     private: readBoolean(body, "private", true),
@@ -476,6 +491,8 @@ function toDocumentData(record: BuilderAppRecord, now: string): Record<string, u
     appId: record.appId.trim(),
     label: record.label.trim(),
     description: record.description.trim(),
+    publisherName: record.publisherName.trim(),
+    publisherUrl: record.publisherUrl.trim(),
     createdAt: record.createdAt || now,
     updatedAt: now,
     private: record.private,
@@ -500,7 +517,10 @@ function toDocumentData(record: BuilderAppRecord, now: string): Record<string, u
     sourceRepoUrl: record.sourceRepoUrl.trim(),
     sourceCommit: record.sourceCommit.trim(),
     sourceCopied: record.sourceCopied,
-    [BRIEF_FIELD]: { task: record.task.trim() },
+    [BRIEF_FIELD]: {
+      task: record.task.trim(),
+      ...(record.storeDescription.trim() ? { storeDescription: record.storeDescription.trim() } : {}),
+    },
   };
 }
 

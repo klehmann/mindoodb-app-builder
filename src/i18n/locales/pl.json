@@ -154,13 +154,32 @@
       "hint": "Pod tą nazwą zobaczysz aplikację w Haven."
     },
     "description": {
-      "label": "Do czego służy — w jednym zdaniu?",
-      "placeholder": "Wspólne notatki dla zespołu."
+      "label": "Krótki opis",
+      "placeholder": "Wspólne notatki dla zespołu.",
+      "hint": "Jedno zdanie, wyświetlane dużą czcionką pod nazwą aplikacji. Staje się też opisem repozytorium GitHub i pierwszą linią zlecenia dla AI."
     },
     "task": {
       "label": "Opisz, co ma robić",
       "placeholder": "Pozwala pisać notatki, oznaczać je tagami i szukać w nich. Jeden ekran z listą notatek, drugi do pisania. Wszyscy w zespole widzą je i mogą je edytować.",
       "hint": "To zlecenie, z którego pracuje AI — im konkretniej, tym lepiej. Pomyśl, kto będzie z aplikacji korzystał, co widzi na ekranie i co może zrobić. O zmiany zawsze można poprosić później."
+    },
+    "listing": {
+      "summary": "Co widać przed instalacją",
+      "publicNote": "Wszystko w tej sekcji jest publiczne: pojawia się na stronie aplikacji i u każdego, kto zainstaluje ją w Haven.",
+      "description": {
+        "label": "Szczegółowy opis",
+        "placeholder": "Wspólne notatki zespołu.\n\n- Oznaczaj i przeszukuj notatki\n- Wszyscy od razu widzą zmiany\n\nWięcej na [naszej stronie](https://example.com).",
+        "hint": "Pusta linia zaczyna nowy akapit. Możesz używać **pogrubienia**, _kursywy_, list zaczynających się od \"-\" i linków jak [nasza strona](https://example.com). Działają tylko linki https: i mailto:."
+      },
+      "publisherName": {
+        "label": "Wydawca",
+        "placeholder": "Twoje imię i nazwisko lub firma"
+      },
+      "publisherUrl": {
+        "label": "Strona wydawcy",
+        "placeholder": "https://example.com",
+        "hint": "Zamienia nazwę wydawcy w link. Musi zaczynać się od https://."
+      }
     },
     "advanced": {
       "summary": "Adres internetowy i prywatność"
@@ -421,7 +440,8 @@
       "nameRequired": "Aplikacja potrzebuje nazwy.",
       "slugInvalid": "Nazwa repozytorium może zawierać tylko małe litery, cyfry i myślniki.",
       "databaseIdInvalid": "Identyfikator bazy może zawierać tylko małe litery, cyfry, kropki, podkreślenia i myślniki i może mieć co najwyżej 64 znaki.",
-      "sourceRequired": "Najpierw wyszukaj aplikację, którą chcesz skopiować."
+      "sourceRequired": "Najpierw wyszukaj aplikację, którą chcesz skopiować.",
+      "publisherUrlInvalid": "Strona wydawcy musi być adresem https://."
     },
     "ready": {
       "connectGithub": "Najpierw połącz GitHub.",

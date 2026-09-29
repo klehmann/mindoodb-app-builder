@@ -80,6 +80,15 @@ export interface AppIdentity {
   slug: string;
   /** The user's one-line description. May be empty. */
   description: string;
+  /**
+   * The longer text people read before installing the app, in the listing's Markdown
+   * subset. Written to `listing.descriptionMarkdown`. May be empty.
+   */
+  storeDescription?: string;
+  /** Who publishes the app, shown as "by …" on the landing page and in Haven. */
+  publisherName?: string;
+  /** Links the publisher name. Only an `https:` URL is kept; see {@link publisherUrlOrEmpty}. */
+  publisherUrl?: string;
   /** The user's full task text, written into `TASK.md`. May be empty. */
   task: string;
   /**
@@ -200,6 +209,42 @@ export function physicalDatabaseId(
   const room = MAX_DATABASE_ID_LENGTH - APP_DATABASE_ID_PREFIX.length - tail.length - 1;
   const body = clean(slug).slice(0, Math.max(0, room)).replace(/[-._]+$/, "");
   return `${APP_DATABASE_ID_PREFIX}${body ? `${body}_` : ""}${tail}`;
+}
+
+/**
+ * `listing.summary`'s limit in the SDK. The one-line description becomes the summary,
+ * and one character over would make the whole definition invalid.
+ */
+export const MAX_SUMMARY_LENGTH = 300;
+/** `listing.description`'s limit in the SDK (`MINDOODB_APP_LISTING_DESCRIPTION_MAX`). */
+export const MAX_STORE_DESCRIPTION_LENGTH = 4000;
+/** Haven cuts a longer publisher name, so the builder does not offer more. */
+export const MAX_PUBLISHER_NAME_LENGTH = 120;
+
+/**
+ * True for an empty field or an absolute `https:` URL — the only kind Haven and the
+ * landing page turn into a link. Checked by the URL parser, not a prefix test, because
+ * embedded tabs and newlines are what defeat prefix tests.
+ */
+export function isValidPublisherUrl(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return true;
+  }
+  if (/[\t\n\r]/.test(trimmed)) {
+    return false;
+  }
+  try {
+    return new URL(trimmed).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** The publisher URL to write, or `""` when it is empty or not `https:`. */
+export function publisherUrlOrEmpty(value: string | undefined): string {
+  const trimmed = value?.trim() ?? "";
+  return trimmed && isValidPublisherUrl(trimmed) ? trimmed : "";
 }
 
 export function isValidDatabaseId(id: string): boolean {
@@ -409,17 +454,36 @@ function applyDescription(parsed: Record<string, unknown>, identity: AppIdentity
   } else {
     delete parsed.description;
   }
-  // The listing is what the app's landing page and Haven's setup wizard show. The
-  // template's summary describes the template, so it is replaced by the user's own
-  // description or dropped; the icon and anything else in the listing stay.
-  const listing = isRecord(parsed.listing) ? { ...parsed.listing } : null;
-  if (listing) {
-    if (identity.description) {
-      listing.summary = identity.description;
-    } else {
-      delete listing.summary;
-    }
+  // The listing is what the app's landing page and Haven's setup wizard show. Its texts
+  // and publisher describe whoever wrote the file before — the template, or the app
+  // that was copied — so each is replaced by the user's own or dropped; the icon,
+  // screenshots and anything else in the listing stay.
+  const listing: Record<string, unknown> = isRecord(parsed.listing) ? { ...parsed.listing } : {};
+  setOrDelete(listing, "summary", identity.description.slice(0, MAX_SUMMARY_LENGTH).trim());
+  const storeDescription = identity.storeDescription?.trim().slice(0, MAX_STORE_DESCRIPTION_LENGTH);
+  // Only the Markdown field: a plain `description` would need the SDK's converter to
+  // stay in step. Haven versions that predate `descriptionMarkdown` show the summary.
+  setOrDelete(listing, "descriptionMarkdown", storeDescription);
+  delete listing.description;
+  const publisherName = identity.publisherName?.trim().slice(0, MAX_PUBLISHER_NAME_LENGTH);
+  const publisherUrl = publisherUrlOrEmpty(identity.publisherUrl);
+  setOrDelete(
+    listing,
+    "publisher",
+    publisherName ? { name: publisherName, ...(publisherUrl ? { url: publisherUrl } : {}) } : undefined,
+  );
+  if (Object.keys(listing).length > 0) {
     parsed.listing = listing;
+  } else {
+    delete parsed.listing;
+  }
+}
+
+function setOrDelete(target: Record<string, unknown>, key: string, value: unknown): void {
+  if (value) {
+    target[key] = value;
+  } else {
+    delete target[key];
   }
 }
 

@@ -154,13 +154,32 @@
       "hint": "È il nome che vedrai in Haven."
     },
     "description": {
-      "label": "In una frase, a che cosa serve?",
-      "placeholder": "Note condivise per il team."
+      "label": "Descrizione breve",
+      "placeholder": "Note condivise per il team.",
+      "hint": "Una frase, mostrata in grande sotto il nome dell’app. Diventa anche la descrizione del repository GitHub e la prima riga dell’incarico per l’IA."
     },
     "task": {
       "label": "Descrivi che cosa deve fare",
       "placeholder": "Le persone possono scrivere note, assegnare tag e cercare tra tutte. Una schermata con l’elenco delle note, una per scriverle. Tutti nel team possono vederle e modificarle.",
       "hint": "È l’indicazione da cui parte l’IA — più è concreta, meglio è. Pensa a chi la usa, a che cosa vede sullo schermo e a che cosa può fare. Le modifiche puoi sempre chiederle dopo."
+    },
+    "listing": {
+      "summary": "Cosa si vede prima dellâinstallazione",
+      "publicNote": "Tutto ciò che è in questa sezione è pubblico: appare nella pagina dellâapp e a chiunque la installi in Haven.",
+      "description": {
+        "label": "Descrizione dettagliata",
+        "placeholder": "Note condivise nel team.\n\n- Etichetta e cerca le note\n- Tutti vedono subito le modifiche\n\nAltro sul [nostro sito](https://example.com).",
+        "hint": "Una riga vuota inizia un nuovo paragrafo. Puoi usare **grassetto**, _corsivo_, elenchi con \"-\" e link come [il nostro sito](https://example.com). Funzionano solo link https: e mailto:."
+      },
+      "publisherName": {
+        "label": "Pubblicato da",
+        "placeholder": "Il tuo nome o la tua azienda"
+      },
+      "publisherUrl": {
+        "label": "Sito web dellâeditore",
+        "placeholder": "https://example.com",
+        "hint": "Rende il nome dellâeditore un link. Deve iniziare con https://."
+      }
     },
     "advanced": {
       "summary": "Indirizzo web e privacy"
@@ -421,7 +440,8 @@
       "nameRequired": "L’applicazione ha bisogno di un nome.",
       "slugInvalid": "Il nome del repository può contenere solo lettere minuscole, cifre e trattini.",
       "databaseIdInvalid": "L’ID del database può contenere solo lettere minuscole, cifre, punti, trattini bassi e trattini, e al massimo 64 caratteri.",
-      "sourceRequired": "Cerca prima l'app che vuoi copiare."
+      "sourceRequired": "Cerca prima l'app che vuoi copiare.",
+      "publisherUrlInvalid": "Il sito web dellâeditore deve essere un indirizzo https://."
     },
     "ready": {
       "connectGithub": "Collega prima GitHub.",
