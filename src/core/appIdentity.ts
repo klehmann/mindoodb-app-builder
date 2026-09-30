@@ -537,11 +537,22 @@ export function renderTaskMarkdown(identity: AppIdentity): string {
   lines.push(
     "- Keep `public/haven-app.json` in step with the databases the app actually uses.",
   );
+  lines.push(...TESTING_NOTES);
   lines.push("- Prefer finishing one working screen over scaffolding several unfinished ones.");
   lines.push("");
 
   return lines.join("\n");
 }
+
+/**
+ * How to see and test the app. Also in the brief of a copy, which may come without an
+ * `AGENTS.md`. It points at `TESTING.md` of the installed SDK, which ships in the
+ * package and describes the test host of exactly that version.
+ */
+const TESTING_NOTES = [
+  "- See the app at `/__haven-test/` under `pnpm dev`: a mock Haven that frames it with seed data and a control panel. Opening the dev URL without that path shows the landing page, because the app only starts inside Haven.",
+  "- `node_modules/mindoodb-app-sdk/TESTING.md` explains that test host, the Vitest helpers (`mindoodb-app-sdk/testing`) and the Playwright hooks for the pinned SDK version. Test the app with fewer capabilities than it requests as well, if that SDK's test host offers it, so a missing permission shows a hint instead of a failed call.",
+];
 
 function renderCopiedTaskMarkdown(identity: AppIdentity, copiedFrom: AppCopySource): string {
   const lines = [`# ${identity.label}`, ""];
@@ -569,6 +580,7 @@ function renderCopiedTaskMarkdown(identity: AppIdentity, copiedFrom: AppCopySour
   lines.push(
     "- Keep `public/haven-app.json` in step with the databases the app actually uses.",
   );
+  lines.push(...TESTING_NOTES);
   lines.push("");
 
   return lines.join("\n");

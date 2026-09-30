@@ -332,6 +332,12 @@ describe("renderTaskMarkdown", () => {
     expect(markdown).toContain("logical id `main`");
   });
 
+  it("says where to see and test the app", () => {
+    const markdown = renderTaskMarkdown(identity);
+    expect(markdown).toContain("`/__haven-test/`");
+    expect(markdown).toContain("node_modules/mindoodb-app-sdk/TESTING.md");
+  });
+
   it("says so explicitly when there is no description yet", () => {
     expect(renderTaskMarkdown({ ...identity, task: "   " })).toContain("_Not described yet._");
   });
@@ -503,6 +509,7 @@ describe("copies", () => {
     expect(markdown).toContain("## What should change");
     expect(markdown).toContain("Add a due date.");
     expect(markdown).toContain("`main`, `archive`");
+    expect(markdown).toContain("node_modules/mindoodb-app-sdk/TESTING.md");
   });
 });
 
