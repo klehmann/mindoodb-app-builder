@@ -59,9 +59,9 @@
     },
     "share": {
       "title": "{appName} pour MindooDB Haven",
-      "message": "Je souhaite partager l'app « {appName} » avec toi. Elle fonctionne dans MindooDB Haven, un espace de travail chiffré de bout en bout. Ouvre ce lien pour la configurer :\n\n{link}\n\nTu utilises déjà Haven ? Tu peux aussi l'installer dans l'App Store sous « Nouvelle application » › « Depuis une URL » avec cette adresse :\n{appUrl}",
+      "message": "Je souhaite partager l'app « {appName} » avec vous. Elle fonctionne dans MindooDB Haven, un espace de travail chiffré de bout en bout. Ouvrez ce lien pour la configurer :\n\n{link}\n\nVous utilisez déjà Haven ? Vous pouvez aussi l'installer dans l'App Store sous « Nouvelle application » › « Depuis une URL » avec cette adresse :\n{appUrl}",
       "code": "Le code est public sur GitHub :\n{repoUrl}\n\nAvec « Copier une app » dans l’App Builder, vous pouvez en créer votre propre version.",
-      "dialogIntro": "Copie ce texte et envoie-le par e-mail ou messagerie. Le lien configure Haven avec l'app ou l'ajoute à un Haven existant.",
+      "dialogIntro": "Copiez ce texte et envoyez-le par e-mail ou messagerie. Le lien configure Haven avec l'app ou l'ajoute à un Haven existant.",
       "copyText": "Copier le texte",
       "copyLink": "Copier le lien seul",
       "copied": "Copié",
@@ -164,11 +164,11 @@
       "hint": "C’est le cahier des charges sur lequel l’IA travaille — plus il est concret, mieux c’est. Pensez à qui s’en sert, à ce que ces personnes voient à l’écran et à ce qu’elles peuvent faire. Vous pourrez toujours demander des modifications ensuite."
     },
     "listing": {
-      "summary": "Ce que lâon voit avant lâinstallation",
-      "publicNote": "Tout ce qui figure dans cette section est public : câest affiché sur la page de lâapp et à toute personne qui lâinstalle dans Haven.",
+      "summary": "Ce que l’on voit avant l’installation",
+      "publicNote": "Tout ce qui figure dans cette section est public : c’est affiché sur la page de l’app et à toute personne qui l’installe dans Haven.",
       "description": {
         "label": "Description détaillée",
-        "placeholder": "Des notes partagées en équipe.\n\n- Étiqueter et rechercher les notes\n- Chacun voit les modifications immédiatement\n\nPlus dâinfos sur [notre site](https://example.com).",
+        "placeholder": "Des notes partagées en équipe.\n\n- Étiqueter et rechercher les notes\n- Chacun voit les modifications immédiatement\n\nPlus d’infos sur [notre site](https://example.com).",
         "hint": "Une ligne vide commence un nouveau paragraphe. Vous pouvez utiliser **gras**, _italique_, des listes avec « - » et des liens comme [notre site](https://example.com). Seuls les liens https: et mailto: fonctionnent."
       },
       "publisherName": {
@@ -225,7 +225,7 @@
       "purpose": "Le nom et la description viennent de l’app que vous copiez. Modifiez-les et décrivez ce qui doit changer ; le développeur IA part du code existant.",
       "task": {
         "label": "Qu’est-ce qui doit changer ?",
-        "placeholder": "Ajoute une date d’échéance à chaque entrée et trie la liste selon cette date. Garde tout le reste tel quel.",
+        "placeholder": "Ajouter une date d’échéance à chaque entrée et trier la liste selon cette date. Garder tout le reste tel quel.",
         "hint": "C’est le brief à partir duquel l’IA travaille. Dites ce qu’il faut ajouter, retirer ou faire autrement ; ce que vous ne mentionnez pas reste tel quel."
       },
       "database": {
@@ -334,7 +334,7 @@
     "cloudflare": {
       "consentHint": "Ouvre l’écran de consentement de Cloudflare. Il demande les autorisations Workers dont le builder a besoin, et rien d’autre ; le jeton d’accès est échangé dans cette page partout où Cloudflare le permet.",
       "waiting": "En attente de Cloudflare…",
-      "waitingHint": "Termine la connexion dans l’onglet Cloudflare. S’il indique de revenir ici, copie son adresse et colle-la ci-dessous.",
+      "waitingHint": "Terminez la connexion dans l’onglet Cloudflare. S’il indique de revenir ici, copiez son adresse et collez-la ci-dessous.",
       "callbackUrlLabel": "Adresse de l’onglet Cloudflare",
       "callbackUrlPlaceholder": "https://app-builder.mindoodb.com/oauth/cloudflare/callback?code=…",
       "callbackUrlApply": "Continuer",
@@ -441,7 +441,7 @@
       "slugInvalid": "Le nom du dépôt ne peut contenir que des lettres minuscules, des chiffres et des tirets.",
       "databaseIdInvalid": "L’identifiant de la base ne peut contenir que des lettres minuscules, des chiffres, des points, des tirets bas et des tirets, et 64 caractères au plus.",
       "sourceRequired": "Recherchez d’abord l’app que vous voulez copier.",
-      "publisherUrlInvalid": "Le site web de lâéditeur doit être une adresse https://."
+      "publisherUrlInvalid": "Le site web de l’éditeur doit être une adresse https://."
     },
     "ready": {
       "connectGithub": "Connectez d’abord GitHub.",
@@ -543,7 +543,7 @@
     "urlBuildFailed": "L’URL d’autorisation Cloudflare n’a pas pu être construite.",
     "popupBlocked": "La fenêtre Cloudflare a été bloquée. Autorisez les fenêtres pop-up pour le builder, puis réessayez.",
     "badCallbackUrl": "Ce n’est pas l’adresse de retour Cloudflare.",
-    "noPending": "Aucune connexion Cloudflare n’est en cours. Connecte-toi à nouveau.",
+    "noPending": "Aucune connexion Cloudflare n’est en cours. Connectez-vous à nouveau.",
     "noAccounts": "Ce jeton n’a indiqué aucun compte Cloudflare.",
     "accountLookupFailed": "Impossible de demander à Cloudflare à quel compte ce jeton appartient."
   },
