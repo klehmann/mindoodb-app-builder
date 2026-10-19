@@ -104,11 +104,16 @@ export function useAppRecords(session: BuilderSession) {
     await persist();
   }
 
-  /** Drop the builder's note about an app. The app itself keeps running. */
-  async function forget(documentId: string): Promise<void> {
+  /**
+   * Drop the builder's note about an app. The app itself keeps running.
+   *
+   * Resolves whether the entry is gone, so a caller that offers undo (the agent tools)
+   * only records what was really removed.
+   */
+  async function forget(documentId: string): Promise<boolean> {
     const database = session.database.value;
     if (!database || !canForget.value) {
-      return;
+      return false;
     }
     try {
       await deleteAppRecord(database, documentId);
@@ -117,9 +122,24 @@ export function useAppRecords(session: BuilderSession) {
         activeDocumentId.value = null;
       }
       await refresh();
+      return true;
     } catch (error) {
       console.error("[app-builder] The app record could not be removed:", error);
+      return false;
     }
+  }
+
+  /**
+   * Write a forgotten record back as a new document — the undo of `forget`. Throws, unlike
+   * `persist`: the caller asked for exactly this and has to hear when it did not happen.
+   */
+  async function restore(record: BuilderAppRecord): Promise<void> {
+    const database = session.database.value;
+    if (!database || !canStore.value) {
+      throw new Error("The builder database does not accept new entries.");
+    }
+    await saveAppRecord(database, record, null);
+    await refresh();
   }
 
   function clearActive(): void {
@@ -140,6 +160,7 @@ export function useAppRecords(session: BuilderSession) {
     recordPhase,
     records,
     refresh,
+    restore,
     resume,
   };
 }

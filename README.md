@@ -373,6 +373,34 @@ origin cannot widen its own grant by redeploying. If the agent added a database 
 as a warning — you grant it in the app's settings, or by removing the app in Haven and
 installing it again. Removing an app does not delete its data.
 
+## Agent tools
+
+With **Agent tools** switched on in Haven and allowed for the App Builder, AI agents in
+the browser get these tools (prefix `builder_`, declared in `src/agent/builderAgentTools.ts`;
+the `agent` block in `haven-app.json` and `public/agent/` describe them to agents
+beforehand):
+
+| Tool | What it does |
+| --- | --- |
+| `get_context` | Which accounts are connected (true/false only), the open page and app, the New app form, a running build and its steps |
+| `apps_list` / `apps_get` | The built apps: name, description, stage, next step, app / repository / `haven-app.json` URLs, the brief |
+| `app_open` | Shows an app's page and names the button that carries it on |
+| `new_app_prefill` | Opens the New app page and fills in name, description and brief — or, with `mode: "copy"` and a source URL, a copy of an existing app |
+| `agent_status` | The Cursor agent's current run: status, summary, branches and pull requests |
+| `agent_follow_up_prefill` | Writes the next instruction into the Cursor agent's box on the app's page |
+| `apps_forget` / `undo` | Removes list entries (Haven asks first) and puts them back |
+
+The line is drawn at anything that leaves the browser on the user's behalf. Creating a
+repository, deploying to Cloudflare and starting a Cursor run (which costs the user's
+plan) only ever happen when the user presses the button: the tools fill in the form or
+the instruction box and return the button's label, never press it. The tokens stay out
+of reach — the tools see the connections as booleans, the Cursor status call reads the
+key inside the app, and no tool takes a token or account as input. Removing an app only
+removes the list entry, as in the UI, and undo lasts while the builder stays open.
+
+Haven fetches `haven-app.json` and the guides in `public/agent/` cross-origin, so both the
+Worker and the Node host serve them with `Access-Control-Allow-Origin: *`.
+
 ## Layout
 
 ```
@@ -380,6 +408,7 @@ src/core/     framework-free: GitHub, Cloudflare, Cursor, the flow, the sealed d
 src/host/     the Node process: static files and /api/*, ~200 lines
 src/worker/   the same /api/* as a Cloudflare Worker, for a deployed copy
 src/app/      the Vue UI
+src/agent/    the tools AI agents get through Haven (WebMCP)
 ```
 
 `src/core/createAppFlow.ts` is the whole build as one sequence against injected

@@ -119,6 +119,16 @@ function toErrorResponse(error: unknown): ApiResponse {
   };
 }
 
+/**
+ * Static files Haven fetches from another origin, so they need
+ * `Access-Control-Allow-Origin: *`: the app definition (to install the builder) and the
+ * agent guides it names in `agent.guide` (when an agent asks what the builder can do).
+ * Both are public build output served without credentials.
+ */
+export function isCrossOriginAsset(pathname: string): boolean {
+  return pathname === "/haven-app.json" || /^\/agent\/[^/]+\.md$/.test(pathname);
+}
+
 export async function handleApiRequest(request: ApiRequest): Promise<ApiResponse> {
   const { method, pathname, body, fetchImpl } = request;
   const config = request.config ?? readOAuthConfig();

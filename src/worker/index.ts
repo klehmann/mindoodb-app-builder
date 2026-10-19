@@ -30,7 +30,7 @@ import {
 } from "../core/oauthConfig";
 import { builderAllowedOrigins } from "../core/ports";
 import { renderCloudflareCallbackPage } from "../host/oauthCallback";
-import { handleApiRequest } from "../host/routes";
+import { handleApiRequest, isCrossOriginAsset } from "../host/routes";
 
 export interface WorkerEnv {
   /** Static assets binding: the built SPA in `dist/`. */
@@ -80,8 +80,9 @@ export default {
       });
     }
 
-    // Haven reads the app definition cross-origin when installing the builder.
-    if (url.pathname === "/haven-app.json") {
+    // Haven reads the app definition cross-origin when installing the builder, and the
+    // agent guides it names (`agent.guide`) when an agent asks what the builder can do.
+    if (isCrossOriginAsset(url.pathname)) {
       const asset = await env.ASSETS.fetch(request);
       const response = new Response(asset.body, asset);
       response.headers.set("Access-Control-Allow-Origin", "*");
