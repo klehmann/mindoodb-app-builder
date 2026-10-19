@@ -7,6 +7,7 @@ import frMessages from "./locales/fr.json";
 import itMessages from "./locales/it.json";
 import nbMessages from "./locales/nb.json";
 import nlMessages from "./locales/nl.json";
+import havenApp from "../../public/haven-app.json";
 import plMessages from "./locales/pl.json";
 
 const LOCALE_MESSAGES: Record<string, unknown> = {
@@ -185,5 +186,40 @@ describe("locale message files", () => {
       });
       expect({ language, emptyKeys }).toEqual({ language, emptyKeys: [] });
     }
+  });
+});
+
+/**
+ * French typography: a non-breaking space (U+00A0 or U+202F), never a plain one, before
+ * : ; ? ! and » and after «. Code spans and URLs are skipped.
+ */
+function frenchSpacingViolations(value: unknown, path = ""): string[] {
+  if (typeof value === "string") {
+    const text = value.replace(/```[\s\S]*?```/g, "").replace(/`[^`]*`/g, "").replace(/https?:\/\/\S+/g, "");
+    return / [:;?!»]|« /.test(text) ? [`${path}: ${value}`] : [];
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.entries(value).flatMap(([key, child]) =>
+      frenchSpacingViolations(child, path ? `${path}.${key}` : key),
+    );
+  }
+  return [];
+}
+
+/** The texts below every "fr" key, e.g. the localized store listing in haven-app.json. */
+function frenchBranches(value: unknown, path = ""): Record<string, unknown> {
+  if (typeof value !== "object" || value === null) return {};
+  return Object.assign(
+    {},
+    ...Object.entries(value).map(([key, child]) =>
+      key === "fr" ? { [`${path}.fr`]: child } : frenchBranches(child, path ? `${path}.${key}` : key),
+    ),
+  );
+}
+
+describe("French typography", () => {
+  it("uses a non-breaking space before : ; ? ! » and after «", () => {
+    expect(frenchSpacingViolations(frMessages)).toEqual([]);
+    expect(frenchSpacingViolations(frenchBranches(havenApp), "haven-app.json")).toEqual([]);
   });
 });
