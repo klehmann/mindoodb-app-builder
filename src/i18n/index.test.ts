@@ -30,6 +30,29 @@ function flattenKeys(value: unknown, prefix = ""): string[] {
   );
 }
 
+/** The value at a dotted key path. */
+function valueAt(messages: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown>)?.[part], messages);
+}
+
+/**
+ * The `{named}` and `{0}` interpolations of a message, deduplicated and sorted.
+ * Plural branches (`a | b`) are merged, since a branch may leave out `{count}`.
+ */
+function placeholdersOf(message: string): string[] {
+  return [...new Set(message.match(/\{\s*[\w.]+\s*\}/g) ?? [])].map((p) => p.replace(/\s/g, "")).sort();
+}
+
+/** Linked messages (`@:key`, `@.lower:key`) a message refers to. */
+function linksOf(message: string): string[] {
+  return [...new Set(message.match(/@(?:\.\w+)?:[\w.]+/g) ?? [])].sort();
+}
+
+/** Number of plural branches of a vue-i18n message. */
+function pluralBranches(message: string): number {
+  return message.split(" | ").length;
+}
+
 describe("mapLocaleToUiLanguage", () => {
   it("maps German-speaking country locales to de", () => {
     expect(mapLocaleToUiLanguage("de-DE")).toBe("de");
@@ -106,6 +129,46 @@ describe("locale message files", () => {
     }
   });
 
+  it("use the same placeholders, linked messages and plural forms as English", () => {
+    const baseMessages = LOCALE_MESSAGES.en;
+    for (const language of SUPPORTED_UI_LANGUAGES) {
+      if (language === "en") continue;
+      const messages = LOCALE_MESSAGES[language];
+      const mismatches: string[] = [];
+      for (const key of flattenKeys(baseMessages)) {
+        const base = valueAt(baseMessages, key);
+        const value = valueAt(messages, key);
+        const pairs: [unknown, unknown, string][] = Array.isArray(base)
+          ? base.map((entry, i) => [entry, Array.isArray(value) ? value[i] : undefined, `${key}[${i}]`])
+          : [[base, value, key]];
+        if (Array.isArray(base) && (!Array.isArray(value) || value.length !== base.length)) {
+          mismatches.push(`${key}: ${Array.isArray(value) ? value.length : "no"} entries instead of ${base.length}`);
+          continue;
+        }
+        for (const [baseEntry, entry, path] of pairs) {
+          if (typeof baseEntry !== "string") continue;
+          if (typeof entry !== "string") {
+            mismatches.push(`${path}: ${entry === null ? "null" : typeof entry} instead of a string`);
+            continue;
+          }
+          const want = placeholdersOf(baseEntry).join(" ");
+          const got = placeholdersOf(entry).join(" ");
+          if (want !== got) mismatches.push(`${path}: placeholders "${got}" instead of "${want}"`);
+          if (linksOf(baseEntry).join(" ") !== linksOf(entry).join(" ")) {
+            mismatches.push(`${path}: linked messages differ from English`);
+          }
+          // Polish may add a third form (one | few | many) where English has two.
+          const branches = pluralBranches(baseEntry);
+          const allowed = branches === 2 && language === "pl" ? [2, 3] : [branches];
+          if (!allowed.includes(pluralBranches(entry))) {
+            mismatches.push(`${path}: ${pluralBranches(entry)} plural forms instead of ${allowed.join(" or ")}`);
+          }
+        }
+      }
+      expect({ language, mismatches }).toEqual({ language, mismatches: [] });
+    }
+  });
+
   it("never ships an empty translation value", () => {
     for (const language of SUPPORTED_UI_LANGUAGES) {
       const messages = LOCALE_MESSAGES[language] as Record<string, unknown>;
@@ -118,7 +181,7 @@ describe("locale message files", () => {
         if (Array.isArray(node)) {
           return node.some((entry) => typeof entry !== "string" || entry.trim() === "");
         }
-        return typeof node === "string" && node.trim() === "";
+        return typeof node !== "string" || node.trim() === "";
       });
       expect({ language, emptyKeys }).toEqual({ language, emptyKeys: [] });
     }
