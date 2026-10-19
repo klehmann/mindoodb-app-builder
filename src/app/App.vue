@@ -25,6 +25,7 @@ import { resolveGitHubOwner } from "@/app/githubOwner";
 import { listCloudflareBuilds, readHostConfig, type BuilderHostConfig } from "@/app/hostApi";
 import { saveAppDefinition } from "@/app/saveDefinition";
 import { useAppRecords } from "@/app/useAppRecords";
+import { useBuilderAgentTools } from "@/app/useBuilderAgentTools";
 import { useBuilderFlow } from "@/app/useBuilderFlow";
 import { useBuilderSession } from "@/app/useBuilderSession";
 import { useCloudflareConnect } from "@/app/useCloudflareConnect";
@@ -54,6 +55,8 @@ const buildsError = ref<string | null>(null);
 /** One line of feedback for actions that otherwise leave no trace, like a download. */
 const statusMessage = ref<string | null>(null);
 const copied = ref(false);
+/** An instruction an AI agent prepared for the Cursor agent's box; the user sends it. */
+const followUpDraft = ref<{ text: string; nonce: number } | null>(null);
 
 /**
  * A completed connect flow saves immediately rather than waiting for "Save accounts".
@@ -154,6 +157,7 @@ function clearTransient(): void {
   buildsError.value = null;
   builds.value = null;
   copied.value = false;
+  followUpDraft.value = null;
 }
 
 function showHome(): void {
@@ -298,6 +302,23 @@ async function forgetListedApp(stored: StoredAppRecord): Promise<void> {
   await records.forget(stored.documentId);
 }
 
+/*
+ * Tools for AI agents. They read the list and prepare work — a filled-in New app form,
+ * an instruction in the Cursor box — but every press that creates a repository, deploys
+ * or starts a Cursor run stays the user's.
+ */
+useBuilderAgentTools({
+  session,
+  records,
+  flow,
+  view,
+  setupComplete,
+  openApp,
+  startNewApp,
+  startCopyApp,
+  followUpDraft,
+});
+
 onMounted(async () => {
   await session.connect();
   hostConfig.value = await readHostConfig();
@@ -397,6 +418,7 @@ onMounted(async () => {
       :can-propose="session.canProposeApps.value"
       :agent="flow.agent.value"
       :cursor-token="session.credentials.value.cursorToken"
+      :follow-up-draft="followUpDraft"
       :builds="builds"
       :builds-error="buildsError"
       :copied="copied"
