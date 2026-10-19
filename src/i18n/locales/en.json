@@ -463,7 +463,7 @@
       "repoCreateFailed": "The repository could not be created.",
       "templateCopyPending": "GitHub has not finished copying the template into {fullName}. The project is there and empty — open it from your apps in a moment and press “{action}”.",
       "templateMissingFile": "The template is missing {path}.",
-      "identityCommitted": "{count} files named for {label}.",
+      "identityCommitted": "{count} file named for {label}. | {count} files named for {label}.",
       "identityCommitFailed": "The app identity could not be committed.",
       "noCloudflareAccount": "No Cloudflare account to ask.",
       "repoAccessReadable": "Cloudflare can read the repository.",
@@ -521,7 +521,7 @@
       "sourceMissingFile": "{fullName} has no {path}, so it is not a Haven app this builder can copy.",
       "sourceUsesLfs": "{fullName} keeps files in Git LFS, which cannot be copied here.",
       "sourceDefinitionInvalid": "The haven-app.json in {fullName} is not a valid app definition.",
-      "sourceCopied": "{count} files from {fullName}.",
+      "sourceCopied": "{count} file from {fullName}. | {count} files from {fullName}.",
       "sourceCopiedSkipped": "Left out of the copy: GitHub workflow files ({count}).",
       "sourceCopyFailed": "The app's code could not be copied.",
       "sourceCopyFromEarlierAttempt": "Already copied by the earlier attempt."
@@ -575,7 +575,7 @@
     },
     "needsGithub": "Connect GitHub first — the code is read and copied with your GitHub connection.",
     "found": {
-      "files": "{count} files",
+      "files": "{count} file | {count} files",
       "databases": "Databases: {ids}",
       "skipped": "Not copied: GitHub workflow files ({count})."
     }

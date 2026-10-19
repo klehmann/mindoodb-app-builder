@@ -463,7 +463,7 @@
       "repoCreateFailed": "Nie udało się utworzyć repozytorium.",
       "templateCopyPending": "GitHub nie skończył jeszcze kopiowania szablonu do {fullName}. Projekt tam jest, ale jest pusty — za chwilę otwórz go na liście swoich aplikacji i naciśnij „{action}”.",
       "templateMissingFile": "W szablonie brakuje {path}.",
-      "identityCommitted": "W {count} plikach wpisano nazwę {label}.",
+      "identityCommitted": "W {count} pliku wpisano nazwę {label}. | W {count} plikach wpisano nazwę {label}. | W {count} plikach wpisano nazwę {label}.",
       "identityCommitFailed": "Nie udało się zapisać w projekcie nazwy i opisu aplikacji.",
       "noCloudflareAccount": "Brak konta Cloudflare, które można zapytać.",
       "repoAccessReadable": "Cloudflare może czytać repozytorium.",
@@ -521,7 +521,7 @@
       "sourceMissingFile": "{fullName} nie ma pliku {path}, więc nie jest aplikacją Haven, którą ten builder może skopiować.",
       "sourceUsesLfs": "{fullName} przechowuje pliki w Git LFS, których nie da się tu skopiować.",
       "sourceDefinitionInvalid": "Plik haven-app.json w {fullName} nie jest prawidłową definicją aplikacji.",
-      "sourceCopied": "Pliki z {fullName}: {count}.",
+      "sourceCopied": "{count} plik z {fullName}. | {count} pliki z {fullName}. | {count} plików z {fullName}.",
       "sourceCopiedSkipped": "Pominięte w kopii: pliki workflow GitHuba ({count}).",
       "sourceCopyFailed": "Nie udało się skopiować kodu aplikacji.",
       "sourceCopyFromEarlierAttempt": "Skopiowane już przy poprzedniej próbie."
@@ -575,7 +575,7 @@
     },
     "needsGithub": "Najpierw połącz GitHub — kod jest odczytywany i kopiowany przez twoje połączenie z GitHubem.",
     "found": {
-      "files": "Pliki: {count}",
+      "files": "{count} plik | {count} pliki | {count} plików",
       "databases": "Bazy danych: {ids}",
       "skipped": "Nie kopiowane: pliki workflow GitHuba ({count})."
     }

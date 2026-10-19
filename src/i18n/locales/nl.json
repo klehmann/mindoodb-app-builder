@@ -463,7 +463,7 @@
       "repoCreateFailed": "De repository kon niet worden aangemaakt.",
       "templateCopyPending": "GitHub is nog niet klaar met het kopiëren van het sjabloon naar {fullName}. Het project staat er al en is leeg — open het over een moment bij je applicaties en druk op ‘{action}’.",
       "templateMissingFile": "In het sjabloon ontbreekt {path}.",
-      "identityCommitted": "{count} bestanden vernoemd naar {label}.",
+      "identityCommitted": "{count} bestand vernoemd naar {label}. | {count} bestanden vernoemd naar {label}.",
       "identityCommitFailed": "De naam en opdracht van de applicatie konden niet worden vastgelegd.",
       "noCloudflareAccount": "Er is geen Cloudflare-account om dit aan te vragen.",
       "repoAccessReadable": "Cloudflare kan de repository lezen.",
@@ -521,7 +521,7 @@
       "sourceMissingFile": "{fullName} heeft geen {path}, dus het is geen Haven-app die deze builder kan kopiëren.",
       "sourceUsesLfs": "{fullName} bewaart bestanden in Git LFS, die hier niet kunnen worden gekopieerd.",
       "sourceDefinitionInvalid": "De haven-app.json in {fullName} is geen geldige app-definitie.",
-      "sourceCopied": "{count} bestanden uit {fullName}.",
+      "sourceCopied": "{count} bestand uit {fullName}. | {count} bestanden uit {fullName}.",
       "sourceCopiedSkipped": "Niet meegekopieerd: GitHub-workflowbestanden ({count}).",
       "sourceCopyFailed": "De code van de app kon niet worden gekopieerd.",
       "sourceCopyFromEarlierAttempt": "Al gekopieerd bij de vorige poging."
@@ -575,7 +575,7 @@
     },
     "needsGithub": "Koppel eerst GitHub — de code wordt gelezen en gekopieerd via je GitHub-koppeling.",
     "found": {
-      "files": "{count} bestanden",
+      "files": "{count} bestand | {count} bestanden",
       "databases": "Databases: {ids}",
       "skipped": "Niet gekopieerd: GitHub-workflowbestanden ({count})."
     }

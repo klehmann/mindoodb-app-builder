@@ -463,7 +463,7 @@
       "repoCreateFailed": "Repositoriet kunne ikke opprettes.",
       "templateCopyPending": "GitHub er ikke ferdig med å kopiere malen inn i {fullName}. Prosjektet er der og tomt — åpne det fra appene dine om et øyeblikk og trykk «{action}».",
       "templateMissingFile": "Malen mangler {path}.",
-      "identityCommitted": "{count} filer har fått navnet {label}.",
+      "identityCommitted": "{count} fil har fått navnet {label}. | {count} filer har fått navnet {label}.",
       "identityCommitFailed": "Navnet på appen kunne ikke skrives inn i koden.",
       "noCloudflareAccount": "Ingen Cloudflare-konto å spørre.",
       "repoAccessReadable": "Cloudflare kan lese repositoriet.",
@@ -521,7 +521,7 @@
       "sourceMissingFile": "{fullName} har ingen {path}, så det er ikke en Haven-app denne builderen kan kopiere.",
       "sourceUsesLfs": "{fullName} lagrer filer i Git LFS, som ikke kan kopieres her.",
       "sourceDefinitionInvalid": "haven-app.json i {fullName} er ikke en gyldig appdefinisjon.",
-      "sourceCopied": "{count} filer fra {fullName}.",
+      "sourceCopied": "{count} fil fra {fullName}. | {count} filer fra {fullName}.",
       "sourceCopiedSkipped": "Utelatt fra kopien: GitHub-arbeidsflytfiler ({count}).",
       "sourceCopyFailed": "Appens kode kunne ikke kopieres.",
       "sourceCopyFromEarlierAttempt": "Allerede kopiert i forrige forsøk."
@@ -575,7 +575,7 @@
     },
     "needsGithub": "Koble til GitHub først – koden leses og kopieres med GitHub-tilkoblingen din.",
     "found": {
-      "files": "{count} filer",
+      "files": "{count} fil | {count} filer",
       "databases": "Databaser: {ids}",
       "skipped": "Ikke kopiert: GitHub-arbeidsflytfiler ({count})."
     }

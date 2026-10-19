@@ -463,7 +463,7 @@
       "repoCreateFailed": "No se pudo crear el repositorio.",
       "templateCopyPending": "GitHub aún no ha terminado de copiar la plantilla en {fullName}. El proyecto está ahí, vacío — ábrelo dentro de un momento desde tus aplicaciones y pulsa «{action}».",
       "templateMissingFile": "Falta {path} en la plantilla.",
-      "identityCommitted": "{count} archivos con el nombre de {label}.",
+      "identityCommitted": "{count} archivo con el nombre de {label}. | {count} archivos con el nombre de {label}.",
       "identityCommitFailed": "No se pudo hacer commit de la identidad de la aplicación.",
       "noCloudflareAccount": "No hay ninguna cuenta de Cloudflare a la que preguntar.",
       "repoAccessReadable": "Cloudflare puede leer el repositorio.",
@@ -521,7 +521,7 @@
       "sourceMissingFile": "{fullName} no tiene {path}, así que no es una app de Haven que este builder pueda copiar.",
       "sourceUsesLfs": "{fullName} guarda archivos en Git LFS, que no se pueden copiar aquí.",
       "sourceDefinitionInvalid": "El haven-app.json de {fullName} no es una definición de app válida.",
-      "sourceCopied": "{count} archivos de {fullName}.",
+      "sourceCopied": "{count} archivo de {fullName}. | {count} archivos de {fullName}.",
       "sourceCopiedSkipped": "Quedaron fuera de la copia: archivos de flujos de trabajo de GitHub ({count}).",
       "sourceCopyFailed": "No se pudo copiar el código de la app.",
       "sourceCopyFromEarlierAttempt": "Ya se copió en el intento anterior."
@@ -575,7 +575,7 @@
     },
     "needsGithub": "Conecta GitHub primero: el código se lee y se copia con tu conexión de GitHub.",
     "found": {
-      "files": "{count} archivos",
+      "files": "{count} archivo | {count} archivos",
       "databases": "Bases de datos: {ids}",
       "skipped": "No se copian: archivos de flujos de trabajo de GitHub ({count})."
     }
