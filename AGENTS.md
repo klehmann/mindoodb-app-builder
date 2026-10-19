@@ -22,6 +22,7 @@ change that adds it: labels, buttons, placeholders, empty states, errors,
 
 **In this repo:** strings are in `src/i18n/locales/<lang>.json`; `src/i18n/index.ts`
 maps the tag. `src/i18n/index.test.ts` checks that every language has a file, the same
-keys as English and no empty values — it does not compare `{placeholders}` yet. The
+keys as English, no empty or non-string values, and the same `{placeholders}`, linked
+messages (`@:key`) and plural forms (`a | b`; Polish may add a third) as English. The
 store listing texts in `public/haven-app.json` (`listing.summary`, `description`) need
 all eight languages too.
