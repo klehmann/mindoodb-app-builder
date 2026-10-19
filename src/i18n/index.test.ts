@@ -223,3 +223,51 @@ describe("French typography", () => {
     expect(frenchSpacingViolations(frenchBranches(havenApp), "haven-app.json")).toEqual([]);
   });
 });
+
+/**
+ * French address form: like Haven, the French UI says "vous", never "tu". Flags the informal
+ * pronouns and possessives (tu, te, t’, toi, ton, ta, tes) and a few unambiguous 2nd-person
+ * singular forms (participles such as "choisis" are left out); ALLOWED_INFORMAL_LOOKALIKES lists phrases where such a word means something else.
+ */
+const ALLOWED_INFORMAL_LOOKALIKES: RegExp[] = [];
+const INFORMAL_FRENCH =
+  /(?<![\p{L}\p{N}_-])(?:(?:tu|te|toi|ton|ta|tes|\p{L}+-(?:tu|toi)|réessaie|réessaye)(?![\p{L}\p{N}_’'-])|t[’'](?=\p{L}))/iu;
+
+function informalFrenchViolations(value: unknown, path = ""): string[] {
+  if (typeof value === "string") {
+    const text = ALLOWED_INFORMAL_LOOKALIKES.reduce((acc, re) => acc.replace(re, ""), value);
+    return INFORMAL_FRENCH.test(text) ? [`${path}: ${value}`] : [];
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.entries(value).flatMap(([key, child]) =>
+      informalFrenchViolations(child, path ? `${path}.${key}` : key),
+    );
+  }
+  return [];
+}
+
+describe("French address form", () => {
+  it("addresses the user with vous, never tu", () => {
+    expect(informalFrenchViolations(frMessages)).toEqual([]);
+    expect(informalFrenchViolations(frenchBranches(havenApp), "haven-app.json")).toEqual([]);
+  });
+
+  it("detects informal French", () => {
+    expect(informalFrenchViolations("Tu peux aussi la masquer.")).toHaveLength(1);
+    expect(informalFrenchViolations("L’aide t’offre une introduction.")).toHaveLength(1);
+    expect(informalFrenchViolations("Autorise les pop-ups et réessaie.")).toHaveLength(1);
+    expect(informalFrenchViolations("Connecte-toi à nouveau.")).toHaveLength(1);
+    expect(informalFrenchViolations("Vous pouvez aussi la masquer.")).toEqual([]);
+  });
+});
+
+describe("encoding", () => {
+  it("has no mojibake from text decoded twice (e.g. â\u0080\u0099 for ’)", () => {
+    for (const language of SUPPORTED_UI_LANGUAGES) {
+      const broken = flattenKeys(LOCALE_MESSAGES[language]).filter((key) =>
+        /[\u0080-\u009f]/.test(String(valueAt(LOCALE_MESSAGES[language], key))),
+      );
+      expect({ language, broken }).toEqual({ language, broken: [] });
+    }
+  });
+});
