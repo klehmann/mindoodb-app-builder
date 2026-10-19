@@ -80,13 +80,24 @@ function polishPluralIndex(choice: number, choicesLength: number): number {
   return few ? 1 : 2;
 }
 
+/**
+ * Picks the French plural form for `one | other` messages.
+ *
+ * French counts zero as singular ("0 page"), where vue-i18n's built-in rule
+ * treats it like English ("0 pages"). CLDR: `one` for 0 and 1.
+ */
+function frenchPluralIndex(choice: number, choicesLength: number): number {
+  if (choicesLength < 2) return 0;
+  return Math.abs(choice) < 2 ? 0 : 1;
+}
+
 export const i18n = createI18n({
   legacy: false,
   globalInjection: true,
   locale: detectBrowserUiLanguage(),
   fallbackLocale: "en",
   messages: { de, en, es, fr, it, nb, nl, pl },
-  pluralRules: { pl: polishPluralIndex },
+  pluralRules: { fr: frenchPluralIndex, pl: polishPluralIndex },
 });
 
 /** Sets the active UI language and keeps `<html lang>` in sync. */
