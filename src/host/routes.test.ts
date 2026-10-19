@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { readOAuthConfig, UNREGISTERED_OAUTH_ENV } from "@/core/oauthConfig";
-import { handleApiRequest } from "@/host/routes";
+import { handleApiRequest, isCrossOriginAsset } from "@/host/routes";
 
 /** A builder registered for both connect flows, as the deployed copy is. */
 const registered = readOAuthConfig({
@@ -478,5 +478,17 @@ describe("handleApiRequest", () => {
       });
       expect(result.status).toBe(502);
     });
+  });
+});
+
+describe("isCrossOriginAsset", () => {
+  it("opens the app definition and the agent guides to Haven, nothing else", () => {
+    expect(isCrossOriginAsset("/haven-app.json")).toBe(true);
+    expect(isCrossOriginAsset("/agent/agent.en.md")).toBe(true);
+    expect(isCrossOriginAsset("/agent/agent.de.md")).toBe(true);
+    expect(isCrossOriginAsset("/agent/")).toBe(false);
+    expect(isCrossOriginAsset("/agent/../index.html")).toBe(false);
+    expect(isCrossOriginAsset("/index.html")).toBe(false);
+    expect(isCrossOriginAsset("/api/cursor/status")).toBe(false);
   });
 });

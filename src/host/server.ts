@@ -31,7 +31,7 @@ import path from "node:path";
 import { readOAuthConfig, type BuilderOAuthConfig, CLOUDFLARE_CALLBACK_PATH } from "../core/oauthConfig";
 import { builderAllowedOrigins, BUILDER_DEFAULT_PORT } from "../core/ports";
 import { renderCloudflareCallbackPage } from "./oauthCallback";
-import { handleApiRequest } from "./routes";
+import { handleApiRequest, isCrossOriginAsset } from "./routes";
 
 export interface BuilderHostOptions {
   port?: number;
@@ -185,7 +185,8 @@ export async function startBuilderHost(
 
     // Haven fetches this cross-origin to install the builder, exactly as it does for a
     // Cloudflare-hosted app.
-    if (url.pathname === "/haven-app.json") {
+    // The agent guides (`agent.guide`) are fetched the same way.
+    if (isCrossOriginAsset(url.pathname)) {
       response.setHeader("Access-Control-Allow-Origin", "*");
     }
 

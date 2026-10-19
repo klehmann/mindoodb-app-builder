@@ -18,6 +18,7 @@
   "allowPopups": true,
   "allowClipboardWrite": true,
   "defaultLaunchDatabaseId": "appbuilder",
+  "agentToolPrefix": "builder",
   "databases": [
     {
       "logicalDatabaseId": "appbuilder",
@@ -171,6 +172,193 @@
     ],
     "publisher": {
       "name": "Mindoo GmbH"
+    }
+  },
+  "agent": {
+    "summary": {
+      "en": "Creates Haven apps end to end: a GitHub repository from the starter template, a Cloudflare Workers deployment, an optional Cursor coding agent working on a brief, and installation in Haven. Keeps the list of apps built with it and their status.",
+      "de": "Erstellt Haven-Apps von Anfang bis Ende: ein GitHub-Repository aus der Starter-Vorlage, eine Bereitstellung auf Cloudflare Workers, optional einen Cursor-Coding-Agenten, der an einer Beschreibung arbeitet, und die Installation in Haven. Führt die Liste der damit gebauten Apps und ihren Stand.",
+      "es": "Crea aplicaciones de Haven de principio a fin: un repositorio de GitHub a partir de la plantilla inicial, un despliegue en Cloudflare Workers, opcionalmente un agente de programación de Cursor que trabaja sobre una descripción, y la instalación en Haven. Guarda la lista de aplicaciones creadas y su estado.",
+      "fr": "Crée des applications Haven de bout en bout : un dépôt GitHub à partir du modèle de départ, un déploiement sur Cloudflare Workers, éventuellement un agent de code Cursor qui travaille sur une description, et l’installation dans Haven. Tient la liste des applications créées et leur état.",
+      "it": "Crea app Haven dall’inizio alla fine: un repository GitHub dal modello iniziale, un deployment su Cloudflare Workers, facoltativamente un agente di programmazione Cursor che lavora su una descrizione, e l’installazione in Haven. Tiene l’elenco delle app create e il loro stato.",
+      "nb": "Lager Haven-apper fra start til slutt: et GitHub-repositorium fra startmalen, en utrulling på Cloudflare Workers, eventuelt en Cursor-kodeagent som jobber ut fra en beskrivelse, og installasjon i Haven. Holder listen over appene som er laget og hvor langt de er kommet.",
+      "nl": "Maakt Haven-apps van begin tot eind: een GitHub-repository op basis van de startsjabloon, een uitrol op Cloudflare Workers, optioneel een Cursor-codeeragent die aan een beschrijving werkt, en installatie in Haven. Houdt de lijst bij van de gebouwde apps en hun status.",
+      "pl": "Tworzy aplikacje Haven od początku do końca: repozytorium GitHub z szablonu startowego, wdrożenie w Cloudflare Workers, opcjonalnie agenta programistycznego Cursor pracującego według opisu oraz instalację w Haven. Prowadzi listę zbudowanych aplikacji i ich stan."
+    },
+    "capabilities": [
+      {
+        "id": "apps",
+        "title": {
+          "en": "Find built apps, their status and URLs, and open them",
+          "de": "Gebaute Apps, ihren Stand und ihre Adressen finden und öffnen",
+          "es": "Buscar las aplicaciones creadas, su estado y direcciones, y abrirlas",
+          "fr": "Trouver les applications créées, leur état et leurs adresses, et les ouvrir",
+          "it": "Trovare le app create, il loro stato e i loro indirizzi, e aprirle",
+          "nb": "Finne appene som er laget, status og adresser, og åpne dem",
+          "nl": "Gebouwde apps, hun status en adressen vinden en openen",
+          "pl": "Wyszukiwanie zbudowanych aplikacji, ich stanu i adresów oraz otwieranie ich"
+        },
+        "tools": [
+          "get_context",
+          "apps_list",
+          "apps_get",
+          "app_open"
+        ]
+      },
+      {
+        "id": "build",
+        "title": {
+          "en": "Prepare a new app, or a copy of one, for the user to build",
+          "de": "Neue App oder Kopie einer App vorbereiten, die der Benutzer baut",
+          "es": "Preparar una aplicación nueva o una copia para que el usuario la cree",
+          "fr": "Préparer une nouvelle application ou une copie, que l’utilisateur lance",
+          "it": "Preparare una nuova app o una copia, che l’utente poi avvia",
+          "nb": "Forberede en ny app eller en kopi som brukeren bygger",
+          "nl": "Een nieuwe app of een kopie voorbereiden, die de gebruiker bouwt",
+          "pl": "Przygotowanie nowej aplikacji lub kopii, którą zbuduje użytkownik"
+        },
+        "tools": [
+          "new_app_prefill"
+        ]
+      },
+      {
+        "id": "agent",
+        "title": {
+          "en": "Follow the Cursor coding agent and prepare its next instruction",
+          "de": "Den Cursor-Coding-Agenten verfolgen und seine nächste Anweisung vorbereiten",
+          "es": "Seguir al agente de programación de Cursor y preparar su siguiente instrucción",
+          "fr": "Suivre l’agent de code Cursor et préparer sa prochaine instruction",
+          "it": "Seguire l’agente di programmazione Cursor e preparare la sua prossima istruzione",
+          "nb": "Følge Cursor-kodeagenten og forberede neste instruks",
+          "nl": "De Cursor-codeeragent volgen en zijn volgende instructie voorbereiden",
+          "pl": "Śledzenie agenta Cursor i przygotowanie jego kolejnego polecenia"
+        },
+        "tools": [
+          "agent_status",
+          "agent_follow_up_prefill"
+        ]
+      },
+      {
+        "id": "list",
+        "title": {
+          "en": "Remove apps from the list, with undo",
+          "de": "Apps aus der Liste entfernen, mit Rückgängig",
+          "es": "Quitar aplicaciones de la lista, con deshacer",
+          "fr": "Retirer des applications de la liste, avec annulation",
+          "it": "Rimuovere app dall’elenco, con annullamento",
+          "nb": "Fjerne apper fra listen, med angre",
+          "nl": "Apps uit de lijst verwijderen, met ongedaan maken",
+          "pl": "Usuwanie aplikacji z listy, z możliwością cofnięcia"
+        },
+        "tools": [
+          "apps_forget",
+          "undo"
+        ]
+      }
+    ],
+    "examples": {
+      "en": [
+        "Which of my apps are live, and which are not in Haven yet?",
+        "Prepare an app for planning team lunches: everyone votes on a place, the organizer closes the poll",
+        "Make a copy of the TodoManager app that adds a weekly review page",
+        "What is the coding agent doing on my expense tracker? Tell it to add a CSV export"
+      ],
+      "de": [
+        "Welche meiner Apps sind live, und welche sind noch nicht in Haven?",
+        "Bereite eine App zum Planen von Team-Mittagessen vor: Alle stimmen über ein Lokal ab, der Organisator beendet die Abstimmung",
+        "Mach eine Kopie der TodoManager-App mit einer zusätzlichen Seite für den Wochenrückblick",
+        "Was macht der Coding-Agent an meinem Spesen-Tracker? Sag ihm, er soll einen CSV-Export ergänzen"
+      ],
+      "es": [
+        "¿Cuáles de mis aplicaciones están en línea y cuáles aún no están en Haven?",
+        "Prepara una aplicación para organizar comidas de equipo: todos votan un sitio y el organizador cierra la votación",
+        "Haz una copia de la aplicación TodoManager que añada una página de revisión semanal",
+        "¿Qué está haciendo el agente de programación en mi control de gastos? Dile que añada una exportación CSV"
+      ],
+      "fr": [
+        "Lesquelles de mes applications sont en ligne, et lesquelles ne sont pas encore dans Haven ?",
+        "Prépare une application pour organiser les déjeuners d’équipe : chacun vote pour un lieu, l’organisateur clôt le vote",
+        "Fais une copie de l’application TodoManager avec une page de bilan hebdomadaire",
+        "Que fait l’agent de code sur mon suivi de dépenses ? Demande-lui d’ajouter un export CSV"
+      ],
+      "it": [
+        "Quali delle mie app sono online e quali non sono ancora in Haven?",
+        "Prepara un’app per organizzare i pranzi di squadra: tutti votano un locale, l’organizzatore chiude la votazione",
+        "Fai una copia dell’app TodoManager con una pagina di revisione settimanale",
+        "Cosa sta facendo l’agente di programmazione sul mio registro spese? Digli di aggiungere un’esportazione CSV"
+      ],
+      "nb": [
+        "Hvilke av appene mine er i drift, og hvilke er ikke i Haven ennå?",
+        "Forbered en app for å planlegge teamlunsjer: alle stemmer på et sted, arrangøren avslutter avstemningen",
+        "Lag en kopi av TodoManager-appen med en side for ukentlig gjennomgang",
+        "Hva gjør kodeagenten med utgiftsappen min? Be den legge til CSV-eksport"
+      ],
+      "nl": [
+        "Welke van mijn apps zijn live, en welke staan nog niet in Haven?",
+        "Bereid een app voor om teamlunches te plannen: iedereen stemt op een plek, de organisator sluit de stemming",
+        "Maak een kopie van de TodoManager-app met een pagina voor de wekelijkse terugblik",
+        "Wat doet de codeeragent aan mijn onkostenapp? Laat hem een CSV-export toevoegen"
+      ],
+      "pl": [
+        "Które z moich aplikacji działają, a których nie ma jeszcze w Haven?",
+        "Przygotuj aplikację do planowania wspólnych obiadów zespołu: każdy głosuje na miejsce, organizator zamyka głosowanie",
+        "Zrób kopię aplikacji TodoManager ze stroną cotygodniowego podsumowania",
+        "Co robi agent programistyczny w mojej aplikacji do wydatków? Poproś go o dodanie eksportu CSV"
+      ]
+    },
+    "limits": {
+      "en": [
+        "Agents never create a repository, deploy or start a Cursor run: the tools fill in the form or the instruction box and the user presses the button.",
+        "Tokens and API keys are not visible to agents and cannot be set through tools; connecting accounts is done by the user under Connections and setup.",
+        "Removing an app only removes the builder's list entry; the repository, the Worker and the Haven installation stay. Undo works while the App Builder stays open.",
+        "Following the coding agent needs a connected Cursor key."
+      ],
+      "de": [
+        "Agenten legen nie selbst ein Repository an, veröffentlichen nichts und starten keinen Cursor-Lauf: Die Tools füllen das Formular oder das Anweisungsfeld aus, den Knopf drückt der Benutzer.",
+        "Tokens und API-Schlüssel sind für Agenten nicht sichtbar und lassen sich nicht über Tools setzen; Konten verbindet der Benutzer unter Verbindungen und Einrichtung.",
+        "Eine App zu entfernen löscht nur den Listeneintrag des Builders; Repository, Worker und Haven-Installation bleiben. Rückgängig geht, solange der App Builder geöffnet bleibt.",
+        "Den Coding-Agenten zu verfolgen, setzt einen verbundenen Cursor-Schlüssel voraus."
+      ],
+      "es": [
+        "Los agentes nunca crean un repositorio, despliegan ni inician una ejecución de Cursor: las herramientas rellenan el formulario o el cuadro de instrucciones y el usuario pulsa el botón.",
+        "Los tokens y claves de API no son visibles para los agentes ni se pueden configurar con herramientas; las cuentas las conecta el usuario en Conexiones y configuración.",
+        "Quitar una aplicación solo elimina su entrada en la lista; el repositorio, el Worker y la instalación en Haven se mantienen. Deshacer funciona mientras App Builder siga abierto.",
+        "Seguir al agente de programación requiere una clave de Cursor conectada."
+      ],
+      "fr": [
+        "Les agents ne créent jamais de dépôt, ne déploient rien et ne lancent pas d’exécution Cursor : les outils remplissent le formulaire ou la zone d’instruction, et l’utilisateur appuie sur le bouton.",
+        "Les jetons et clés d’API ne sont pas visibles des agents et ne peuvent pas être définis par des outils ; l’utilisateur connecte ses comptes sous Connexions et configuration.",
+        "Retirer une application ne supprime que son entrée dans la liste ; le dépôt, le Worker et l’installation dans Haven restent. L’annulation fonctionne tant qu’App Builder reste ouvert.",
+        "Suivre l’agent de code nécessite une clé Cursor connectée."
+      ],
+      "it": [
+        "Gli agenti non creano mai un repository, non pubblicano e non avviano esecuzioni Cursor: gli strumenti compilano il modulo o il campo istruzioni e l’utente preme il pulsante.",
+        "Token e chiavi API non sono visibili agli agenti e non si possono impostare con gli strumenti; gli account li collega l’utente in Collegamenti e configurazione.",
+        "Rimuovere un’app elimina solo la sua voce nell’elenco; il repository, il Worker e l’installazione in Haven restano. L’annullamento funziona finché App Builder resta aperto.",
+        "Seguire l’agente di programmazione richiede una chiave Cursor collegata."
+      ],
+      "nb": [
+        "Agenter oppretter aldri et repositorium, ruller ikke ut og starter ingen Cursor-kjøring: verktøyene fyller ut skjemaet eller instruksfeltet, og brukeren trykker på knappen.",
+        "Tokener og API-nøkler er ikke synlige for agenter og kan ikke settes med verktøy; kontoer kobler brukeren til under Tilkoblinger og oppsett.",
+        "Å fjerne en app fjerner bare oppføringen i listen; repositoriet, Workeren og Haven-installasjonen blir værende. Angre virker så lenge App Builder er åpen.",
+        "Å følge kodeagenten krever en tilkoblet Cursor-nøkkel."
+      ],
+      "nl": [
+        "Agenten maken nooit zelf een repository aan, rollen niets uit en starten geen Cursor-run: de tools vullen het formulier of het instructieveld in en de gebruiker drukt op de knop.",
+        "Tokens en API-sleutels zijn niet zichtbaar voor agenten en kunnen niet via tools worden ingesteld; accounts koppelt de gebruiker onder Verbindingen en instellingen.",
+        "Een app verwijderen haalt alleen de vermelding uit de lijst; de repository, de Worker en de installatie in Haven blijven. Ongedaan maken werkt zolang App Builder open blijft.",
+        "De codeeragent volgen vereist een gekoppelde Cursor-sleutel."
+      ],
+      "pl": [
+        "Agenci nigdy sami nie tworzą repozytorium, niczego nie wdrażają ani nie uruchamiają Cursora: narzędzia wypełniają formularz lub pole polecenia, a przycisk naciska użytkownik.",
+        "Tokeny i klucze API nie są widoczne dla agentów i nie można ich ustawić narzędziami; konta łączy użytkownik w sekcji Połączenia i konfiguracja.",
+        "Usunięcie aplikacji usuwa tylko jej wpis na liście; repozytorium, Worker i instalacja w Haven pozostają. Cofnięcie działa, dopóki App Builder jest otwarty.",
+        "Śledzenie agenta programistycznego wymaga połączonego klucza Cursor."
+      ]
+    },
+    "guide": {
+      "en": "agent/agent.en.md",
+      "de": "agent/agent.de.md"
     }
   }
 }
