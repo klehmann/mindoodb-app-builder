@@ -504,6 +504,7 @@
       "havenInstalled": "{label} ist in Haven installiert.",
       "havenDeclined": "Du hast die Installation abgelehnt. Die App ist trotzdem veröffentlicht.",
       "havenAddLater": "Füge die App später in Haven hinzu, mit dieser Adresse: {url}",
+      "publicUrlNotSet": "Die Adresse der App konnte nicht in haven-app.json eingetragen werden. Trage dort \"publicUrl\": \"{url}\" ein, damit geteilte Links eine Vorschau zeigen.",
       "havenReadFailed": "Haven konnte die Anwendungsdefinition nicht lesen.",
       "havenProposeFailed": "Haven konnte nicht gebeten werden, die App zu installieren.",
       "pressRegisterInHaven": "Drücke auf „{action}“, wenn du so weit bist.",
