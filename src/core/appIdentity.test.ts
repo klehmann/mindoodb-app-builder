@@ -12,6 +12,7 @@ import {
   isValidSlug,
   patchAppDefinition,
   patchPackageJson,
+  patchPublicUrl,
   patchWranglerConfig,
   physicalDatabaseId,
   randomDatabaseSuffix,
@@ -468,6 +469,11 @@ describe("copies", () => {
     ).toEqual({ repository: "https://github.com/me/our-poll" });
   });
 
+  it("drops the original's publicUrl, which is someone else's address", () => {
+    const withUrl = JSON.stringify({ ...JSON.parse(original), publicUrl: "https://team-poll.acme.dev/" });
+    expect(JSON.parse(patchAppDefinition(withUrl, copy)).publicUrl).toBeUndefined();
+  });
+
   it("uses the short id when the source has one database", () => {
     const single = { ...copy, copiedFrom: { ...copiedFrom, databases: [copiedFrom.databases[0]!] } };
     const parsed = JSON.parse(patchAppDefinition(original, single));
@@ -510,5 +516,24 @@ describe("stripJsonComments", () => {
   it("drops comments and trailing commas but not what looks like them inside strings", () => {
     const text = '{\n  // line\n  "url": "https://x/*y*/", /* block */ "a": [1, 2,],\n}';
     expect(JSON.parse(stripJsonComments(text))).toEqual({ url: "https://x/*y*/", a: [1, 2] });
+  });
+});
+
+describe("patchPublicUrl", () => {
+  const definition = '{\n  "appId": "team-notes",\n  "label": "Team Notes",\n  "version": "0.1.0"\n}\n';
+
+  it("puts the Worker's origin right after label, with one trailing slash", () => {
+    const patched = patchPublicUrl(definition, "https://team-notes.acme.workers.dev/");
+    expect(patched).not.toBeNull();
+    const parsed = JSON.parse(patched!);
+    expect(parsed.publicUrl).toBe("https://team-notes.acme.workers.dev/");
+    expect(Object.keys(parsed)).toEqual(["appId", "label", "publicUrl", "version"]);
+  });
+
+  it("replaces another address and returns null when nothing changes", () => {
+    const old = patchPublicUrl(definition, "https://old.acme.workers.dev")!;
+    const replaced = patchPublicUrl(old, "https://team-notes.acme.workers.dev")!;
+    expect(JSON.parse(replaced).publicUrl).toBe("https://team-notes.acme.workers.dev/");
+    expect(patchPublicUrl(replaced, "https://team-notes.acme.workers.dev")).toBeNull();
   });
 });

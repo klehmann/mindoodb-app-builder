@@ -279,9 +279,82 @@ describe("createApp", () => {
       "generateFromTemplate",
       "commitFiles",
       "ensureWorker",
+      // publicUrl, once the Worker's address is known and before the first build
+      "commitFiles",
       "connectPushToDeploy",
       "startBuild",
     ]);
+  });
+
+  it("writes the Worker's address into haven-app.json as publicUrl before the first build", async () => {
+    const commitFiles = vi.fn(async () => "sha");
+    const deps = makeDeps({
+      github: {
+        getRepository: vi.fn(async () => null),
+        generateFromTemplate: vi.fn(async () => repository),
+        readTemplateSources: vi.fn(async () => templateSources),
+        commitFiles,
+      },
+    });
+
+    const result = await createApp({ identity, owner: "octocat" }, deps);
+
+    expect(result.error).toBeNull();
+    const calls = commitFiles.mock.calls as unknown as Array<
+      [{ files: Array<{ path: string; content: string }> }]
+    >;
+    expect(calls).toHaveLength(2);
+    expect(calls[1]![0].files.map((file) => file.path)).toEqual(["public/haven-app.json"]);
+    const definition = JSON.parse(calls[1]![0].files[0]!.content) as Record<string, unknown>;
+    expect(definition.publicUrl).toBe("https://team-notes.acme.workers.dev/");
+    expect(Object.keys(definition).indexOf("publicUrl")).toBe(Object.keys(definition).indexOf("label") + 1);
+  });
+
+  it("does not commit publicUrl again when the file already has it", async () => {
+    const commitFiles = vi.fn(async () => "sha");
+    const withUrl = {
+      ...templateSources,
+      appDefinition: '{\n  "label": "Team Notes",\n  "publicUrl": "https://team-notes.acme.workers.dev/"\n}\n',
+    };
+    const deps = makeDeps({
+      github: {
+        getRepository: vi.fn(async () => null),
+        generateFromTemplate: vi.fn(async () => repository),
+        readTemplateSources: vi.fn(async () => withUrl),
+        commitFiles,
+      },
+    });
+
+    await createApp({ identity, owner: "octocat" }, deps);
+
+    expect(commitFiles).toHaveBeenCalledOnce();
+  });
+
+  it("only warns when publicUrl cannot be written, and still builds", async () => {
+    let calls = 0;
+    const deps = makeDeps({
+      github: {
+        getRepository: vi.fn(async () => null),
+        generateFromTemplate: vi.fn(async () => repository),
+        readTemplateSources: vi.fn(async () => templateSources),
+        commitFiles: vi.fn(async () => {
+          calls += 1;
+          if (calls === 2) {
+            throw new Error("GitHub is down");
+          }
+          return "sha";
+        }),
+      },
+    });
+
+    const result = await createApp({ identity, owner: "octocat" }, deps);
+
+    expect(result.error).toBeNull();
+    expect(result.warnings).toContainEqual({
+      code: "publicUrlNotSet",
+      params: { url: "https://team-notes.acme.workers.dev/" },
+    });
+    expect(deps.cloudflare.startBuild).toHaveBeenCalled();
   });
 
   it("commits the identity files built from the template's own sources", async () => {
@@ -443,8 +516,9 @@ describe("createApp", () => {
       expect(statusOf(result.steps, "create-repo")).toBe("skipped");
       expect(getRepository).not.toHaveBeenCalled();
       expect(generateFromTemplate).not.toHaveBeenCalled();
-      // The point of the resume: the identity the first attempt never committed.
-      expect(commitFiles).toHaveBeenCalledOnce();
+      // The point of the resume: the identity the first attempt never committed
+      // (and then publicUrl, once the Worker exists).
+      expect(commitFiles).toHaveBeenCalledTimes(2);
       expect(result.repository).toEqual(repository);
       expect(result.identityCommitted).toBe(true);
       expect(result.worker).toEqual(worker);
@@ -963,7 +1037,7 @@ describe("starting from an existing app", () => {
 
     const result = await createApp({ identity: copyIdentity, owner: "", source, private: false }, deps);
 
-    expect(order).toEqual(["create", "copy", "commit"]);
+    expect(order).toEqual(["create", "copy", "commit", "commit"]);
     expect(copySource).toHaveBeenCalledWith({ repository, source });
     expect(result.sourceCopied).toBe(true);
     expect(statusOf(result.steps, "copy-source")).toBe("done");

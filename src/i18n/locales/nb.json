@@ -504,6 +504,7 @@
       "havenInstalled": "{label} er installert i Haven.",
       "havenDeclined": "Du avslo installasjonen. Appen er publisert likevel.",
       "havenAddLater": "Legg appen inn i Haven senere med {url}",
+      "publicUrlNotSet": "Klarte ikke å skrive appens adresse i haven-app.json. Legg inn \"publicUrl\": \"{url}\" der, så viser delte lenker en forhåndsvisning.",
       "havenReadFailed": "Haven kunne ikke lese appdefinisjonen.",
       "havenProposeFailed": "Haven kunne ikke bli bedt om å installere appen.",
       "pressRegisterInHaven": "Trykk «{action}» når du er klar.",

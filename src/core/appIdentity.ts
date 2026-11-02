@@ -434,6 +434,8 @@ function patchCopiedAppDefinition(source: string, identity: AppIdentity): string
   const physicalIds = copiedDatabaseIds(identity);
   parsed.appId = identity.slug;
   parsed.label = identity.label;
+  // The original's address; this app gets its own once its Worker exists.
+  delete parsed.publicUrl;
   if (Array.isArray(parsed.databases)) {
     parsed.databases = parsed.databases.map((entry) => {
       if (!isRecord(entry) || typeof entry.logicalDatabaseId !== "string") {
@@ -446,6 +448,38 @@ function patchCopiedAppDefinition(source: string, identity: AppIdentity): string
   applyDescription(parsed, identity);
   applySourceRepository(parsed, identity);
   return reindentJson(parsed);
+}
+
+/**
+ * Write the app's live origin into `haven-app.json` as `publicUrl`, right after `label`.
+ *
+ * The landing page's share tags (`og:url`, `og:image`) need an absolute address, and a
+ * production build has no other way to learn it. The Worker URL is only known once the
+ * Worker exists, after the identity commit, so this is a second, small patch. Returns
+ * `null` when the file already says so, so a resumed run does not commit again.
+ */
+export function patchPublicUrl(source: string, appUrl: string): string | null {
+  const parsed = JSON.parse(source) as Record<string, unknown>;
+  const publicUrl = `${appUrl.replace(/\/+$/, "")}/`;
+  if (parsed.publicUrl === publicUrl) {
+    return null;
+  }
+  const patched: Record<string, unknown> = {};
+  let placed = false;
+  for (const [key, value] of Object.entries(parsed)) {
+    if (key === "publicUrl") {
+      continue;
+    }
+    patched[key] = value;
+    if (key === "label") {
+      patched.publicUrl = publicUrl;
+      placed = true;
+    }
+  }
+  if (!placed) {
+    patched.publicUrl = publicUrl;
+  }
+  return reindentJson(patched);
 }
 
 function applyDescription(parsed: Record<string, unknown>, identity: AppIdentity): void {

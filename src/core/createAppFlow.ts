@@ -18,7 +18,7 @@
  */
 import type { AppIdentity, TemplateSources } from "./appIdentity";
 import type { AppSource } from "./appSource";
-import { buildIdentityFiles } from "./appIdentity";
+import { buildIdentityFiles, patchPublicUrl } from "./appIdentity";
 import type { RepoReadableResult } from "./cloudflare";
 import {
   externalMessage,
@@ -652,6 +652,35 @@ async function checkCloudflareRepoAccess(
   }
 }
 
+/**
+ * Put the Worker's address into `haven-app.json` as `publicUrl`, before the first build.
+ *
+ * Without it the landing page has no share tags, and a coding agent cannot know the
+ * address. Not fatal: the app works without it, so a failure is a warning that says
+ * which address to add by hand.
+ */
+async function stampPublicUrl(
+  run: StepRunner,
+  deps: CreateAppDependencies,
+  repository: GitHubRepository,
+  worker: WorkerDeployment,
+): Promise<void> {
+  try {
+    const sources = await deps.github.readTemplateSources(repository);
+    const patched = patchPublicUrl(sources.appDefinition, worker.url);
+    if (patched === null) {
+      return;
+    }
+    await deps.github.commitFiles({
+      repository,
+      message: "chore: set publicUrl",
+      files: [{ path: "public/haven-app.json", content: patched }],
+    });
+  } catch {
+    run.warn({ code: "publicUrlNotSet", params: { url: `${worker.url.replace(/\/+$/, "")}/` } });
+  }
+}
+
 async function runCloudflarePhase(
   run: StepRunner,
   input: { identity: AppIdentity; repository: GitHubRepository; skipPropose?: boolean },
@@ -685,6 +714,8 @@ async function runCloudflarePhase(
     abort("create-worker", readErrorMessage(error, "workerCreateFailed"), keepPending);
     return false;
   }
+
+  await stampPublicUrl(run, deps, repository, worker);
 
   try {
     update("connect-builds", "running");
