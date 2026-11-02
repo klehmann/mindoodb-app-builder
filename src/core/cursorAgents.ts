@@ -240,8 +240,10 @@ export function buildLaunchPrompt(
         "Then implement TASK.md. Keep public/haven-app.json in step with the databases the",
         "app actually opens. Generate a 512×512 PNG that matches the app's theme and write",
         "it to public/appicon.png — Haven uses that file as the workspace icon after a",
-        "hosted-bundle install. Run `pnpm test` and `pnpm build` before you finish, and",
-        "commit the pnpm lockfile that the first install produces.",
+        "hosted-bundle install. Complete the listing as AGENTS.md describes under \"Landing",
+        "page, store gallery and link preview\": texts in all eight languages, icon,",
+        "screenshots and the share image. Run `pnpm test` and `pnpm build` before you",
+        "finish, and commit the pnpm lockfile that the first install produces.",
       ];
   return [
     ...work,
