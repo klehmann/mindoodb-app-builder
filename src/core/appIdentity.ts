@@ -538,6 +538,9 @@ export function renderTaskMarkdown(identity: AppIdentity): string {
     "- Keep `public/haven-app.json` in step with the databases the app actually uses.",
   );
   lines.push("- Prefer finishing one working screen over scaffolding several unfinished ones.");
+  lines.push(
+    "- Before you finish, complete the listing in `public/haven-app.json` as `AGENTS.md` describes under *Landing page, store gallery and link preview*: texts in all eight languages, icon, screenshots, share image.",
+  );
   lines.push("");
 
   return lines.join("\n");
