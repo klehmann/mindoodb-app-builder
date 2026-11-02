@@ -33,6 +33,7 @@
   ],
   "publicUrl": "https://app-builder.mindoodb.com/",
   "listing": {
+    "shareImage": "listing/share.png",
     "summary": {
       "en": "Describe the app your team is missing — an AI agent writes it, publishes it to the web, and Haven installs it.",
       "de": "Beschreibe die Anwendung, die deinem Team fehlt — ein KI-Agent schreibt sie, veröffentlicht sie im Web, und Haven installiert sie.",
