@@ -11,8 +11,8 @@ importers:
   .:
     dependencies:
       mindoodb-app-sdk:
-        specifier: ^0.0.75
-        version: 0.0.75(@automerge/automerge@3.4.1)(mindoodb@0.0.77)
+        specifier: ^0.0.89
+        version: 0.0.89(@automerge/automerge@3.4.1)
       vue:
         specifier: ^3.5.31
         version: 3.5.42(typescript@6.0.3)
@@ -1153,12 +1153,13 @@ packages:
   mdn-data@2.27.1:
     resolution: {integrity: sha512-9Yubnt3e8A0OKwxYSXyhLymGW4sCufcLG6VdiDdUGVkPhpqLxlvP5vl1983gQjJl3tqbrM731mjaZaP68AgosQ==}
 
-  mindoodb-app-sdk@0.0.75:
-    resolution: {integrity: sha512-itDzb84K8hSAX34V/oinJqa2q2yv8n/NX6J5wTt0k+kOPGFivUOQDva09AFsaBHjOGpcW1+qiC+fA/CrzbFFJQ==}
+  mindoodb-app-sdk@0.0.89:
+    resolution: {integrity: sha512-uAfD5RSErtkvG2nGwQTIQvRTwF7p5a6btDnqvKmKaxmm627S3RaLlfVxabrHd3F03bZ5QLrorJKs5w5xvs6hgQ==}
     engines: {node: '>=22.13.0'}
+    hasBin: true
     peerDependencies:
       '@automerge/automerge': ^3.3.2
-      mindoodb: '>=0.0.76'
+      mindoodb: '>=0.0.83'
     peerDependenciesMeta:
       '@automerge/automerge':
         optional: true
@@ -2394,12 +2395,11 @@ snapshots:
 
   mdn-data@2.27.1: {}
 
-  mindoodb-app-sdk@0.0.75(@automerge/automerge@3.4.1)(mindoodb@0.0.77):
+  mindoodb-app-sdk@0.0.89(@automerge/automerge@3.4.1):
     dependencies:
       mindoodb-view-language: 0.0.18
     optionalDependencies:
       '@automerge/automerge': 3.4.1
-      mindoodb: 0.0.77
     transitivePeerDependencies:
       - '@number0/iroh'
       - expo-standard-web-crypto
