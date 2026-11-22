@@ -7,6 +7,7 @@ import frMessages from "./locales/fr.json";
 import itMessages from "./locales/it.json";
 import nbMessages from "./locales/nb.json";
 import nlMessages from "./locales/nl.json";
+import havenApp from "../../public/haven-app.json";
 import plMessages from "./locales/pl.json";
 
 const LOCALE_MESSAGES: Record<string, unknown> = {
@@ -28,6 +29,29 @@ function flattenKeys(value: unknown, prefix = ""): string[] {
   return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) =>
     flattenKeys(child, prefix ? `${prefix}.${key}` : key),
   );
+}
+
+/** The value at a dotted key path. */
+function valueAt(messages: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown>)?.[part], messages);
+}
+
+/**
+ * The `{named}` and `{0}` interpolations of a message, deduplicated and sorted.
+ * Plural branches (`a | b`) are merged, since a branch may leave out `{count}`.
+ */
+function placeholdersOf(message: string): string[] {
+  return [...new Set(message.match(/\{\s*[\w.]+\s*\}/g) ?? [])].map((p) => p.replace(/\s/g, "")).sort();
+}
+
+/** Linked messages (`@:key`, `@.lower:key`) a message refers to. */
+function linksOf(message: string): string[] {
+  return [...new Set(message.match(/@(?:\.\w+)?:[\w.]+/g) ?? [])].sort();
+}
+
+/** Number of plural branches of a vue-i18n message. */
+function pluralBranches(message: string): number {
+  return message.split(" | ").length;
 }
 
 describe("mapLocaleToUiLanguage", () => {
@@ -106,6 +130,46 @@ describe("locale message files", () => {
     }
   });
 
+  it("use the same placeholders, linked messages and plural forms as English", () => {
+    const baseMessages = LOCALE_MESSAGES.en;
+    for (const language of SUPPORTED_UI_LANGUAGES) {
+      if (language === "en") continue;
+      const messages = LOCALE_MESSAGES[language];
+      const mismatches: string[] = [];
+      for (const key of flattenKeys(baseMessages)) {
+        const base = valueAt(baseMessages, key);
+        const value = valueAt(messages, key);
+        const pairs: [unknown, unknown, string][] = Array.isArray(base)
+          ? base.map((entry, i) => [entry, Array.isArray(value) ? value[i] : undefined, `${key}[${i}]`])
+          : [[base, value, key]];
+        if (Array.isArray(base) && (!Array.isArray(value) || value.length !== base.length)) {
+          mismatches.push(`${key}: ${Array.isArray(value) ? value.length : "no"} entries instead of ${base.length}`);
+          continue;
+        }
+        for (const [baseEntry, entry, path] of pairs) {
+          if (typeof baseEntry !== "string") continue;
+          if (typeof entry !== "string") {
+            mismatches.push(`${path}: ${entry === null ? "null" : typeof entry} instead of a string`);
+            continue;
+          }
+          const want = placeholdersOf(baseEntry).join(" ");
+          const got = placeholdersOf(entry).join(" ");
+          if (want !== got) mismatches.push(`${path}: placeholders "${got}" instead of "${want}"`);
+          if (linksOf(baseEntry).join(" ") !== linksOf(entry).join(" ")) {
+            mismatches.push(`${path}: linked messages differ from English`);
+          }
+          // Polish may add a third form (one | few | many) where English has two.
+          const branches = pluralBranches(baseEntry);
+          const allowed = branches === 2 && language === "pl" ? [2, 3] : [branches];
+          if (!allowed.includes(pluralBranches(entry))) {
+            mismatches.push(`${path}: ${pluralBranches(entry)} plural forms instead of ${allowed.join(" or ")}`);
+          }
+        }
+      }
+      expect({ language, mismatches }).toEqual({ language, mismatches: [] });
+    }
+  });
+
   it("never ships an empty translation value", () => {
     for (const language of SUPPORTED_UI_LANGUAGES) {
       const messages = LOCALE_MESSAGES[language] as Record<string, unknown>;
@@ -118,9 +182,92 @@ describe("locale message files", () => {
         if (Array.isArray(node)) {
           return node.some((entry) => typeof entry !== "string" || entry.trim() === "");
         }
-        return typeof node === "string" && node.trim() === "";
+        return typeof node !== "string" || node.trim() === "";
       });
       expect({ language, emptyKeys }).toEqual({ language, emptyKeys: [] });
+    }
+  });
+});
+
+/**
+ * French typography: a non-breaking space (U+00A0 or U+202F), never a plain one, before
+ * : ; ? ! and » and after «. Code spans and URLs are skipped.
+ */
+function frenchSpacingViolations(value: unknown, path = ""): string[] {
+  if (typeof value === "string") {
+    const text = value.replace(/```[\s\S]*?```/g, "").replace(/`[^`]*`/g, "").replace(/https?:\/\/\S+/g, "");
+    return / [:;?!»]|« /.test(text) ? [`${path}: ${value}`] : [];
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.entries(value).flatMap(([key, child]) =>
+      frenchSpacingViolations(child, path ? `${path}.${key}` : key),
+    );
+  }
+  return [];
+}
+
+/** The texts below every "fr" key, e.g. the localized store listing in haven-app.json. */
+function frenchBranches(value: unknown, path = ""): Record<string, unknown> {
+  if (typeof value !== "object" || value === null) return {};
+  return Object.assign(
+    {},
+    ...Object.entries(value).map(([key, child]) =>
+      key === "fr" ? { [`${path}.fr`]: child } : frenchBranches(child, path ? `${path}.${key}` : key),
+    ),
+  );
+}
+
+describe("French typography", () => {
+  it("uses a non-breaking space before : ; ? ! » and after «", () => {
+    expect(frenchSpacingViolations(frMessages)).toEqual([]);
+    expect(frenchSpacingViolations(frenchBranches(havenApp), "haven-app.json")).toEqual([]);
+  });
+});
+
+/**
+ * French address form: like Haven, the French UI says "vous", never "tu". Flags the informal
+ * pronouns and possessives (tu, te, t’, toi, ton, ta, tes) and a few unambiguous 2nd-person
+ * singular forms (participles such as "choisis" are left out); ALLOWED_INFORMAL_LOOKALIKES lists phrases where such a word means something else.
+ */
+const ALLOWED_INFORMAL_LOOKALIKES: RegExp[] = [];
+const INFORMAL_FRENCH =
+  /(?<![\p{L}\p{N}_-])(?:(?:tu|te|toi|ton|ta|tes|\p{L}+-(?:tu|toi)|réessaie|réessaye)(?![\p{L}\p{N}_’'-])|t[’'](?=\p{L}))/iu;
+
+function informalFrenchViolations(value: unknown, path = ""): string[] {
+  if (typeof value === "string") {
+    const text = ALLOWED_INFORMAL_LOOKALIKES.reduce((acc, re) => acc.replace(re, ""), value);
+    return INFORMAL_FRENCH.test(text) ? [`${path}: ${value}`] : [];
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.entries(value).flatMap(([key, child]) =>
+      informalFrenchViolations(child, path ? `${path}.${key}` : key),
+    );
+  }
+  return [];
+}
+
+describe("French address form", () => {
+  it("addresses the user with vous, never tu", () => {
+    expect(informalFrenchViolations(frMessages)).toEqual([]);
+    expect(informalFrenchViolations(frenchBranches(havenApp), "haven-app.json")).toEqual([]);
+  });
+
+  it("detects informal French", () => {
+    expect(informalFrenchViolations("Tu peux aussi la masquer.")).toHaveLength(1);
+    expect(informalFrenchViolations("L’aide t’offre une introduction.")).toHaveLength(1);
+    expect(informalFrenchViolations("Autorise les pop-ups et réessaie.")).toHaveLength(1);
+    expect(informalFrenchViolations("Connecte-toi à nouveau.")).toHaveLength(1);
+    expect(informalFrenchViolations("Vous pouvez aussi la masquer.")).toEqual([]);
+  });
+});
+
+describe("encoding", () => {
+  it("has no mojibake from text decoded twice (e.g. â\u0080\u0099 for ’)", () => {
+    for (const language of SUPPORTED_UI_LANGUAGES) {
+      const broken = flattenKeys(LOCALE_MESSAGES[language]).filter((key) =>
+        /[\u0080-\u009f]/.test(String(valueAt(LOCALE_MESSAGES[language], key))),
+      );
+      expect({ language, broken }).toEqual({ language, broken: [] });
     }
   });
 });

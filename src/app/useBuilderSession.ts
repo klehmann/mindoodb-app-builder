@@ -248,6 +248,8 @@ export function useBuilderSession() {
   });
 
   return {
+    /** The Haven session itself, for the agent tools; null until connected. */
+    appSession: session,
     canProposeApps,
     canReadDirectory,
     canStoreCredentials,

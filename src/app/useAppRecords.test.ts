@@ -3,7 +3,7 @@ import { ref } from "vue";
 
 import { useAppRecords } from "@/app/useAppRecords";
 import type { useBuilderSession } from "@/app/useBuilderSession";
-import { APP_RECORD_DOCUMENT_TYPE, listAppRecords } from "@/core/appRecords";
+import { APP_RECORD_DOCUMENT_TYPE, EMPTY_APP_RECORD, listAppRecords } from "@/core/appRecords";
 import type { MindooDBAppDatabase } from "mindoodb-app-sdk";
 
 /**
@@ -169,7 +169,7 @@ describe("useAppRecords", () => {
     await records.begin(identity, { private: true });
     const documentId = records.activeDocumentId.value!;
 
-    await records.forget(documentId);
+    await expect(records.forget(documentId)).resolves.toBe(true);
 
     expect(removed).toEqual([documentId]);
     expect(records.active.value).toBeNull();
@@ -181,9 +181,37 @@ describe("useAppRecords", () => {
     const records = useAppRecords(fakeSession(database, ["read", "create", "update"]));
     await records.begin(identity, { private: true });
 
-    await records.forget(records.activeDocumentId.value!);
+    await expect(records.forget(records.activeDocumentId.value!)).resolves.toBe(false);
 
     expect(records.canForget.value).toBe(false);
     expect(removed).toEqual([]);
+  });
+
+  it("restores a forgotten app as it was, for the agent tools' undo", async () => {
+    const { database } = fakeDatabase();
+    const records = useAppRecords(fakeSession(database));
+    await records.begin(identity, { private: true });
+    await records.recordPhase({ repository });
+    const before = records.records.value[0]!;
+
+    await records.forget(before.documentId);
+    await records.restore(before.record);
+
+    expect(records.records.value).toHaveLength(1);
+    expect(records.records.value[0]!.documentId).not.toBe(before.documentId);
+    expect(records.records.value[0]!.record).toMatchObject({
+      appId: "team-notes",
+      repoUrl: "https://github.com/octocat/team-notes",
+      createdAt: before.record.createdAt,
+    });
+  });
+
+  it("refuses to restore without the create capability", async () => {
+    const { database } = fakeDatabase();
+    const records = useAppRecords(fakeSession(database, ["read"]));
+
+    await expect(
+      records.restore({ ...EMPTY_APP_RECORD, appId: "x" }),
+    ).rejects.toThrow();
   });
 });

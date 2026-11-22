@@ -123,6 +123,7 @@ export const FLOW_NOTE_CODES = [
   "havenInstalled",
   "havenDeclined",
   "havenAddLater",
+  "publicUrlNotSet",
   "havenReadFailed",
   "havenProposeFailed",
   "pressRegisterInHaven",

@@ -11,7 +11,7 @@
  * While a run is going, Cursor answers 409 and the UI says so instead of reporting an
  * error.
  */
-import { onBeforeUnmount, ref } from "vue";
+import { onBeforeUnmount, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 
 import { isTerminalRunStatus, type CursorRun } from "@/core/cursorAgents";
@@ -23,6 +23,12 @@ const { t } = useI18n();
 const props = defineProps<{
   agent: AgentHandle | null;
   cursorToken: string;
+  /**
+   * An instruction an AI agent prepared through the agent tools. It only fills the box:
+   * sending starts a paid Cursor run, so that stays the user's press. `nonce` makes the
+   * same text prepared twice land twice.
+   */
+  draft?: { text: string; nonce: number } | null;
 }>();
 
 const POLL_INTERVAL_MS = 8_000;
@@ -32,6 +38,16 @@ const followUp = ref("");
 const busy = ref(false);
 const message = ref<string | null>(null);
 let timer: ReturnType<typeof setTimeout> | null = null;
+
+watch(
+  () => props.draft,
+  (draft) => {
+    if (draft) {
+      followUp.value = draft.text;
+    }
+  },
+  { immediate: true },
+);
 
 function stopPolling(): void {
   if (timer !== null) {

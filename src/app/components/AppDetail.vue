@@ -39,6 +39,8 @@ const props = defineProps<{
   /** The Cursor agent working on this app, and the key to ask it for more. */
   agent: AgentHandle | null;
   cursorToken: string;
+  /** An instruction prepared by an AI agent for the coding agent's box. */
+  followUpDraft?: { text: string; nonce: number } | null;
   /** Cloudflare's recent builds, or null while unknown. */
   builds: WorkerBuild[] | null;
   buildsError: string | null;
@@ -226,7 +228,12 @@ function formatDateTime(iso: string): string {
       Asking the AI for changes is the main thing you do with a finished app, so it lives
       here rather than being a trip to Cursor's own UI. The panel polls its own run.
     -->
-    <AgentPanel v-if="agent && cursorToken" :agent="agent" :cursor-token="cursorToken" />
+    <AgentPanel
+      v-if="agent && cursorToken"
+      :agent="agent"
+      :cursor-token="cursorToken"
+      :draft="followUpDraft"
+    />
 
     <div v-else-if="live" class="detail__row">
       <button type="button" class="ghost" :disabled="running" @click="emit('launchCursor')">
