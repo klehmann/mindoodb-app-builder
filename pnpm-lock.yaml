@@ -11,8 +11,8 @@ importers:
   .:
     dependencies:
       mindoodb-app-sdk:
-        specifier: ^0.0.89
-        version: 0.0.89(@automerge/automerge@3.4.1)
+        specifier: ^0.1.6
+        version: 0.1.6(@automerge/automerge@3.4.1)(mindoodb@0.1.7)
       vue:
         specifier: ^3.5.31
         version: 3.5.42(typescript@6.0.3)
@@ -1153,13 +1153,13 @@ packages:
   mdn-data@2.27.1:
     resolution: {integrity: sha512-9Yubnt3e8A0OKwxYSXyhLymGW4sCufcLG6VdiDdUGVkPhpqLxlvP5vl1983gQjJl3tqbrM731mjaZaP68AgosQ==}
 
-  mindoodb-app-sdk@0.0.89:
-    resolution: {integrity: sha512-uAfD5RSErtkvG2nGwQTIQvRTwF7p5a6btDnqvKmKaxmm627S3RaLlfVxabrHd3F03bZ5QLrorJKs5w5xvs6hgQ==}
+  mindoodb-app-sdk@0.1.6:
+    resolution: {integrity: sha512-vJ8NQ++InB33ZiYMcay5WPBF41aOswdnmfCJOGfgokOPgLQfatK5O8Uq0My9HJtev/ZA3PAasszMxijA6Tr/cw==}
     engines: {node: '>=22.13.0'}
     hasBin: true
     peerDependencies:
       '@automerge/automerge': ^3.3.2
-      mindoodb: '>=0.0.83'
+      mindoodb: '>=0.1.4'
     peerDependenciesMeta:
       '@automerge/automerge':
         optional: true
@@ -1170,8 +1170,8 @@ packages:
     resolution: {integrity: sha512-9estxqoKL0Lu1QuYfEcoHYgQWEwF0RX71QxCu48j1IHyQ2nwXDSIg4OLtp+Oy5UJ398xcsWGTySttruDe9xShA==}
     engines: {node: '>=22.13.0'}
 
-  mindoodb@0.0.77:
-    resolution: {integrity: sha512-lYiWxSpWM7CFvwG35K8toZ9NQ56BHem5K+uItM3HMJTqRfYTeW/p9DfeyNytvDEF/7wbSYq2HyJOzJI90trDZQ==}
+  mindoodb@0.1.7:
+    resolution: {integrity: sha512-BPhPZwwVVn9ePmNUAfuAxyzT2oSNK6K9EJfth6QLPyRO26KcyFWaRYB7qzwk6cKLqflf4OOxTpeqk0m7XBM10w==}
     engines: {node: '>=22.13.0'}
     hasBin: true
     peerDependencies:
@@ -2395,11 +2395,12 @@ snapshots:
 
   mdn-data@2.27.1: {}
 
-  mindoodb-app-sdk@0.0.89(@automerge/automerge@3.4.1):
+  mindoodb-app-sdk@0.1.6(@automerge/automerge@3.4.1)(mindoodb@0.1.7):
     dependencies:
       mindoodb-view-language: 0.0.18
     optionalDependencies:
       '@automerge/automerge': 3.4.1
+      mindoodb: 0.1.7
     transitivePeerDependencies:
       - '@number0/iroh'
       - expo-standard-web-crypto
@@ -2410,7 +2411,7 @@ snapshots:
 
   mindoodb-view-language@0.0.18:
     dependencies:
-      mindoodb: 0.0.77
+      mindoodb: 0.1.7
     transitivePeerDependencies:
       - '@number0/iroh'
       - expo-standard-web-crypto
@@ -2419,7 +2420,7 @@ snapshots:
       - react-native-quick-crypto
       - tweetnacl
 
-  mindoodb@0.0.77:
+  mindoodb@0.1.7:
     dependencies:
       '@automerge/automerge': 3.5.0
       minisearch: 7.2.0
