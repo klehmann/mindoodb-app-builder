@@ -21,6 +21,7 @@
  */
 import {
   resolveMindooDBAppDefinitionUrl,
+  resolveMindooDBAppLocalizedText,
   validateMindooDBAppDefinition,
 } from "mindoodb-app-sdk";
 
@@ -325,7 +326,8 @@ export async function resolveAppSource(
     description: readDescription(raw) || details.description,
     databases: (definition.databases ?? []).map((database) => ({
       logicalDatabaseId: database.logicalDatabaseId,
-      label: database.label ?? database.logicalDatabaseId,
+      // SDK 0.2.0: labels may be localized ({ en, de, ... }); the builder shows English.
+      label: resolveMindooDBAppLocalizedText(database.label, "en") || database.logicalDatabaseId,
     })),
     files,
     skippedPaths,
